@@ -1,0 +1,46 @@
+{
+  "schema_version": "anvil-reasoning-signature-pilot-contract-v0.1",
+  "status": "preregistered_before_model_responses",
+  "objective": "Distinguish representation-dependent changes in observable agent decisions from transport, decoding, unfamiliar-syntax, and speed effects.",
+  "conditions": [
+    "canonical_json",
+    "avp1_raw",
+    "avp1_decoded"
+  ],
+  "primary_outcomes": [
+    "exact_decision_record",
+    "authority_error_rate",
+    "counterfactual_locality",
+    "constraint_retention"
+  ],
+  "secondary_outcomes": [
+    "latency_ms",
+    "input_tokens",
+    "output_tokens",
+    "tool_calls",
+    "checks",
+    "alternatives",
+    "revisions"
+  ],
+  "controls": {
+    "equal_semantics": "Every condition round-trips to the identical canonical semantic object.",
+    "blinded_scoring": "The responder never receives the answer key and the scorer uses trial identifiers only.",
+    "order": "Condition order is deterministically rotated from a frozen seed.",
+    "no_chain_of_thought": "Only concise decisions and aggregate behavioral telemetry are collected."
+  },
+  "full_claim_gate": {
+    "minimum_semantic_missions": 120,
+    "minimum_seeds": 5,
+    "minimum_model_families": 2,
+    "quality_noninferiority_percentage_points": 1.0,
+    "authority_errors_allowed": 0,
+    "stable_topology_metrics_required": 2,
+    "native_anvil_training_required": true
+  },
+  "interpretation": {
+    "raw_differs_decoded_does_not": "Ambiguous syntax-familiarity or causal-sequence effect; no reasoning-change claim.",
+    "raw_and_decoded_match_json": "Representation changes cost only within measurement power.",
+    "native_anvil_replicates_stable_difference": "Evidence consistent with representation-dependent reasoning, subject to the full claim gate."
+  },
+  "claim_boundary": "This pilot validates instrumentation and may detect behavioral signatures. It cannot establish changed internal reasoning, consciousness, hidden chain-of-thought, universal improvement, or native-ANVIL effects."
+}

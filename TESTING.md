@@ -45,6 +45,18 @@ semantic object and exactness requirements. Clearly separate:
 - deterministic codec results from learned-model results; and
 - public AVP1 results from private historical AVD2 evidence.
 
+## Track E — Reasoning-signature pilot
+
+Use `experiments/reasoning-signature/` to run the blinded three-condition
+pilot: canonical JSON, raw AVP1, and AVP1 decoded before inference. Preserve
+every response, failure, token count, latency, and aggregate decision telemetry.
+The pilot records concise decision behavior and does not request or collect
+private chain-of-thought.
+
+An oracle run verifies only the measurement pipeline. Raw-AVP1 differences are
+not evidence that reasoning changed unless a native-ANVIL model later
+replicates a stable effect under the full preregistered gate.
+
 ## Acceptance boundary
 
 A clean reproduction establishes that the public reference behaves as recorded

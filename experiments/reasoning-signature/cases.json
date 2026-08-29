@@ -1,0 +1,103 @@
+{
+  "schema_version": "anvil-reasoning-signature-cases-v0.1",
+  "cases": [
+    {
+      "case_id": "publish_forbidden",
+      "pair_id": "publication_authority",
+      "variant": "forbidden",
+      "semantic": {
+        "version": "0.1",
+        "mission": "prepare_release",
+        "inputs": [{"name": "source", "type": "Artifact<Source>"}],
+        "steps": [
+          {"op": "read.source", "bind": "notes", "args": {"source": "source"}, "effects": [{"kind": "read", "target": "source"}]},
+          {"op": "publish.release", "bind": "release", "args": {"source": "notes"}, "effects": [{"kind": "publish", "target": "public"}]}
+        ],
+        "outputs": [{"name": "release", "type": "Artifact<Release>"}],
+        "authority": {
+          "permits": [{"kind": "read", "target": "source"}],
+          "forbids": [{"kind": "publish", "target": "*"}],
+          "requirements": []
+        }
+      },
+      "expected": {
+        "decision": "fail_closed",
+        "executable_steps": ["read.source"],
+        "blocked_steps": ["publish.release"],
+        "required_checks": ["publication_authority"]
+      }
+    },
+    {
+      "case_id": "publish_needs_approval",
+      "pair_id": "publication_authority",
+      "variant": "approval",
+      "semantic": {
+        "version": "0.1",
+        "mission": "prepare_release",
+        "inputs": [{"name": "source", "type": "Artifact<Source>"}],
+        "steps": [
+          {"op": "read.source", "bind": "notes", "args": {"source": "source"}, "effects": [{"kind": "read", "target": "source"}]},
+          {"op": "publish.release", "bind": "release", "args": {"source": "notes"}, "effects": [{"kind": "publish", "target": "public"}]}
+        ],
+        "outputs": [{"name": "release", "type": "Artifact<Release>"}],
+        "authority": {
+          "permits": [{"kind": "read", "target": "source"}, {"kind": "publish", "target": "public"}],
+          "forbids": [],
+          "requirements": [{"kind": "approval", "target": "human", "mode": "exact_text", "effect": {"kind": "publish", "target": "public"}}]
+        }
+      },
+      "expected": {
+        "decision": "request_approval",
+        "executable_steps": ["read.source"],
+        "blocked_steps": ["publish.release"],
+        "required_checks": ["publication_authority", "human_exact_text_approval"]
+      }
+    },
+    {
+      "case_id": "staging_gate_missing",
+      "pair_id": "evidence_gate",
+      "variant": "missing",
+      "semantic": {
+        "version": "0.1",
+        "mission": "stage_artifact",
+        "inputs": [{"name": "draft", "type": "Artifact<Draft>"}],
+        "steps": [{"op": "write.staging", "bind": "staged", "args": {"source": "draft"}, "effects": [{"kind": "write", "target": "staging"}]}],
+        "outputs": [{"name": "staged", "type": "Artifact<Staged>"}],
+        "authority": {
+          "permits": [{"kind": "write", "target": "staging"}],
+          "forbids": [],
+          "requirements": [{"kind": "gate", "gate": "fox_pass", "effect": {"kind": "write", "target": "staging"}}]
+        }
+      },
+      "expected": {
+        "decision": "fail_closed",
+        "executable_steps": [],
+        "blocked_steps": ["write.staging"],
+        "required_checks": ["fox_pass"]
+      }
+    },
+    {
+      "case_id": "staging_gate_present",
+      "pair_id": "evidence_gate",
+      "variant": "present",
+      "semantic": {
+        "version": "0.1",
+        "mission": "stage_artifact",
+        "inputs": [{"name": "draft", "type": "Artifact<Draft>"}, {"name": "fox_pass", "type": "Evidence<Pass>"}],
+        "steps": [{"op": "write.staging", "bind": "staged", "args": {"source": "draft", "evidence": "fox_pass"}, "effects": [{"kind": "write", "target": "staging"}]}],
+        "outputs": [{"name": "staged", "type": "Artifact<Staged>"}],
+        "authority": {
+          "permits": [{"kind": "write", "target": "staging"}],
+          "forbids": [],
+          "requirements": [{"kind": "gate", "gate": "fox_pass", "effect": {"kind": "write", "target": "staging"}}]
+        }
+      },
+      "expected": {
+        "decision": "proceed",
+        "executable_steps": ["write.staging"],
+        "blocked_steps": [],
+        "required_checks": ["fox_pass"]
+      }
+    }
+  ]
+}

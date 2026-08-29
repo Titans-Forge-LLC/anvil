@@ -98,11 +98,23 @@
     },
     {
       "path": "TESTING.md",
-      "sha256": "a9d1dd88344c416dd469025e02da289ce73584de3f5e5d53ca9e4b3df6b397f5"
+      "sha256": "cad16c423e74315aa15a794f9218feb54c824bad3e5c37c4a38ce749731f21fb"
     },
     {
       "path": "examples/governed_mission.json",
       "sha256": "118c3572b239de8715f0ac9ed1582ce9f881e11acc39d8c59c568c370f9d35b9"
+    },
+    {
+      "path": "experiments/reasoning-signature/README.md",
+      "sha256": "b3055cfd99d7909a857449b4e634414bcb8d7974524d9a36cd02965a67b5d5ba"
+    },
+    {
+      "path": "experiments/reasoning-signature/cases.json",
+      "sha256": "921f87d6dacba2b41be4cabe287430f481b18a80dec182b106d93f9d428e63c6"
+    },
+    {
+      "path": "experiments/reasoning-signature/contract.json",
+      "sha256": "2b5914bd732958610aa7c8dcccd48a8a450e81fbf7c2569881b336ca0620872c"
     },
     {
       "path": "licenses/MIT.txt",
@@ -115,6 +127,10 @@
     {
       "path": "scripts/create_test_receipt.py",
       "sha256": "f1e4c59782eab6e4bc6a6d95a1ee09c957f0083e25c05cd86e6d34b48b855d61"
+    },
+    {
+      "path": "scripts/reasoning_signature.py",
+      "sha256": "2152998c9d1ad9e98fc95101961c8a5db38c167c2ca6db3449ac193f073ff4b4"
     },
     {
       "path": "scripts/render_site.mjs",
@@ -183,6 +199,10 @@
     {
       "path": "tests/test_codec.py",
       "sha256": "900d7bc0c982d06e45daa7bc58624f9044d19c188f71b18b30eb9a5a905ce80f"
+    },
+    {
+      "path": "tests/test_reasoning_signature.py",
+      "sha256": "9c0375603bed709f8653472ff21b5bab1ce7840be0a0382728cd932c3035db69"
     }
   ],
   "profile": "AVP1/governed-mission-v1",
