@@ -122,7 +122,7 @@
     },
     {
       "path": "scripts/verify_release.py",
-      "sha256": "5febb38aeb1fe4f69be3e9265f33f6f2f6426bf96ff76f4f201eb8bbdd6788dc"
+      "sha256": "3f48cfab6a8998d01637b836388011418d3029b5db5baa49c97b971c4b0df3f7"
     },
     {
       "path": "site/app.js",

@@ -51,8 +51,12 @@ def forbidden_fingerprint(text: str) -> str | None:
 def main() -> int:
     failures = []
     files = sorted(
-        path for path in ROOT.rglob("*")
-        if path.is_file() and not ignored_generated_path(path)
+        (
+            path
+            for path in ROOT.rglob("*")
+            if path.is_file() and not ignored_generated_path(path)
+        ),
+        key=lambda path: path.relative_to(ROOT).as_posix(),
     )
     for path in files:
         if path.suffix in BINARY_SUFFIXES:
