@@ -46,5 +46,19 @@ PYTHONPATH=src python3 scripts/reasoning_signature.py oracle \
   --output /tmp/anvil-reasoning-oracle.json
 ```
 
+For a local key-isolated Ollama run, pass only the blinded trials file to the
+runner. Never place the answer key in the runner's directory or arguments:
+
+```bash
+PYTHONPATH=src python3 scripts/run_reasoning_signature_ollama.py \
+  --trials /tmp/anvil-reasoning-trials.json \
+  --model MODEL_NAME \
+  --output /tmp/anvil-reasoning-MODEL_NAME.json
+```
+
+The runner disables model thinking output, stores only the concise decision
+record and aggregate telemetry, refuses to overwrite a prior result, and
+unloads the model after the final trial.
+
 The frozen contract in `contract.json` defines the claim boundary and the
 minimum evidence required before using the phrase “changes reasoning.”

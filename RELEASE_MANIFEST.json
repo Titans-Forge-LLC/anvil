@@ -106,7 +106,7 @@
     },
     {
       "path": "experiments/reasoning-signature/README.md",
-      "sha256": "b3055cfd99d7909a857449b4e634414bcb8d7974524d9a36cd02965a67b5d5ba"
+      "sha256": "560fa5cb42a95885dd8bc7979b21666ab5799dda7365dcaaba3b9cd198bfee64"
     },
     {
       "path": "experiments/reasoning-signature/cases.json",
@@ -135,6 +135,10 @@
     {
       "path": "scripts/render_site.mjs",
       "sha256": "5981d237ba112dada3853a116b87d6bbb8ece6de14341923c38dfeae9bec3714"
+    },
+    {
+      "path": "scripts/run_reasoning_signature_ollama.py",
+      "sha256": "37e207a2999683406cc2edb4a7763f3eb7c8fe06b9fba9d266c6f507d3ecfb3f"
     },
     {
       "path": "scripts/verify_release.py",
@@ -203,6 +207,10 @@
     {
       "path": "tests/test_reasoning_signature.py",
       "sha256": "9c0375603bed709f8653472ff21b5bab1ce7840be0a0382728cd932c3035db69"
+    },
+    {
+      "path": "tests/test_reasoning_signature_ollama.py",
+      "sha256": "c5e95fe725065729a44aed28770316bc4b209e9381d4faa07384a6af3e88e23c"
     }
   ],
   "profile": "AVP1/governed-mission-v1",
