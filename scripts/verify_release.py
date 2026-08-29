@@ -14,7 +14,7 @@ TEXT_SUFFIXES = {
     ".cff", ".css", ".html", ".js", ".json", ".md", ".mjs", ".py", ".toml",
     ".txt", ".yaml", ".yml",
 }
-TEXT_FILENAMES = {".gitignore", "DCO", "LICENSE"}
+TEXT_FILENAMES = {".gitattributes", ".gitignore", "DCO", "LICENSE"}
 BINARY_SUFFIXES = {".png"}
 FORBIDDEN_FINGERPRINTS = (
     (18, "b1d143fcd4befdd77c141eb26d3ab6f8e7cc9f12c4e73bfa95792b2a3fdbe35d"),
@@ -58,13 +58,16 @@ def main() -> int:
         if path.suffix in BINARY_SUFFIXES:
             continue
         if path.suffix not in TEXT_SUFFIXES and path.name not in TEXT_FILENAMES:
-            failures.append(f"unexpected binary or unsupported file: {path.relative_to(ROOT)}")
+            failures.append(
+                f"unexpected binary or unsupported file: {path.relative_to(ROOT).as_posix()}"
+            )
             continue
         text = path.read_text(encoding="utf-8")
         matched_fingerprint = forbidden_fingerprint(text)
         if matched_fingerprint:
             failures.append(
-                f"forbidden private-data fingerprint {matched_fingerprint[:12]} in {path.relative_to(ROOT)}"
+                "forbidden private-data fingerprint "
+                f"{matched_fingerprint[:12]} in {path.relative_to(ROOT).as_posix()}"
             )
 
     commands = [
@@ -86,7 +89,11 @@ def main() -> int:
         "publication_authorized": False,
         "canonical_name": "Adaptive Neural Vector Instruction Language",
         "profile": "AVP1/governed-mission-v1",
-        "files": [{"path": str(path.relative_to(ROOT)), "sha256": sha256(path)} for path in files if path.name != "RELEASE_MANIFEST.json"],
+        "files": [
+            {"path": path.relative_to(ROOT).as_posix(), "sha256": sha256(path)}
+            for path in files
+            if path.name != "RELEASE_MANIFEST.json"
+        ],
         "checks": checks,
         "failures": failures,
     }

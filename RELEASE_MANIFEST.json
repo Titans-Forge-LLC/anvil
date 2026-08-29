@@ -13,6 +13,10 @@
   "failures": [],
   "files": [
     {
+      "path": ".gitattributes",
+      "sha256": "23302dd90b8bb74b44d365fafef8df20f809b61cb347023951ecf60a88a29651"
+    },
+    {
       "path": ".github/ISSUE_TEMPLATE/bug.yml",
       "sha256": "b701496c33c2b2518b1a7a5efa2c9906ad22f4ca9089acdcb08b1bdceb666464"
     },
@@ -34,7 +38,7 @@
     },
     {
       "path": ".github/workflows/conformance.yml",
-      "sha256": "99d5e62dd08fcab510de111c002b2c59a9cc7df3259c4d595a4fecdbf1d2ca72"
+      "sha256": "cad26cc110b73abe46a1f5afb6a15ff5b54ad206dd6179c24eabde1d640cc594"
     },
     {
       "path": ".gitignore",
@@ -118,7 +122,7 @@
     },
     {
       "path": "scripts/verify_release.py",
-      "sha256": "87bd201ea797fcdac2ff641a78a50e74d57e07f06659bbd3d5896ea508561083"
+      "sha256": "5febb38aeb1fe4f69be3e9265f33f6f2f6426bf96ff76f4f201eb8bbdd6788dc"
     },
     {
       "path": "site/app.js",

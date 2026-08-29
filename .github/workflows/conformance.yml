@@ -18,12 +18,13 @@ jobs:
         python: ["3.9", "3.13"]
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
+          package-manager-cache: false
       - name: Verify release and conformance
         env:
           PYTHONPATH: src
