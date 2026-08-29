@@ -1,0 +1,49 @@
+name: Independent experiment
+description: Report a public corpus, adversarial case, or alternative representation.
+title: "[Experiment]: "
+labels:
+  - experiment
+body:
+  - type: dropdown
+    id: track
+    attributes:
+      label: Track
+      options:
+        - Adversarial decoding
+        - Independent public example
+        - Alternative reversible representation
+        - Usability or integration
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Data source and permission
+      description: Identify synthetic construction or public provenance and license.
+    validations:
+      required: true
+  - type: textarea
+    id: method
+    attributes:
+      label: Frozen method
+      description: State the commit, commands, metrics, and acceptance rule.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Complete result
+      description: Preserve failures and negative compression results.
+    validations:
+      required: true
+  - type: checkboxes
+    id: claims
+    attributes:
+      label: Claim confirmation
+      options:
+        - label: I distinguish bytes, tokens, model compute, and wall time.
+          required: true
+        - label: I make no universal or production claim from this experiment.
+          required: true
+        - label: This report contains only synthetic or authorized public material.
+          required: true

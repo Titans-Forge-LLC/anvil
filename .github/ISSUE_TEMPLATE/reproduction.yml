@@ -1,0 +1,51 @@
+name: Reproduction report
+description: Report an independent clean reproduction of the ANVIL Open Reference.
+title: "[Reproduction]: "
+labels:
+  - reproduction
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use only synthetic or public data. Inspect receipts before posting them.
+  - type: input
+    id: commit
+    attributes:
+      label: Commit or release
+      description: Exact commit SHA or release tag tested.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, architecture, Python, and Node.js versions.
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Overall result
+      options:
+        - PASS
+        - FAIL
+    validations:
+      required: true
+  - type: textarea
+    id: receipt
+    attributes:
+      label: Test receipt
+      description: Drag in the generated JSON receipt or paste its contents.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes or unexpected behavior
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Data confirmation
+      options:
+        - label: I confirm this report contains no credentials, personal data, customer material, private prompts, or non-public Forge records.
+          required: true

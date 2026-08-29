@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/Titans-Forge-LLC/anvil/security
+    about: Use private vulnerability reporting rather than a public issue.
+  - name: Questions and design discussion
+    url: https://github.com/Titans-Forge-LLC/anvil/discussions
+    about: Ask questions and discuss open-ended language ideas.

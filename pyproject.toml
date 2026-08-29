@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "anvil-public-alpha"
+version = "0.1.0"
+description = "Public, synthetic-data-only ANVIL reference profile"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+  {name = "Titans Forge LLC"}
+]
+
+[project.urls]
+Homepage = "https://github.com/Titans-Forge-LLC/anvil"
+Repository = "https://github.com/Titans-Forge-LLC/anvil"
+Issues = "https://github.com/Titans-Forge-LLC/anvil/issues"
+
+[project.scripts]
+anvil-alpha = "anvil_alpha.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

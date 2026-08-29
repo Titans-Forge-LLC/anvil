@@ -1,0 +1,188 @@
+{
+  "canonical_name": "Adaptive Neural Vector Instruction Language",
+  "checks": [
+    {
+      "id": "python_codec_conformance",
+      "status": "PASS"
+    },
+    {
+      "id": "javascript_codec_conformance",
+      "status": "PASS"
+    }
+  ],
+  "failures": [],
+  "files": [
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug.yml",
+      "sha256": "b701496c33c2b2518b1a7a5efa2c9906ad22f4ca9089acdcb08b1bdceb666464"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "sha256": "2796ba1124ffce33a8fb637cbb2059320dc9892fe6156b7493bd33989277745a"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/experiment.yml",
+      "sha256": "c576f4d682a98af87f26608df968bb6754e470383f1015d4ab2c8466230a27b2"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/reproduction.yml",
+      "sha256": "63d1d85204127a0b250ad401c2ef92d077322c1333961da1aca878f77a446275"
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "sha256": "4c849d8bbe531eb3a4ab674dea560545e91cd2cf9e181898c361f2088bfc0375"
+    },
+    {
+      "path": ".github/workflows/conformance.yml",
+      "sha256": "99d5e62dd08fcab510de111c002b2c59a9cc7df3259c4d595a4fecdbf1d2ca72"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "6748d02d8fb3b620fd44d771503ce7af2856635f3b3514026671d878e5c4ab7d"
+    },
+    {
+      "path": "CITATION.cff",
+      "sha256": "c7eeb3c50b77e845bde9bb2c97ca89700d32ce84a91f78d7d9b68af64ad417f7"
+    },
+    {
+      "path": "CLAIMS_AND_LIMITATIONS.md",
+      "sha256": "f1bf4823eb4ee01a3c8e8ced2b4bd969cd410d67600d1072fee7a19e39467f01"
+    },
+    {
+      "path": "CLEAN_REPRODUCTION_RECEIPT_V0_1.json",
+      "sha256": "19eb9b642e37a1f5ef90f2e1df675c2f63e0fb4688140d3448996bd81955c73f"
+    },
+    {
+      "path": "COMMUNITY_LICENSE_TERM_SHEET_DRAFT.md",
+      "sha256": "1a261be10abe5018037e5f9e6f14fc2e628ad174890f73de8af2d149d32fa82b"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "sha256": "ff98bd928b7f6c73c1f74e59b6b3d0da369ff634ba3771c18fbfb4482ad36e22"
+    },
+    {
+      "path": "DCO",
+      "sha256": "6607c409330ecccee31e8853720602f3c8538db0fabb2c3c59545b93bc9a735e"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "f5ba04d99816b6e73a183fcba80bfdcdab78c82a075a21f183fe4ca4dfaa1cd9"
+    },
+    {
+      "path": "LICENSE_BOUNDARY.md",
+      "sha256": "ce235bd00567fcef1a7cf9905ca0a55290c293d445fef48c85c99cae022ca3d6"
+    },
+    {
+      "path": "PATENT_NOTICE.md",
+      "sha256": "b9d46fbf38d30aea424ad54673e2440aad4c5a3781aeae7a667b13163862dbe9"
+    },
+    {
+      "path": "QA_FIDELITY_LEDGER.md",
+      "sha256": "148d0e2b34b7182fa78d6cd744dee86a8a3ee19d415da7e1857f9da6f7165297"
+    },
+    {
+      "path": "README.md",
+      "sha256": "2b812c4a9ee3fc1c7f1e45233da9ff2bed3556149a971b938ee3fddd5f1aa19e"
+    },
+    {
+      "path": "RELEASE_READINESS.md",
+      "sha256": "23b39cd356fd2d061ca497e8ef9acd9223e6f059d80e1f2c8a3f0f223ba848b4"
+    },
+    {
+      "path": "SECURITY.md",
+      "sha256": "1b856175e3ef9e0756c232c1bd2bcccd7b326059c2d8d7804aedb375451cb1ed"
+    },
+    {
+      "path": "TESTING.md",
+      "sha256": "a9d1dd88344c416dd469025e02da289ce73584de3f5e5d53ca9e4b3df6b397f5"
+    },
+    {
+      "path": "examples/governed_mission.json",
+      "sha256": "118c3572b239de8715f0ac9ed1582ce9f881e11acc39d8c59c568c370f9d35b9"
+    },
+    {
+      "path": "licenses/MIT.txt",
+      "sha256": "f5ba04d99816b6e73a183fcba80bfdcdab78c82a075a21f183fe4ca4dfaa1cd9"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "18a16828945ca3c3a0ce6dea6a93ce963b02a47e442ab724faa88c4881528cc0"
+    },
+    {
+      "path": "scripts/create_test_receipt.py",
+      "sha256": "f1e4c59782eab6e4bc6a6d95a1ee09c957f0083e25c05cd86e6d34b48b855d61"
+    },
+    {
+      "path": "scripts/render_site.mjs",
+      "sha256": "5981d237ba112dada3853a116b87d6bbb8ece6de14341923c38dfeae9bec3714"
+    },
+    {
+      "path": "scripts/verify_release.py",
+      "sha256": "87bd201ea797fcdac2ff641a78a50e74d57e07f06659bbd3d5896ea508561083"
+    },
+    {
+      "path": "site/app.js",
+      "sha256": "db9f80d8b5cdb100878b7a0569185dd918f54481c94f386a86b4364c1ff8fcf1"
+    },
+    {
+      "path": "site/app.mjs",
+      "sha256": "dc372516826cd61188e4e175fed5cfbf3d50bc95ce01df20a73f6b14fab6490c"
+    },
+    {
+      "path": "site/codec.js",
+      "sha256": "8082766385a5a1ee93baf8b23156946769245ad36fc794a208cad18b0a1f1392"
+    },
+    {
+      "path": "site/codec.mjs",
+      "sha256": "8e6ca0104ed7edc3dd376cf2138d73d2e5ba30bebd32ce7ad4b570356ade379a"
+    },
+    {
+      "path": "site/exports/anvil-public-alpha-desktop.png",
+      "sha256": "8f4ad0d863711c8dbd1edab843f669f0febf99043d52c1ec96ad29d38412ef2d"
+    },
+    {
+      "path": "site/exports/anvil-public-alpha-first-view.png",
+      "sha256": "59a163cabe2a4851a3d167ba1332c217c5fe1c020821ac2a0f39ffb8925c9ee5"
+    },
+    {
+      "path": "site/exports/anvil-public-alpha-mobile-first-view.png",
+      "sha256": "32ef24f7bcd1703026506be012023718b9881d73476b25f5e063aff76a079faa"
+    },
+    {
+      "path": "site/exports/anvil-public-alpha-mobile.png",
+      "sha256": "4e1b0578a79977857926dea659b414845c7fad7fafd1fe8728fa6862449e2c61"
+    },
+    {
+      "path": "site/index.html",
+      "sha256": "997f262aa55e2e38dcea02b5261aa12b6ee181714f5ba1911d9e0c4dae21a14a"
+    },
+    {
+      "path": "site/styles.css",
+      "sha256": "f4aacbde815085f9b8be60f2b590b65874bf17cd6a0717e41d94813ed1c77f77"
+    },
+    {
+      "path": "src/anvil_alpha/__init__.py",
+      "sha256": "2a2ce89d8f015f7d22e0203fe79b6ebfc09229bdb7aaa163682949219839a230"
+    },
+    {
+      "path": "src/anvil_alpha/cli.py",
+      "sha256": "9236f516805cf73bd14fceb1791f0fedd24ad061aba3b033eb5e0c791db391f5"
+    },
+    {
+      "path": "src/anvil_alpha/codec.py",
+      "sha256": "32ddb37a4965564fc1df31dfdcfa64d21c510961c85f73f3988b0caa9b11759b"
+    },
+    {
+      "path": "tests/test_codec.mjs",
+      "sha256": "a70dfc25f491f8dabecbce2b211a660bde21e67ea359a9be28d56f6c8f05dfbf"
+    },
+    {
+      "path": "tests/test_codec.py",
+      "sha256": "900d7bc0c982d06e45daa7bc58624f9044d19c188f71b18b30eb9a5a905ce80f"
+    }
+  ],
+  "profile": "AVP1/governed-mission-v1",
+  "publication_authorized": false,
+  "schema": "anvil-public-alpha-release-manifest-v0.1",
+  "status": "PASS"
+}

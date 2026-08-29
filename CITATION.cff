@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use the ANVIL Open Reference in research, cite this software and the exact release manifest."
+title: "ANVIL Open Reference"
+type: software
+version: 0.1.0-alpha
+authors:
+  - family-names: Capone
+    given-names: "Justinian Michael"
+    affiliation: "Titans Forge LLC"
+repository-code: "https://github.com/Titans-Forge-LLC/anvil"
+license: MIT
+abstract: "A synthetic-data-only reference profile for compact, context-bound agent instructions with exact semantic and authority reconstruction."

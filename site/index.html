@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ANVIL public alpha release candidate: exact, context-bound compact instructions.">
+  <title>ANVIL Public Alpha — Local Release Candidate</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top">ANVIL</a>
+    <nav aria-label="Primary navigation">
+      <a href="#demo">Demo</a>
+      <a href="#evidence">Evidence</a>
+      <a href="#boundary">Boundary</a>
+    </nav>
+    <span class="release-state">Local release candidate</span>
+  </header>
+
+  <main id="top">
+    <section class="hero section-grid">
+      <div class="hero-copy">
+        <h1>ANVIL</h1>
+        <p class="hero-line">Compact instructions. Exact authority.</p>
+        <p class="hero-definition">Adaptive Neural Vector Instruction Language is a context-bound representation for compact, inspectable agent missions.</p>
+        <a class="text-command" href="#demo">Run the exact round trip <span aria-hidden="true">↓</span></a>
+      </div>
+      <div class="hero-instrument" aria-label="AVP1 reference-profile properties">
+        <div class="instrument-header"><span>REFERENCE PROFILE</span><span>AVP1 / SYNTHETIC</span></div>
+        <ol>
+          <li><span>Canonical semantics</span><strong>Bound</strong></li>
+          <li><span>Authority manifest</span><strong>Exact</strong></li>
+          <li><span>Wrong context</span><strong>Refused</strong></li>
+          <li><span>External effects</span><strong>None</strong></li>
+        </ol>
+        <div class="instrument-footer"><span>Patent Pending</span><span class="verified-dot">Offline demo</span></div>
+      </div>
+    </section>
+
+    <section id="demo" class="demo section-band">
+      <div class="section-heading">
+        <span>01</span>
+        <div><h2>Change the mission. Then demand the same meaning back.</h2><p>This public AVP1 profile is deliberately inspectable. It does not execute tools or access Forge.</p></div>
+      </div>
+      <div class="demo-workbench">
+        <div class="editor-panel">
+          <label for="source-json">Canonical semantic JSON</label>
+          <textarea id="source-json" spellcheck="false"></textarea>
+        </div>
+        <div class="editor-panel wire-panel">
+          <label for="wire-output">Context-bound AVP1 wire</label>
+          <textarea id="wire-output" readonly></textarea>
+        </div>
+        <div class="demo-actions">
+          <button id="encode" class="primary" type="button">Encode and verify</button>
+          <button id="wrong-context" type="button">Try wrong context</button>
+          <button id="reset" type="button">Reset sample</button>
+        </div>
+        <p id="status" class="status" data-state="pass" aria-live="polite">Exact semantic and authority round trip</p>
+      </div>
+      <div class="metric-rail" aria-label="Current demo measurements">
+        <div><span>Canonical JSON</span><strong id="json-bytes">—</strong><small>bytes</small></div>
+        <div><span>AVP1 wire</span><strong id="wire-bytes">—</strong><small>bytes</small></div>
+        <div><span>Current sample</span><strong id="ratio">—</strong><small>byte ratio</small></div>
+      </div>
+      <div class="hash-ledger">
+        <p><span>Semantic SHA-256</span><code id="semantic-hash">Calculating…</code></p>
+        <p><span>Authority SHA-256</span><code id="authority-hash">Calculating…</code></p>
+      </div>
+    </section>
+
+    <section id="evidence" class="evidence section-grid">
+      <div class="section-index">02</div>
+      <div class="section-intro"><h2>The strongest result stays bounded.</h2><p>AVP1 is the public demonstration. AVD2 is the separately frozen historical engineering result.</p></div>
+      <div class="proof-number"><strong>4.6796×</strong><span>AVD2 byte compression</span><p>14,708 canonical semantic bytes → 3,143 wire bytes across one frozen 31-directive historical Forge cohort.</p></div>
+      <div class="proof-ledger">
+        <p><span>Fields reconstructed</span><strong>180 / 180 exact</strong></p>
+        <p><span>Authority failures observed</span><strong>0</strong></p>
+        <p><span>Regression suite reported</span><strong>461 passed</strong></p>
+        <p><span>Claim class</span><strong>Bounded historical</strong></p>
+      </div>
+    </section>
+
+    <section id="boundary" class="boundary section-band">
+      <div class="section-heading"><span>03</span><div><h2>What this alpha does not claim.</h2><p>It is a falsifiable reference implementation, not a production announcement.</p></div></div>
+      <ul>
+        <li>No universal token or byte-compression ratio.</li>
+        <li>No production cost or training-speed claim.</li>
+        <li>No formal verification or general security guarantee.</li>
+        <li>No live Forge integration, dispatch, or autonomous authority.</li>
+        <li>No claim that AVP1 reproduces the private AVD2 result.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer><div><strong>ANVIL</strong><span>Adaptive Neural Vector Instruction Language</span></div><div><span>Patent Pending</span><span>Publication not yet authorized</span></div></footer>
+  <script src="codec.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

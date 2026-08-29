@@ -1,0 +1,44 @@
+name: Bug report
+description: Report a reproducible public-reference defect.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: input
+    id: commit
+    attributes:
+      label: Commit or release
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal synthetic reproduction
+      description: Include commands and synthetic input only.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+    validations:
+      required: true
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Security confirmation
+      options:
+        - label: This is not a private security vulnerability and contains no sensitive data.
+          required: true

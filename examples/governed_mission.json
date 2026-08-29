@@ -1,0 +1,31 @@
+{
+  "authority": {
+    "forbids": [
+      {"kind": "publish", "target": "*"}
+    ],
+    "permits": [
+      {"kind": "read", "target": "source"},
+      {"kind": "write", "target": "staging"}
+    ],
+    "requirements": [
+      {"effect": {"kind": "write", "target": "staging"}, "gate": "fox_pass", "kind": "gate"},
+      {"effect": {"kind": "publish", "target": "posts"}, "kind": "approval", "mode": "exact_text", "target": "human"}
+    ]
+  },
+  "inputs": [
+    {"name": "source", "ref": "sha256:synthetic-source-pack", "type": "Artifact<SourcePack>"}
+  ],
+  "mission": "governed_social",
+  "outputs": [
+    {"name": "staged_posts", "type": "Artifact<StagedPosts>"}
+  ],
+  "steps": [
+    {
+      "args": {"count": 3, "require": ["url", "quote", "claim_boundary"], "source": "source"},
+      "bind": "posts",
+      "effects": [{"kind": "write", "target": "staging"}],
+      "op": "generate.posts"
+    }
+  ],
+  "version": "0.1"
+}
