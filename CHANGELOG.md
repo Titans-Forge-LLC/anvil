@@ -1,9 +1,12 @@
 # Changelog
 
-## 0.2.0-beta.1 — Unreleased
+## 0.2.0-beta.1 — Limited public beta
+
+- Set a target beta window through approximately September 11, 2026; full
+  release remains evidence-gated.
 
 - Reframed the first release as a limited, source-only public beta.
-- Added a fail-closed 56-file release boundary with explicit allowlist and
+- Added a fail-closed release boundary with explicit allowlist and
   private-material denylist enforcement.
 - Added a privacy-bounded independent reproduction receipt.
 - Added beta testing, evidence, release, and rollback guidance.

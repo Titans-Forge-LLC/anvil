@@ -8,23 +8,23 @@
       {"kind": "write", "target": "staging"}
     ],
     "requirements": [
-      {"effect": {"kind": "write", "target": "staging"}, "gate": "fox_pass", "kind": "gate"},
-      {"effect": {"kind": "publish", "target": "posts"}, "kind": "approval", "mode": "exact_text", "target": "human"}
+      {"effect": {"kind": "write", "target": "staging"}, "gate": "review_pass", "kind": "gate"},
+      {"effect": {"kind": "publish", "target": "content"}, "kind": "approval", "mode": "exact_text", "target": "human"}
     ]
   },
   "inputs": [
     {"name": "source", "ref": "sha256:synthetic-source-pack", "type": "Artifact<SourcePack>"}
   ],
-  "mission": "governed_social",
+  "mission": "governed_content",
   "outputs": [
-    {"name": "staged_posts", "type": "Artifact<StagedPosts>"}
+    {"name": "staged_content", "type": "Artifact<StagedContent>"}
   ],
   "steps": [
     {
       "args": {"count": 3, "require": ["url", "quote", "claim_boundary"], "source": "source"},
-      "bind": "posts",
+      "bind": "content",
       "effects": [{"kind": "write", "target": "staging"}],
-      "op": "generate.posts"
+      "op": "generate.content"
     }
   ],
   "version": "0.1"

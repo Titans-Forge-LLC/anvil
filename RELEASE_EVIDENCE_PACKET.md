@@ -1,6 +1,6 @@
 # ANVIL Limited Public Beta Evidence Packet
 
-Status: `UNSIGNED RELEASE CANDIDATE / PUBLICATION NOT AUTHORIZED`
+Status: `LIMITED PUBLIC BETA EVIDENCE / RELEASE-BOUND`
 
 This packet defines the evidence and claim boundary for the first ANVIL limited
 public beta. The authoritative file inventory and per-file hashes are in
@@ -22,30 +22,14 @@ integration.
 
 ## Locally verified observations
 
-The clean-copy receipt records:
+The release manifest records the exact public file hashes and the Python and
+JavaScript conformance results for the tagged revision. Testers generate a
+fresh, privacy-bounded receipt with `scripts/create_test_receipt.py`; no stale
+machine-specific build receipt is shipped as current evidence.
 
-- package build and install: `PASS`;
-- release verifier: `PASS`;
-- deterministic manifest parity: `true`;
-- semantic exactness: `true`;
-- authority exactness: `true`;
-- canonical JSON: `723` bytes;
-- AVP1 wire: `558` bytes;
-- ratio on the single shipped synthetic fixture: `1.2957x`.
-
-The receipt SHA-256 is
-`19eb9b642e37a1f5ef90f2e1df675c2f63e0fb4688140d3448996bd81955c73f`.
-The receipt preserves an initial offline-build failure caused by a missing wheel
-build helper and records the successful bounded resolution.
-
-On the current candidate, the Python conformance suite reports `9` passing
-tests and the standalone browser codec suite passes. These counts are
-diagnostic and must be regenerated for the exact release revision.
-
-The `0.2.0b1` candidate also built into a wheel and installed offline into a
-fresh virtual environment, where the primary `anvil` command and module import
-both succeeded. The wheel is not included in the source-only beta; see
-`BETA_CANDIDATE_BUILD_RECEIPT_V0_1.json`.
+On the single shipped synthetic fixture, the corrective candidate records 737
+canonical JSON bytes, 565 AVP1 wire bytes, a 1.3044x byte ratio, exact semantic
+reconstruction, and exact authority reconstruction.
 
 ## Claims permitted by this packet
 
@@ -72,7 +56,7 @@ This packet does not establish:
   Community Engine terms;
 - independent reproduction by an outside tester.
 
-Private experimental results are intentionally excluded from the public-alpha
+Private experimental results are intentionally excluded from the public-beta
 claim set until their complete supporting evidence is selected for publication.
 
 ## Reproduction requirement
@@ -84,7 +68,7 @@ substitute for independent reproduction.
 
 ## Release authorization boundary
 
-This file, the passing manifest, and a successful independent receipt are
-release inputs. They do not authorize publication. Publication requires an
-exact revision, effective license text, destination, release notes, and an
-explicit operator approval recorded after the candidate is frozen.
+This file and the passing manifest are release inputs. An independent receipt
+is a primary beta objective, not a prerequisite to opening the beta. Promotion
+to a full release requires an exact revision, beta evidence review, effective
+license text, release notes, and explicit operator approval.

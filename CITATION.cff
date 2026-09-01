@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use the ANVIL Open Reference in research, cite this software and the exact release manifest."
 title: "ANVIL Open Reference"
 type: software
-version: 0.1.0-alpha
+version: 0.2.0-beta.1
 authors:
   - family-names: Capone
     given-names: "Justinian Michael"

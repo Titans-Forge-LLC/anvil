@@ -8,6 +8,10 @@ you can inspect, encode, corrupt, decode, and reproduce locally. The goal of the
 beta is not to present finished production software. It is to make the core
 idea falsifiable in public and collect independent failures.
 
+Public beta testing is planned through approximately September 11, 2026. That
+is a target for the full release, not a promise to promote despite unresolved
+release-critical failures.
+
 ## Try it
 
 ```bash
@@ -33,8 +37,8 @@ The repository also includes an offline browser demonstration in
 
 ## What this release establishes
 
-On the single shipped synthetic fixture, canonical JSON is `723` bytes and the
-AVP1 wire is `558` bytes, a `1.2957x` byte ratio. Python and browser reference
+On the single shipped synthetic fixture, canonical JSON is `737` bytes and the
+AVP1 wire is `565` bytes, a `1.3044x` byte ratio. Python and browser reference
 implementations agree on the registered wires, and the registered wrong-context
 checks fail closed.
 

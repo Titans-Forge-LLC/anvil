@@ -38,5 +38,5 @@ Do not claim that:
 ## Current research status
 
 The prospective Forge collector remains separate from this package and does not
-gate release of a clearly labeled research alpha. Production qualification is a
+gate release of a clearly labeled limited public beta. Production qualification is a
 later, stricter gate.

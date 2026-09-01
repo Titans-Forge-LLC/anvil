@@ -9,7 +9,7 @@ const KEYS = [
 ];
 const VALUES = [
   '0.1', 'read', 'write', 'publish', 'human', 'exact_text', 'gate',
-  'approval', 'source', 'staging', 'posts', 'pass', 'fox_pass'
+  'approval', 'source', 'staging', 'content', 'pass', 'review_pass'
 ];
 
 const keyToSymbol = new Map(KEYS.map((key, index) => [key, `@${index.toString(16)}`]));

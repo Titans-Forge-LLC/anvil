@@ -66,9 +66,9 @@ VALUES = (
     "approval",
     "source",
     "staging",
-    "posts",
+    "content",
     "pass",
-    "fox_pass",
+    "review_pass",
 )
 
 KEY_TO_SYMBOL = {key: f"@{index:x}" for index, key in enumerate(KEYS)}

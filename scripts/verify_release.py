@@ -1,4 +1,4 @@
-"""Fail-closed release-candidate verifier for the public ANVIL directory."""
+"""Fail-closed verifier for the public ANVIL release boundary."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ def forbidden_fingerprint(text: str) -> str | None:
 
 def load_boundary(path: Path, schema: str) -> dict:
     value = json.loads(path.read_text(encoding="utf-8"))
-    if value.get("schema") != schema or value.get("status") != "release-candidate":
+    if value.get("schema") != schema or value.get("status") != "active":
         raise ValueError(f"invalid release boundary: {path.name}")
     return value
 
@@ -162,7 +162,7 @@ def main() -> int:
     manifest = {
         "schema": "anvil-public-beta-release-manifest-v0.2",
         "status": "PASS" if not failures else "FAIL",
-        "publication_authorized": False,
+        "publication_authority_effect": "none",
         "canonical_name": "Adaptive Neural Vector Instruction Language",
         "profile": "AVP1/governed-mission-v1",
         "allowlist_sha256": sha256(ALLOWLIST_PATH),

@@ -66,14 +66,14 @@
         "authority": {
           "permits": [{"kind": "write", "target": "staging"}],
           "forbids": [],
-          "requirements": [{"kind": "gate", "gate": "fox_pass", "effect": {"kind": "write", "target": "staging"}}]
+          "requirements": [{"kind": "gate", "gate": "review_pass", "effect": {"kind": "write", "target": "staging"}}]
         }
       },
       "expected": {
         "decision": "fail_closed",
         "executable_steps": [],
         "blocked_steps": ["write.staging"],
-        "required_checks": ["fox_pass"]
+        "required_checks": ["review_pass"]
       }
     },
     {
@@ -83,20 +83,20 @@
       "semantic": {
         "version": "0.1",
         "mission": "stage_artifact",
-        "inputs": [{"name": "draft", "type": "Artifact<Draft>"}, {"name": "fox_pass", "type": "Evidence<Pass>"}],
-        "steps": [{"op": "write.staging", "bind": "staged", "args": {"source": "draft", "evidence": "fox_pass"}, "effects": [{"kind": "write", "target": "staging"}]}],
+        "inputs": [{"name": "draft", "type": "Artifact<Draft>"}, {"name": "review_pass", "type": "Evidence<Pass>"}],
+        "steps": [{"op": "write.staging", "bind": "staged", "args": {"source": "draft", "evidence": "review_pass"}, "effects": [{"kind": "write", "target": "staging"}]}],
         "outputs": [{"name": "staged", "type": "Artifact<Staged>"}],
         "authority": {
           "permits": [{"kind": "write", "target": "staging"}],
           "forbids": [],
-          "requirements": [{"kind": "gate", "gate": "fox_pass", "effect": {"kind": "write", "target": "staging"}}]
+          "requirements": [{"kind": "gate", "gate": "review_pass", "effect": {"kind": "write", "target": "staging"}}]
         }
       },
       "expected": {
         "decision": "proceed",
         "executable_steps": ["write.staging"],
         "blocked_steps": [],
-        "required_checks": ["fox_pass"]
+        "required_checks": ["review_pass"]
       }
     }
   ]

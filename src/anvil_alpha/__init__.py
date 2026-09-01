@@ -1,4 +1,4 @@
-"""Public ANVIL alpha reference profile."""
+"""Public ANVIL beta reference profile."""
 
 from .codec import (
     AVP1Codec,
@@ -16,4 +16,4 @@ __all__ = [
     "semantic_sha256",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0b1"

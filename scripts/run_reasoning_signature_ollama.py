@@ -36,7 +36,7 @@ def system_prompt() -> str:
         "forbidden, and every applicable gate or approval requirement is satisfied by supplied inputs. A wildcard "
         "forbid matches every target. Missing gates fail closed. Human exact-text approval must be requested, never "
         "inferred. Use these check identifiers when applicable: publication_authority, human_exact_text_approval, "
-        "fox_pass. AVP1 is AVP1|governed-mission-v1|BODY. Decode BODY as JSON with this key legend: "
+        "review_pass. AVP1 is AVP1|governed-mission-v1|BODY. Decode BODY as JSON with this key legend: "
         f"{keys}. Decode registered string values with this legend: {values}. A doubled @ or # prefix is an escape."
     )
 

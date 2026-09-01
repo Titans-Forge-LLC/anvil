@@ -4,7 +4,12 @@
 architecture for compact, context-bound agent instructions whose meaning and
 authority must survive decoding exactly.
 
-Status: `LIMITED PUBLIC BETA CANDIDATE / NOT YET PUBLISHED`
+Status: `LIMITED PUBLIC BETA`
+
+Beta window: public testing is planned through approximately September 11,
+2026. The full-release date is a target, not an automatic promotion: semantic
+or authority failures, privacy issues, or unresolved release-critical defects
+will extend the beta.
 
 Patent Pending.
 
@@ -34,7 +39,8 @@ It demonstrates deterministic canonicalization, compact symbols, exact semantic
 and authority reconstruction, and fail-closed context binding.
 
 ```bash
-cd /path/to/public_alpha
+git clone https://github.com/Titans-Forge-LLC/anvil.git
+cd anvil
 PYTHONPATH=src python3 -m anvil_alpha.cli encode \
   examples/governed_mission.json /tmp/governed_mission.avp1
 PYTHONPATH=src python3 -m anvil_alpha.cli verify \
@@ -91,10 +97,7 @@ runtime integration.
 
 ## Licensing route
 
-The reference implementation in this directory is staged for the open-source
-layer under the MIT License in [LICENSE](LICENSE). The planned optimized compiler, codec, and runtime
-are not included and are intended for a separate source-available community
-license with a USD 10 million annual-revenue threshold. See
+The reference implementation in this repository is released under the MIT
+License in [LICENSE](LICENSE). Optimized private components are not included
+and are not licensed by this repository. See
 [LICENSE_BOUNDARY.md](LICENSE_BOUNDARY.md).
-
-Existence of this local directory does not authorize publication.

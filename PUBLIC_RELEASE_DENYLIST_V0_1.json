@@ -1,6 +1,6 @@
 {
   "schema": "anvil-public-release-denylist-v0.1",
-  "status": "release-candidate",
+  "status": "active",
   "denied_path_globs": [
     "*.db",
     "*.sqlite",
@@ -26,13 +26,12 @@
     "*SB15A*"
   ],
   "denied_text_fragments": [
-    "/Users/titansforge/",
-    "/home/titansforge/forge/",
-    "forge_workflows.db",
-    "file:///Users/",
+    "/Users/",
+    "/home/",
+    "file:///",
     "BEGIN OPENSSH PRIVATE KEY",
     "BEGIN RSA PRIVATE KEY",
     "BEGIN EC PRIVATE KEY"
   ],
-  "note": "This generic denylist supplements hashed private-data fingerprints. It intentionally contains no private filing number, street address, telephone number, secret, corpus payload, or retired-shadow content."
+  "note": "This generic denylist supplements hashed private-data fingerprints without publishing internal identifiers or private payloads."
 }
