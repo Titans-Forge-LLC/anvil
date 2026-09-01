@@ -1,14 +1,31 @@
-# ANVIL Public Alpha
+# ANVIL Limited Public Beta
 
 **ANVIL** is the **Adaptive Neural Vector Instruction Language**: a research
 architecture for compact, context-bound agent instructions whose meaning and
 authority must survive decoding exactly.
 
-Status: `LOCAL RELEASE CANDIDATE / NOT PUBLISHED`
+Status: `LIMITED PUBLIC BETA CANDIDATE / NOT YET PUBLISHED`
 
 Patent Pending.
 
 Repository target: `https://github.com/Titans-Forge-LLC/anvil`
+
+## Join the beta
+
+The beta is built around public testing rather than a claim of finished
+production software. Clone the repository, run the ten-minute verifier, and
+submit either a clean reproduction or a small synthetic/public experiment:
+
+```bash
+PYTHONPATH=src python3 scripts/verify_release.py
+PYTHONPATH=src python3 scripts/create_test_receipt.py \
+  --output anvil-test-receipt.json
+```
+
+- [Beta tester guide](BETA_TESTER_GUIDE.md)
+- [Testing tracks](TESTING.md)
+- [Report a reproduction](https://github.com/Titans-Forge-LLC/anvil/issues/new?template=reproduction.yml)
+- [Report an experiment](https://github.com/Titans-Forge-LLC/anvil/issues/new?template=experiment.yml)
 
 ## Try the reference profile
 
@@ -36,7 +53,7 @@ requirements through standard build isolation.
 
 ## Evidence boundary
 
-The public AVP1 demo is not the private AVD2 implementation. The separately
+The public AVP1 beta is not the private AVD2 implementation. The separately
 recorded AVD2 result encoded 14,708 canonical semantic bytes into 3,143 wire
 bytes (4.6796x) on one frozen 31-directive historical Forge cohort, with 180 of
 180 fields reconstructed exactly. That is a bounded byte-compression result,
@@ -60,7 +77,7 @@ records, or patent-filing documents.
 
 ## Package boundary
 
-This release candidate contains only:
+This beta candidate contains only:
 
 - the AVP1 reference codec and CLI;
 - a synthetic governed-mission example;

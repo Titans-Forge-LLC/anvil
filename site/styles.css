@@ -28,6 +28,7 @@ nav a { color: var(--muted); font: 600 12px/1 var(--mono); text-decoration: none
 .hero-line { margin: 0 0 24px; max-width: 640px; font: 400 clamp(28px,4vw,54px)/1.03 var(--serif); }
 .hero-definition { max-width: 670px; color: var(--muted); font-size: clamp(16px,1.7vw,22px); line-height: 1.55; }
 .text-command { display: inline-block; margin-top: 28px; color: var(--cyan); font: 700 13px/1 var(--mono); text-decoration: none; text-transform: uppercase; letter-spacing: .06em; }
+.beta-command { margin-left: 24px; color: var(--green); }
 .hero-instrument { align-self: center; border: 1px solid var(--ink); background: var(--panel); }
 .instrument-header,.instrument-footer { display: flex; justify-content: space-between; padding: 16px 18px; font: 700 11px/1 var(--mono); letter-spacing: .05em; }
 .instrument-header { color: var(--paper); background: var(--carbon); }
@@ -85,6 +86,7 @@ footer span { color: #b9c3c1; font-size: 13px; }
   .section-grid,.hero { grid-template-columns: 1fr; padding: 76px 22px; }
   .hero { min-height: auto; }
   .hero-copy h1 { font-size: 26vw; }
+  .beta-command { display: block; margin-left: 0; margin-top: 18px; }
   .section-band { padding: 76px 22px; }
   .section-heading { grid-template-columns: 36px 1fr; gap: 12px; }
   .demo-workbench { grid-template-columns: 1fr; }

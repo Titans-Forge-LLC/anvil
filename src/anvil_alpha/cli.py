@@ -22,7 +22,7 @@ def _write(path: Path | None, text: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="anvil-alpha")
+    parser = argparse.ArgumentParser(prog="anvil")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     encode = subparsers.add_parser("encode", help="encode canonical JSON to AVP1")

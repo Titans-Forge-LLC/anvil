@@ -1,4 +1,4 @@
-# Public Alpha Site QA and Fidelity Ledger
+# Limited Public Beta Site QA and Fidelity Ledger
 
 Status: `PASS / LOCAL RELEASE CANDIDATE`
 
@@ -9,7 +9,7 @@ The accepted visual system is the existing private campaign preview at
 monospace ANVIL wordmark, serif thesis line, evidence instrumentation, sparse
 status color, and open section rhythm.
 
-The public alpha intentionally replaces the private page's historical-only hero
+The public beta intentionally replaces the private page's historical-only hero
 with an AVP1 reference-profile instrument and moves the historical AVD2 metrics
 below the working demo. This is a functional extension inside the accepted
 design system, not a visual redesign.
@@ -36,7 +36,7 @@ screenshots, and exercise the wrong-context and reset interactions.
 
 Intentional replacements:
 
-- `Private preview` -> `Local release candidate`
+- `Private preview` -> `Limited public beta`
 - historical AVD2 invariant panel -> synthetic AVP1 reference-profile panel
 - old expanded name -> filed canonical name
 - static proof command -> working exact-round-trip command
@@ -53,6 +53,6 @@ was added.
 
 ## Remaining intentional boundary
 
-The site says `Local release candidate` and `Publication not yet authorized`.
-Repository, download, and commercial calls to action remain absent until the
-license and operator publication gates are satisfied.
+The site says `Limited public beta`, links to the bounded GitHub testing route,
+and retains the production and claim limitations. Package-registry, hosted API,
+binary, and commercial calls to action remain absent.

@@ -2,7 +2,7 @@
 
 ## Supported version
 
-Only the most recent tagged ANVIL Open Reference alpha is supported. This is a
+Only the most recent tagged ANVIL Open Reference beta is supported. This is a
 research implementation and is not qualified for safety-critical, production,
 or authority-enforcement use.
 
@@ -26,4 +26,4 @@ Include, when safe:
 - whether public disclosure has already occurred.
 
 Titans Forge will acknowledge a valid private report when operationally able,
-but this alpha publishes no guaranteed response or remediation time.
+but this beta publishes no guaranteed response or remediation time.

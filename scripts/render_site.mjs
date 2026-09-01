@@ -17,8 +17,8 @@ await page.waitForFunction(() => document.querySelector('#wire-output')?.value?.
 const browserWire = await page.locator('#wire-output').inputValue();
 const fixture = JSON.parse(await readFile(path.join(root, 'examples', 'governed_mission.json'), 'utf8'));
 if (browserWire !== referenceEncode(fixture)) throw new Error('browser and module AVP1 wires diverged');
-await page.screenshot({ path: path.join(output, 'anvil-public-alpha-desktop.png'), fullPage: true });
-await page.screenshot({ path: path.join(output, 'anvil-public-alpha-first-view.png') });
+await page.screenshot({ path: path.join(output, 'anvil-public-beta-desktop.png'), fullPage: true });
+await page.screenshot({ path: path.join(output, 'anvil-public-beta-first-view.png') });
 
 await page.locator('#wrong-context').click();
 await page.waitForFunction(() => document.querySelector('#status')?.textContent?.includes('profile mismatch'));
@@ -31,8 +31,8 @@ if (!exactStatus?.includes('Exact semantic and authority')) throw new Error('res
 
 await page.setViewportSize({ width: 390, height: 844 });
 await page.goto(`file://${path.join(root, 'site', 'index.html')}`, { waitUntil: 'networkidle' });
-await page.screenshot({ path: path.join(output, 'anvil-public-alpha-mobile.png'), fullPage: true });
-await page.screenshot({ path: path.join(output, 'anvil-public-alpha-mobile-first-view.png') });
+await page.screenshot({ path: path.join(output, 'anvil-public-beta-mobile.png'), fullPage: true });
+await page.screenshot({ path: path.join(output, 'anvil-public-beta-mobile-first-view.png') });
 
 await browser.close();
 console.log(JSON.stringify({ output, parity: 'exact', wrongContextStatus, exactStatus }));
