@@ -42,6 +42,7 @@ class AVP1CodecTests(unittest.TestCase):
         self.assertEqual(self.codec.encode(self.sample), self.codec.encode(reversed_source))
 
     def test_javascript_wire_matches_python(self):
+        """Packed wires must match across runtimes for the shipped fixture."""
         script = (
             "import { readFileSync } from 'fs';"
             "import { decode, encode } from './site/codec.mjs';"

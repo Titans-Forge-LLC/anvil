@@ -216,7 +216,7 @@
     },
     {
       "path": "tests/test_codec.py",
-      "sha256": "cbe93bd05fb96d5fe6b127832a21b7af7ea0d000a5311a09833b43bd839d80e8"
+      "sha256": "68a785bea4bfe0a9640b55c9c9e8c1c910cc4a16936d2845cf3e41297b840af9"
     },
     {
       "path": "tests/test_reasoning_signature.py",
