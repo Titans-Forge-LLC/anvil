@@ -168,11 +168,11 @@
     },
     {
       "path": "site/codec.js",
-      "sha256": "f1bb822f883eb320eeadb381b832432e04df5be0f690bae0310fb9ef53e7ccc3"
+      "sha256": "9e92c24bd9c4bf3d7cfe7d80ea361138afcdae56db81bf35722887c7e49a992e"
     },
     {
       "path": "site/codec.mjs",
-      "sha256": "bc19bca1a29aceb22267abc0b5e287ed5731dd48f08dfff0ec8eb9ac8df0da84"
+      "sha256": "72ec52a1d5497021f8d5507806cd39e87935977088f5e4bb5671b207666bc529"
     },
     {
       "path": "site/exports/anvil-public-beta-desktop.png",
@@ -212,11 +212,11 @@
     },
     {
       "path": "tests/test_codec.mjs",
-      "sha256": "a70dfc25f491f8dabecbce2b211a660bde21e67ea359a9be28d56f6c8f05dfbf"
+      "sha256": "6b7916656a7ea25474a37d4f511301b4fec35f339a31342cde76c5a060cabdc9"
     },
     {
       "path": "tests/test_codec.py",
-      "sha256": "900d7bc0c982d06e45daa7bc58624f9044d19c188f71b18b30eb9a5a905ce80f"
+      "sha256": "68a785bea4bfe0a9640b55c9c9e8c1c910cc4a16936d2845cf3e41297b840af9"
     },
     {
       "path": "tests/test_reasoning_signature.py",

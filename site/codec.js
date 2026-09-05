@@ -49,7 +49,11 @@
     }
     if (Array.isArray(value)) return value.map(pack);
     if (value && typeof value === 'object') {
-      return Object.fromEntries(Object.entries(value).map(([key, item]) => [encodeKey(key), pack(item)]));
+      return Object.fromEntries(
+        Object.entries(value)
+          .map(([key, item]) => [encodeKey(key), pack(item)])
+          .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      );
     }
     return value;
   }
