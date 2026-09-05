@@ -1,5 +1,5 @@
 {
-  "allowlist_sha256": "6e0253c72e156dfbdb80be4d4e1727969b416aba0b3386369dfb6b98283161aa",
+  "allowlist_sha256": "188a2fc81f2653ac75f09ce5a1b4db7e8290ba86cb914fef23a930015e622c0a",
   "canonical_name": "Adaptive Neural Vector Instruction Language",
   "checks": [
     {
@@ -71,6 +71,10 @@
       "sha256": "6607c409330ecccee31e8853720602f3c8538db0fabb2c3c59545b93bc9a735e"
     },
     {
+      "path": "DEVELOPMENT_UPDATE_2026_09_05.md",
+      "sha256": "143b6b45d7694a65168d9b99c371bf439763e13401f70b09dde0594a2dd80c4c"
+    },
+    {
       "path": "LICENSE",
       "sha256": "f5ba04d99816b6e73a183fcba80bfdcdab78c82a075a21f183fe4ca4dfaa1cd9"
     },
@@ -88,11 +92,11 @@
     },
     {
       "path": "PUBLIC_RELEASE_FILE_ALLOWLIST_V0_1.json",
-      "sha256": "6e0253c72e156dfbdb80be4d4e1727969b416aba0b3386369dfb6b98283161aa"
+      "sha256": "188a2fc81f2653ac75f09ce5a1b4db7e8290ba86cb914fef23a930015e622c0a"
     },
     {
       "path": "README.md",
-      "sha256": "f0435bf63bde167618c7cbcc97f985b59bacae313c2daeedb15dee617b1b2a75"
+      "sha256": "2de68d30c7f9a93b1471de6e838db17e373353a9911e4716bcc7110afe1afbfd"
     },
     {
       "path": "RELEASE_EVIDENCE_PACKET.md",

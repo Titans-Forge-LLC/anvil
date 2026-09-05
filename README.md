@@ -6,6 +6,8 @@ authority must survive decoding exactly.
 
 Status: `LIMITED PUBLIC BETA`
 
+Latest: [Development update — September 5, 2026](DEVELOPMENT_UPDATE_2026_09_05.md).
+
 Beta window: public testing is planned through approximately September 11,
 2026. The full-release date is a target, not an automatic promotion: semantic
 or authority failures, privacy issues, or unresolved release-critical defects
