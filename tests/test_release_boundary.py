@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import ast
 from pathlib import Path
 import unittest
 
@@ -15,6 +16,14 @@ SPEC.loader.exec_module(MODULE)
 
 
 class ReleaseBoundaryTests(unittest.TestCase):
+    def test_no_function_tests_silently_skipped_by_unittest(self) -> None:
+        for path in (ROOT / "tests").glob("test_*.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            skipped = [node.name for node in tree.body
+                       if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                       and node.name.startswith("test_")]
+            self.assertEqual(skipped, [], f"unittest would skip tests in {path.name}")
+
     def test_private_artifact_classes_are_denied(self) -> None:
         globs = MODULE.load_boundary(
             MODULE.DENYLIST_PATH, "anvil-public-release-denylist-v0.1"

@@ -1,4 +1,5 @@
 import json
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -39,6 +40,15 @@ class AVP1CodecTests(unittest.TestCase):
     def test_encoding_is_deterministic(self):
         reversed_source = dict(reversed(list(self.sample.items())))
         self.assertEqual(self.codec.encode(self.sample), self.codec.encode(reversed_source))
+
+    def test_shipped_fixture_cross_runtime(self):
+        script = ("import {encode,decode} from './site/codec.mjs';"
+                  "import {readFileSync} from 'node:fs';"
+                  "const v=JSON.parse(readFileSync('examples/governed_mission.json','utf8'));"
+                  "const w=encode(v);decode(w);process.stdout.write(w);")
+        wire = subprocess.check_output(['node','--input-type=module','-e',script],cwd=ROOT,text=True)
+        self.assertEqual(wire,self.codec.encode(self.sample))
+        self.assertEqual(self.codec.decode(wire),self.sample)
 
 
 if __name__ == "__main__":
