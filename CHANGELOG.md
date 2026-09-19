@@ -2,6 +2,10 @@
 
 ## Experimental workbench preview — September 19, 2026
 
+- Added opt-in source drafting for first edits, with target verification and
+  ordinary fallback. Published a reproducible three-request comparison and
+  metadata-only receipt; no general coding-speed or task-quality claim.
+
 - Added bounded, source-hash-bound in-memory proposal revisions via `revise` IDs.
   Revisions preserve file/symbol scope and never apply changes automatically.
 - Supply code verbatim instead of JSON-escaping it in prompts; document both the

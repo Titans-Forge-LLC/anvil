@@ -1,0 +1,98 @@
+{
+  "schema": "anvil-source-draft-screen-v1",
+  "date": "2026-09-19",
+  "model": "mlx-community/Qwen2.5-14B-Instruct-4bit",
+  "model_snapshot": "dad510143ae5cdb1466778bde3161460f9e9f604",
+  "paired_output_sha256": {
+    "normalize": "7122ac3be1fa6365a76434a131297f5996f3f6ff5d24adec59ede71ba6c09a43",
+    "_load_json": "ced211fb06d18f5c9782633b2758d61f1f58d949cf231646acedcb269a4a2686",
+    "_pack": "a9923a17c314922c599719fc6699a6fd5f8e949372594fc391fe38c207e903ab"
+  },
+  "sampling": "greedy FP32",
+  "session_policy": "fresh Completion per request; same resident model; ordinary/source then source/ordinary",
+  "runner_sha256": "d7622fb333961f29a8d97cd33d698b76907c92471cb5f48f9e84d6a1793434e5",
+  "workbench_sha256": "ee1fd525c12ca9711d0e82dd555cbee13c23ea29008aacee6e0861a1ffd2a6bd",
+  "source_sha256": {
+    "src/anvil_alpha/codec.py": "2968fd04ba67c6eef33995e2d0d9f6ef278b51c97ba54cfa29024a79d4b363d9",
+    "src/anvil_alpha/cli.py": "b5bd697fe470e24b2eadf4b3ab414c842cf26e62ee924c00a12004f5332c5a17"
+  },
+  "rows": [
+    {
+      "task": "normalize",
+      "repetition": 0,
+      "ordinary_seconds": 4.108529082965106,
+      "source_seconds": 2.1104742920724675,
+      "ordinary_calls": 200,
+      "source_calls": 72,
+      "accepted": 136,
+      "scored": 144,
+      "equal_text": true,
+      "both_complete": true
+    },
+    {
+      "task": "_load_json",
+      "repetition": 0,
+      "ordinary_seconds": 0.5592364160111174,
+      "source_seconds": 0.32543783297296613,
+      "ordinary_calls": 25,
+      "source_calls": 6,
+      "accepted": 20,
+      "scored": 21,
+      "equal_text": true,
+      "both_complete": true
+    },
+    {
+      "task": "_pack",
+      "repetition": 0,
+      "ordinary_seconds": 2.38609937496949,
+      "source_seconds": 2.2250220000278205,
+      "ordinary_calls": 116,
+      "source_calls": 105,
+      "accepted": 11,
+      "scored": 16,
+      "equal_text": true,
+      "both_complete": true
+    },
+    {
+      "task": "normalize",
+      "repetition": 1,
+      "ordinary_seconds": 4.111636874964461,
+      "source_seconds": 2.1125412919791415,
+      "ordinary_calls": 200,
+      "source_calls": 72,
+      "accepted": 136,
+      "scored": 144,
+      "equal_text": true,
+      "both_complete": true
+    },
+    {
+      "task": "_load_json",
+      "repetition": 1,
+      "ordinary_seconds": 0.5589107499690726,
+      "source_seconds": 0.26545166689902544,
+      "ordinary_calls": 25,
+      "source_calls": 6,
+      "accepted": 20,
+      "scored": 21,
+      "equal_text": true,
+      "both_complete": true
+    },
+    {
+      "task": "_pack",
+      "repetition": 1,
+      "ordinary_seconds": 2.3897501659812406,
+      "source_seconds": 2.2209659579675645,
+      "ordinary_calls": 116,
+      "source_calls": 105,
+      "accepted": 11,
+      "scored": 16,
+      "equal_text": true,
+      "both_complete": true
+    }
+  ],
+  "ordinary_seconds": 14.114162664860487,
+  "source_seconds": 9.259893041918986,
+  "shared_load_seconds": 2.2951807499630377,
+  "campaign_seconds": 25.730098333093338,
+  "scope": "Three authored requests on public functions. No behavior execution or patch application. Request times include preprocessing, source tokenization, verification, fallback and diff generation; exclude shared model loading, reviewer work and tests. Not a general speedup or useful-job quality claim."
+}

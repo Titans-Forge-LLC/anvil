@@ -49,6 +49,28 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_first_request_source_draft_matches_target_after_mismatch(self):
+        b = Backend()
+        b.encode_text = lambda text: list(range(100, 140))
+        c = W.Completion(b, source_drafts=True)
+        result = c.complete([10, 1], draft_text='source')
+        reference = W.Completion(Backend(), False).complete([10, 1])
+        self.assertEqual(result['text'], reference['text'])
+        self.assertEqual(result['draft_origin'], 'source')
+        self.assertEqual(result['draft_tokens_verified'], 19)
+
+    def test_source_draft_control_token_rejected_and_output_budget_honored(self):
+        b = Backend()
+        b.encode_text = lambda text: [100, 0, 101]
+        c = W.Completion(b, source_drafts=True)
+        result = c.complete([10, 1], draft_text='source')
+        self.assertEqual(result['draft_origin'], 'none')
+        self.assertEqual(result['draft_tokens_scored'], 0)
+        b.encode_text = lambda text: list(range(100, 140))
+        result = c.complete([10, 1], 3, draft_text='source')
+        self.assertEqual(result['output_tokens'], 3)
+        self.assertFalse(result['complete'])
+
     def test_revisions_use_parent_and_diff_against_disk_without_writing(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'sample.py'

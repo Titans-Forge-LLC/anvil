@@ -1,5 +1,5 @@
 {
-  "allowlist_sha256": "0ecd3b858dfa71452dad57996760cd503d5b731a5681c8a03e995bba9f2fe145",
+  "allowlist_sha256": "6fa6fe86ee64451a9e5a28f9e1d687437e36d8afa428f4de74fffb7deb5ee267",
   "canonical_name": "Adaptive Neural Vector Instruction Language",
   "checks": [
     {
@@ -52,7 +52,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "1d0887220d39cb92c0737ec14a8f17e23ff1d83e3dba72a2527e68bb36cf682d"
+      "sha256": "009e3b05827d2aa035b0d4f748fc2d319f8b3836f303d4569f15b0c64c7da5a4"
     },
     {
       "path": "CITATION.cff",
@@ -96,7 +96,7 @@
     },
     {
       "path": "PUBLIC_RELEASE_FILE_ALLOWLIST_V0_1.json",
-      "sha256": "0ecd3b858dfa71452dad57996760cd503d5b731a5681c8a03e995bba9f2fe145"
+      "sha256": "6fa6fe86ee64451a9e5a28f9e1d687437e36d8afa428f4de74fffb7deb5ee267"
     },
     {
       "path": "README.md",
@@ -128,7 +128,11 @@
     },
     {
       "path": "experiments/WORKBENCH.md",
-      "sha256": "594877198b1d1209be589ac6163e080e1693cf849e0580548402dd6e13cc14a9"
+      "sha256": "5bf8a7cd50f64ab25e1e981374ff3ba3f78eeab0070b5b0cb2e4bdeb137f5c83"
+    },
+    {
+      "path": "experiments/compare_source_drafts.py",
+      "sha256": "d7622fb333961f29a8d97cd33d698b76907c92471cb5f48f9e84d6a1793434e5"
     },
     {
       "path": "experiments/reasoning-signature/README.md",
@@ -143,8 +147,12 @@
       "sha256": "2b5914bd732958610aa7c8dcccd48a8a450e81fbf7c2569881b336ca0620872c"
     },
     {
+      "path": "experiments/source_draft_screen.json",
+      "sha256": "54e2717f9e8f93e3cad24c2223aa105f8e45341358223f27b3db773b7ab63562"
+    },
+    {
       "path": "experiments/workbench.py",
-      "sha256": "b0352368ec30098b033a056378a59acac43261439c85ac7bfee941435c5cc3f3"
+      "sha256": "ee1fd525c12ca9711d0e82dd555cbee13c23ea29008aacee6e0861a1ffd2a6bd"
     },
     {
       "path": "licenses/MIT.txt",
@@ -248,7 +256,7 @@
     },
     {
       "path": "tests/test_workbench.py",
-      "sha256": "db941cffff79e5ba7ed6a1b41e8c17ce1e03fba47c69f0cfef240f99350cfcd0"
+      "sha256": "6b998286c712d82451bec8acbe78cdf7f144bc8769828cf5667d800f4f232af3"
     }
   ],
   "profile": "AVP1/governed-mission-v1",
