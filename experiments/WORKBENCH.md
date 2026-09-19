@@ -102,6 +102,37 @@ reviewable replacement is returned. Imports and other globals are not supplied,
 so include necessary context in your instruction. Nested functions and methods
 are not selectable in this preview. File size and generation limits still apply.
 
+### Opt-in exact edit spans
+
+Use `"format":"edit"` with a named function to request only a change:
+
+```json
+{"file":"src/anvil_alpha/cli.py","symbol":"_load_json","format":"edit","instruction":"Accept UTF-8 JSON with or without a BOM using utf-8-sig; preserve everything else.","max_tokens":512}
+```
+
+The model returns `{"old":"...","new":"..."}`. ANVIL requires a nonempty,
+unique literal match inside that function, then reconstructs the proposal while
+preserving surrounding text. Duplicate JSON keys, extra fields, ambiguous or
+missing anchors, no-ops, NULs, invalid reconstructed functions and lost terminal
+newline boundaries are rejected. No fuzzy matching, guessed offsets, multiple
+edits or automatic fallback. To insert text, the model replaces an existing
+anchor with that anchor plus the insertion. Empty `new` permits deletion.
+
+The raw envelope remains in `text`; the reconstructed full file is in
+`replacement_text`. Review that file/diff, not just the envelope. The host binds
+each result to `source_sha256` (disk file), `base_sha256` (current proposal base)
+and `selected_sha256` (selected function). These hashes are not authentication
+or execution permission. Source is rechecked after generation. A `revise` request
+inherits the parent's format unless explicitly overridden. No patch is applied.
+
+The default remains `replacement`. Edit mode requires `symbol` and cannot be
+combined with raw MLX source drafting. Backend tokenization of a JSON edit is not
+the same as tokenization of source code.
+
+In the [small live comparison](EDIT_SPAN_SCREEN.md), spans reduced emitted tokens
+and total request time while passing all six task-specific AST checks. The tiny
+loader task was slower, so do not assume this is always the better format.
+
 ### First real maintenance use
 
 The function mode proposed the shipped `normalize` key-validation repair on the

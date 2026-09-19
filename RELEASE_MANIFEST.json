@@ -1,5 +1,5 @@
 {
-  "allowlist_sha256": "e05cd39d0073b6530cbda5f8bb720e0696d9970a014c16cd32d4b9bfeb072b93",
+  "allowlist_sha256": "453a60bbff8a50e77f22429dd2734cb29c43f9ac6d5416b8cddcf50f774e3324",
   "canonical_name": "Adaptive Neural Vector Instruction Language",
   "checks": [
     {
@@ -52,7 +52,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "3caf407e504737c99702a4fed50c47f586a7d364b35784bbf49c4cdc2d2ede00"
+      "sha256": "f81ebdcef73e13f52e0b0ccc1650b6b3b1c189befbcef0a5d7c743f56c8eebcb"
     },
     {
       "path": "CITATION.cff",
@@ -96,11 +96,11 @@
     },
     {
       "path": "PUBLIC_RELEASE_FILE_ALLOWLIST_V0_1.json",
-      "sha256": "e05cd39d0073b6530cbda5f8bb720e0696d9970a014c16cd32d4b9bfeb072b93"
+      "sha256": "453a60bbff8a50e77f22429dd2734cb29c43f9ac6d5416b8cddcf50f774e3324"
     },
     {
       "path": "README.md",
-      "sha256": "48aca681586740d823f2fbc523a9c25e148ba3bfea88dda8ab96eab3f4c8979f"
+      "sha256": "f0e5cc6cc971204ea2d642bd53700a460186aedd1e0a4d70372e63baec341607"
     },
     {
       "path": "RELEASE_EVIDENCE_PACKET.md",
@@ -127,6 +127,10 @@
       "sha256": "cfd0e84678557caeb571735dcc2b5066dff0a170e0d3bfbe9cd1824a598d2a2c"
     },
     {
+      "path": "experiments/EDIT_SPAN_SCREEN.md",
+      "sha256": "a000ac801f7e1b869d67632ddf734e815115ebb7c3ddb398d6dcc8c964dcea08"
+    },
+    {
       "path": "experiments/SPLASH_LIVE_SMOKE.md",
       "sha256": "b6fc32d50dba6f39539214bf074666c5068afd904133cdd48d4a03bb09743b38"
     },
@@ -136,11 +140,19 @@
     },
     {
       "path": "experiments/WORKBENCH.md",
-      "sha256": "a8f7613abbb68230c23a530b3189e04108caa5010bd947e1ef13c2dbf89c8d29"
+      "sha256": "9a620a56fbbabe3deaae2fe789f7b18c31bf1ca2fe2e74ab4cf7b8501b2a506d"
+    },
+    {
+      "path": "experiments/compare_edit_proposals.py",
+      "sha256": "d8bee11e7b3904dfd9895a759dec0732de05aa1537f072a53b6feb8ed1d28120"
     },
     {
       "path": "experiments/compare_source_drafts.py",
       "sha256": "d7622fb333961f29a8d97cd33d698b76907c92471cb5f48f9e84d6a1793434e5"
+    },
+    {
+      "path": "experiments/edit_span_screen.json",
+      "sha256": "11579ce8bebb7ba9969ba814749e05a952078e9e0143892f173e945a3738edf6"
     },
     {
       "path": "experiments/reasoning-signature/README.md",
@@ -164,7 +176,7 @@
     },
     {
       "path": "experiments/workbench.py",
-      "sha256": "6c1d87ebdb2fca23cc3bf28d99379317f088f4aab3be4c85593922e0b5187a49"
+      "sha256": "3a24de1181a226542289578974f6a690b42dc8b65efb17c76bae7c0b02136b11"
     },
     {
       "path": "licenses/MIT.txt",
@@ -253,6 +265,10 @@
     {
       "path": "tests/test_codec.py",
       "sha256": "bf91dd493c1797ce1263d6e819a9bcf4a1fbb46d18c88ff453ac80ed266f018b"
+    },
+    {
+      "path": "tests/test_edit_proposals.py",
+      "sha256": "b87bdb82454cc2363b166d26cedd6f20c045e5eb20210d144acdd3d0056cad15"
     },
     {
       "path": "tests/test_reasoning_signature.py",

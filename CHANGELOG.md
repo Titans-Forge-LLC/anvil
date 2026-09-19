@@ -2,6 +2,11 @@
 
 ## Experimental workbench preview — September 19, 2026
 
+- Added opt-in exact old/new edit spans inside a selected function, preserving
+  source bindings and proposal-only revisions. Reject malformed/ambiguous edits.
+- Published a live same-model comparison: 6/6 requested transformations in each
+  format, lower aggregate tokens/time with spans, and the short-task regression.
+
 - Tested a source-draft hook inside an isolated Splash engine. Published mixed
   economics, corrupted-draft fallback and output-equivalence observations;
   retain the experiment without changing the public runtime default.
