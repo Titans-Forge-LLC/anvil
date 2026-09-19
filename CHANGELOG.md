@@ -2,6 +2,10 @@
 
 ## Experimental workbench preview — September 19, 2026
 
+- Fixed Python physical-line source selection and bare-CR proposal boundaries.
+  A fresh maintenance trial found both model formats needed correction; published
+  those failures rather than treating fewer output tokens as a completed-job win.
+
 - Added opt-in exact old/new edit spans inside a selected function, preserving
   source bindings and proposal-only revisions. Reject malformed/ambiguous edits.
 - Published a live same-model comparison: 6/6 requested transformations in each

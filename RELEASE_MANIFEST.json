@@ -1,5 +1,5 @@
 {
-  "allowlist_sha256": "453a60bbff8a50e77f22429dd2734cb29c43f9ac6d5416b8cddcf50f774e3324",
+  "allowlist_sha256": "6650937fcff84e697143b760d02aadced5f4dad88c4c15e13c3f64595ed5f3c3",
   "canonical_name": "Adaptive Neural Vector Instruction Language",
   "checks": [
     {
@@ -52,7 +52,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "f81ebdcef73e13f52e0b0ccc1650b6b3b1c189befbcef0a5d7c743f56c8eebcb"
+      "sha256": "d541411fbf67024f57a06265a9395c2c7e2942496fdeba4510151c2ca6876ae8"
     },
     {
       "path": "CITATION.cff",
@@ -96,7 +96,7 @@
     },
     {
       "path": "PUBLIC_RELEASE_FILE_ALLOWLIST_V0_1.json",
-      "sha256": "453a60bbff8a50e77f22429dd2734cb29c43f9ac6d5416b8cddcf50f774e3324"
+      "sha256": "6650937fcff84e697143b760d02aadced5f4dad88c4c15e13c3f64595ed5f3c3"
     },
     {
       "path": "README.md",
@@ -128,7 +128,11 @@
     },
     {
       "path": "experiments/EDIT_SPAN_SCREEN.md",
-      "sha256": "a000ac801f7e1b869d67632ddf734e815115ebb7c3ddb398d6dcc8c964dcea08"
+      "sha256": "843a4a154a38eebdd8b1da069e631742f232c644afff53069cc02131bf6b7ad8"
+    },
+    {
+      "path": "experiments/FRESH_MAINTENANCE.md",
+      "sha256": "3b7f1c06569d644ebb219ab452d356f59beda703f0d682de7f7944171c217baa"
     },
     {
       "path": "experiments/SPLASH_LIVE_SMOKE.md",
@@ -176,7 +180,7 @@
     },
     {
       "path": "experiments/workbench.py",
-      "sha256": "3a24de1181a226542289578974f6a690b42dc8b65efb17c76bae7c0b02136b11"
+      "sha256": "44fcf97915132fcfbbaf37675cd7bda1422889df54d8c8a01e70daa91b6e9f86"
     },
     {
       "path": "licenses/MIT.txt",
@@ -268,7 +272,7 @@
     },
     {
       "path": "tests/test_edit_proposals.py",
-      "sha256": "b87bdb82454cc2363b166d26cedd6f20c045e5eb20210d144acdd3d0056cad15"
+      "sha256": "173c12711c8776673467a074f40458a6f4c2bfcf42108d9f04ab805b1be8b7af"
     },
     {
       "path": "tests/test_reasoning_signature.py",
@@ -288,7 +292,7 @@
     },
     {
       "path": "tests/test_workbench.py",
-      "sha256": "6b998286c712d82451bec8acbe78cdf7f144bc8769828cf5667d800f4f232af3"
+      "sha256": "95e62b1583cfe903ed6a5b296b5f07314c9024bdc37ba5f354f75df992508be6"
     }
   ],
   "profile": "AVP1/governed-mission-v1",

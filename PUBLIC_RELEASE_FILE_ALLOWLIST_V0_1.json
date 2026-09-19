@@ -31,6 +31,7 @@
     "examples/governed_mission.json",
     "examples/workbench_sample.py",
     "experiments/EDIT_SPAN_SCREEN.md",
+    "experiments/FRESH_MAINTENANCE.md",
     "experiments/SPLASH_LIVE_SMOKE.md",
     "experiments/SPLASH_SOURCE_ENGINE_SCREEN.md",
     "experiments/WORKBENCH.md",

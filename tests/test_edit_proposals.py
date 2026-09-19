@@ -53,12 +53,16 @@ class EditTests(unittest.TestCase):
     def test_edit_cannot_join_or_comment_out_following_module_line(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'sample.py'
-            path.write_bytes(b'def f(): return 1\nx = 2\n')
-            c = Completion(json.dumps({'old': 'return 1\n', 'new': 'return 1 #'}))
-            result = W.propose(c, dict(file=str(path), symbol='f', format='edit', instruction='Edit'))
-            self.assertFalse(result['reviewable'])
-            self.assertIn('newline boundary', result['rejection'])
-            self.assertIsNone(result['replacement_text'])
+            for newline in ('\n', '\r\n', '\r'):
+                with self.subTest(newline=repr(newline)):
+                    raw = f'def f(): return 1{newline}x = 2{newline}'.encode()
+                    path.write_bytes(raw)
+                    c = Completion(json.dumps({'old': 'return 1' + newline, 'new': 'return 1 #'}))
+                    result = W.propose(c, dict(file=str(path), symbol='f', format='edit', instruction='Edit'))
+                    self.assertFalse(result['reviewable'])
+                    self.assertIn('newline boundary', result['rejection'])
+                    self.assertIsNone(result['replacement_text'])
+                    self.assertEqual(path.read_bytes(), raw)
 
     def test_scope_syntax_truncation_and_stale_rejections(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -1,5 +1,8 @@
 # Exact edit spans: an opt-in workflow improvement
 
+Follow-up: [fresh maintenance](FRESH_MAINTENANCE.md) found both formats produced
+incorrect repairs. The timings below are not evidence of completed-job savings.
+
 September 19, 2026. Instead of regenerating a whole function, the model emits
 one literal `old` / `new` replacement. ANVIL reconstructs the source-bound
 proposal, validates its structure, and returns a diff without applying it.
