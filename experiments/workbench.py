@@ -151,8 +151,11 @@ class SplashCompletion:
     """
 
     source_drafts = False
+    supports_reasoning = True
 
-    def __init__(self, base_url='http://127.0.0.1:8000', model=None, timeout=120):
+    def __init__(self, base_url='http://127.0.0.1:8000', model=None, timeout=120, *, reasoning_effort='none'):
+        if reasoning_effort not in ('none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'):
+            raise ValueError('invalid reasoning effort')
         url = urllib.parse.urlsplit(base_url)
         if (url.scheme != 'http' or url.hostname not in ('127.0.0.1', '::1')
                 or url.username is not None or url.password is not None
@@ -162,14 +165,18 @@ class SplashCompletion:
             raise ValueError('invalid port')
         self.endpoint = urllib.parse.urlunsplit(('http', url.netloc, '/v1/chat/completions', '', ''))
         self.model, self.timeout = model, timeout
+        self.reasoning_effort = reasoning_effort
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
-    def complete(self, messages, max_tokens=512):
+    def complete(self, messages, max_tokens=512, *, reasoning_effort=None):
         started = time.perf_counter()
+        effort = self.reasoning_effort if reasoning_effort is None else reasoning_effort
+        if effort not in ('none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'):
+            raise ValueError('invalid reasoning effort')
         if type(max_tokens) is not int or not 1 <= max_tokens <= 4096:
             raise ValueError('max_tokens must be an integer in [1, 4096]')
         payload = {'messages': messages, 'max_tokens': max_tokens, 'temperature': 0,
-                   'stream': False, 'reasoning_effort': 'none'}
+                   'stream': False, 'reasoning_effort': effort}
         if self.model:
             payload['model'] = self.model
         body = json.dumps(payload).encode('utf-8')
@@ -219,6 +226,7 @@ class SplashCompletion:
         return {
             'text': content, 'complete': reason == 'stop', 'output_tokens': tokens, 'input_tokens': prompt_tokens,
             'finish_reason': reason, 'backend': 'splash_http',
+            'reasoning_effort': effort,
             'http_requests': 1, 'model_calls': None, 'exact_hit': False,
             'prefix_tokens_reused': None, 'draft_tokens_verified': None,
             'draft_tokens_scored': None, 'draft_origin': 'server_managed',
@@ -443,6 +451,10 @@ def propose(completion, request, *, base_source=None, expected_sha256=None):
             '{"edits":[{"old":"alpha","new":"beta"},{"old":"gamma","new":"delta"}]}.'
         )
     options = {'draft_text': selected} if getattr(completion, 'source_drafts', False) else {}
+    if 'reasoning_effort' in request:
+        if not getattr(completion, 'supports_reasoning', False):
+            raise ValueError('reasoning_effort requires a supported backend')
+        options['reasoning_effort'] = request['reasoning_effort']
     result = completion.complete([
         {'role': 'system', 'content': system},
         {'role': 'user', 'content': 'SOURCE (verbatim):\n' + selected + '\nEND SOURCE\nREQUEST:\n' + instruction},
@@ -550,6 +562,9 @@ def main():
     parser.add_argument('--backend', choices=('mlx', 'splash'), default='mlx')
     parser.add_argument('--model', help='local MLX directory, or optional served Splash model ID')
     parser.add_argument('--splash-url', default='http://127.0.0.1:8000')
+    parser.add_argument('--reasoning-effort', default='none',
+                        choices=('none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'),
+                        help='Splash-only reasoning mode; default none')
     parser.add_argument('--ordinary', action='store_true', help='disable draft reuse, retain exact/prefix caches')
     parser.add_argument('--source-draft', action='store_true', help='experimental: verify source instead of previous answer as draft')
     parser.add_argument('--memory-gib', type=int, default=20)
@@ -561,9 +576,11 @@ def main():
     if args.backend == 'splash':
         if args.ordinary or args.source_draft:
             parser.error('Splash owns decoding: --ordinary and --source-draft are MLX-only')
-        completion = SplashCompletion(args.splash_url, args.model)
+        completion = SplashCompletion(args.splash_url, args.model, reasoning_effort=args.reasoning_effort)
         load_seconds = None
     else:
+        if args.reasoning_effort != 'none':
+            parser.error('--reasoning-effort is Splash-only')
         if not args.model:
             parser.error('--model is required for MLX')
         backend = MLXBackend(args.model, args.memory_gib)

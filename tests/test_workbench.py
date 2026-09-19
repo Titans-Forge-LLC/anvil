@@ -52,6 +52,21 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_reasoning_cli_is_splash_only(self):
+        with patch.object(W.sys, 'argv', ['workbench', '--backend', 'splash', '--reasoning-effort', 'low']), \
+             patch.object(W.sys, 'stdin', io.StringIO('')), \
+             patch.object(W.sys, 'stdout', io.StringIO()), \
+             patch.object(W, 'SplashCompletion', return_value=object()) as completion:
+            W.main()
+        self.assertEqual(completion.call_args.kwargs['reasoning_effort'], 'low')
+        with patch.object(W.sys, 'argv', ['workbench', '--reasoning-effort', 'low']), \
+             patch.object(W.sys, 'stderr', io.StringIO()), \
+             patch.object(W, 'MLXBackend') as backend:
+            with self.assertRaises(SystemExit) as error:
+                W.main()
+            self.assertEqual(error.exception.code, 2)
+            backend.assert_not_called()
+
     def test_cli_reads_bounded_lines_and_recovers_after_oversize(self):
         class BoundedInput(io.StringIO):
             def __iter__(self):

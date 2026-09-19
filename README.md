@@ -7,6 +7,9 @@ authority must survive decoding exactly.
 Status: `LIMITED PUBLIC BETA`
 
 Latest: [Try the persistent coding workbench preview](experiments/WORKBENCH.md).
+Splash revisions can now opt into reasoning without losing the parent proposal.
+[One replay](experiments/REPAIR_LOOP_SCREEN.md) repaired a bug that both
+no-reasoning attempts missed; it cost more and is not a general reliability claim.
 Opt-in atomic `"format":"edits"` can change several spans without regenerating
 the whole function. [An adaptive replay and a fresh fixed-format task](experiments/ATOMIC_EDIT_SCREEN.md)
 passed with lower request/check time, after two failed initial development attempts. It is

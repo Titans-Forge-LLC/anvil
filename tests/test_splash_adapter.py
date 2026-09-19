@@ -66,6 +66,37 @@ class SplashAdapterTests(unittest.TestCase):
         self.reply['choices'][0]['finish_reason'] = 'length'
         self.assertFalse(self.client.complete([])['complete'])
 
+    def test_reasoning_is_explicit_opt_in_and_reported(self):
+        for effort in ('none', 'low', 'high'):
+            self.client.reasoning_effort = effort
+            result = self.client.complete([])
+            self.assertEqual(self.requests[-1][2]['reasoning_effort'], effort)
+            self.assertEqual(result['reasoning_effort'], effort)
+        with self.assertRaises(ValueError):
+            W.SplashCompletion(reasoning_effort='unknown')
+
+    def test_revision_can_escalate_reasoning_without_changing_default(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'sample.py'
+            path.write_bytes(b'def f():\n    return 1\n')
+            session = W.ProposalSession(self.client)
+            first = session.propose(dict(file=str(path), symbol='f', instruction='Edit'))
+            self.reply['choices'][0]['message']['content'] = 'def f():\n    return 3\n'
+            second = session.propose(dict(revise=first['proposal_id'], instruction='Fix', reasoning_effort='low'))
+            self.assertEqual(self.requests[-1][2]['reasoning_effort'], 'low')
+            self.assertEqual(second['reasoning_effort'], 'low')
+            self.assertEqual(second['parent_proposal_id'], first['proposal_id'])
+            self.assertEqual(second['source_sha256'], first['source_sha256'])
+            self.assertTrue(second['reviewable'])
+            self.assertEqual(self.client.reasoning_effort, 'none')
+            self.client.complete([])
+            self.assertEqual(self.requests[-1][2]['reasoning_effort'], 'none')
+            count = len(self.requests)
+            with self.assertRaises(ValueError):
+                self.client.complete([], reasoning_effort='unknown')
+            self.assertEqual(len(self.requests), count)
+            self.assertEqual(path.read_bytes(), b'def f():\n    return 1\n')
+
     def test_input_token_accounting_is_explicit_and_strict(self):
         for tokens in (None, 0, 123):
             with self.subTest(tokens=tokens):
