@@ -573,10 +573,17 @@ def main():
     print(json.dumps({'ready': True, 'backend': args.backend, 'load_seconds': load_seconds,
                       'server_readiness': 'not_checked' if args.backend == 'splash' else 'not_applicable',
                       'proposal_only': True}), flush=True)
-    for line in sys.stdin:
+    while True:
+        line = sys.stdin.readline(16385)
+        if not line:
+            break
+        if len(line) > 16384:
+            # The initial chunk may already contain the oversized line's newline.
+            while line and not line.endswith('\n'):
+                line = sys.stdin.readline(16385)
+            print(json.dumps({'error': 'ValueError', 'message': 'request exceeds 16 KiB', 'applied': False}), flush=True)
+            continue
         try:
-            if len(line) > 16384:
-                raise ValueError('request exceeds 16 KiB')
             request = json.loads(line)
             if not isinstance(request, dict):
                 raise ValueError('request must be a JSON object')

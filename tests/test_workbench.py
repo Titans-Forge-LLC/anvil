@@ -1,5 +1,8 @@
 """Dependency-free checks for the optional resident workbench."""
 import importlib.util
+import io
+import json
+from unittest.mock import patch
 from pathlib import Path
 import tempfile
 import unittest
@@ -49,6 +52,52 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_cli_reads_bounded_lines_and_recovers_after_oversize(self):
+        class BoundedInput(io.StringIO):
+            def __iter__(self):
+                raise AssertionError('unbounded iteration')
+            def readline(self, size=-1):
+                if not 0 < size <= 16385:
+                    raise AssertionError('unbounded read')
+                return super().readline(size)
+        class Session:
+            requests = []
+            def __init__(self, completion):
+                pass
+            def propose(self, request):
+                self.requests.append(request)
+                return {'received': request, 'applied': False}
+        maximum = '{}' + ' ' * (16384 - 3) + '\n'
+        oversized = '{}' + ' ' * 50000 + '\n'
+        # Review-derived boundary: this oversized line already includes its newline.
+        exact_oversize = '{}' + ' ' * (16385 - 3) + '\n'
+        data = maximum + oversized + '[1]\nnot json\n' + exact_oversize + '{"ok":1}\n' + '{"last":2}'
+        output = io.StringIO()
+        with patch.object(W.sys, 'argv', ['workbench', '--backend', 'splash']), \
+             patch.object(W.sys, 'stdin', BoundedInput(data)), \
+             patch.object(W.sys, 'stdout', output), \
+             patch.object(W, 'SplashCompletion', return_value=object()), \
+             patch.object(W, 'ProposalSession', Session):
+            W.main()
+        replies = [json.loads(line) for line in output.getvalue().splitlines()]
+        self.assertTrue(replies[0]['ready'])
+        self.assertEqual(Session.requests, [{}, {'ok': 1}, {'last': 2}])
+        self.assertEqual(len(replies), 8)
+        self.assertEqual(sum('error' in r for r in replies), 4)
+        self.assertIn('16 KiB', replies[2]['message'])
+        self.assertTrue(all(not r.get('applied', False) for r in replies))
+        # Oversized unterminated final line emits exactly one error, then EOF.
+        Session.requests = []
+        output = io.StringIO()
+        with patch.object(W.sys, 'argv', ['workbench', '--backend', 'splash']), \
+             patch.object(W.sys, 'stdin', BoundedInput('x' * 50000)), \
+             patch.object(W.sys, 'stdout', output), \
+             patch.object(W, 'SplashCompletion', return_value=object()), \
+             patch.object(W, 'ProposalSession', Session):
+            W.main()
+        self.assertEqual(len(output.getvalue().splitlines()), 2)
+        self.assertEqual(Session.requests, [])
+
     def test_unchanged_proposals_not_retained_but_reverting_parent_is_valid(self):
         import json
         with tempfile.TemporaryDirectory() as directory:
