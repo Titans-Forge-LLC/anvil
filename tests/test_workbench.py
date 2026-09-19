@@ -52,6 +52,20 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_edit_unicode_errors_are_value_errors(self):
+        cases = [('\ud800abc', '{"old":"a","new":"x"}'), ('abc', '\ud800')]
+        for item in ({'old': 'a', 'new': '\ud800'}, {'old': '\udfff', 'new': 'x'}):
+            cases.append(('abc', json.dumps(item)))
+        for selected, envelope in cases:
+            with self.subTest(selected=repr(selected), envelope=repr(envelope)):
+                with self.assertRaises(ValueError) as caught:
+                    W.reconstruct_edit(selected, envelope)
+                self.assertNotIsInstance(caught.exception, UnicodeEncodeError)
+        self.assertEqual(W.reconstruct_edit('a😀c', json.dumps({'old': '😀', 'new': '🦉'})), 'a🦉c')
+        with self.assertRaises(ValueError) as caught:
+            W.reconstruct_edit('abc', json.dumps({'edits': [{'old': 'a', 'new': '\ud800'}]}), multiple=True)
+        self.assertNotIsInstance(caught.exception, UnicodeEncodeError)
+
     def test_reasoning_cli_is_splash_only(self):
         with patch.object(W.sys, 'argv', ['workbench', '--backend', 'splash', '--reasoning-effort', 'low']), \
              patch.object(W.sys, 'stdin', io.StringIO('')), \
