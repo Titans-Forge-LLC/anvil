@@ -1,15 +1,33 @@
 import json
+import io
+import os
+import tempfile
+from contextlib import redirect_stdout
 import subprocess
 import unittest
 from pathlib import Path
 
 from anvil_alpha import AVP1Codec, CodecError, ContextMismatchError, canonical_json
+from anvil_alpha.cli import _write
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class AVP1CodecTests(unittest.TestCase):
+    def test_cli_write_adds_only_missing_newline(self):
+        for text in ('', 'hello', 'hello\n', 'hello\n\n', 'café\n', 'x\r\n'):
+            expected = text if text.endswith('\n') else text + '\n'
+            with self.subTest(text=text), tempfile.TemporaryDirectory() as directory:
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    _write(None, text)
+                self.assertEqual(output.getvalue(), expected)
+                path = Path(directory) / 'out.txt'
+                _write(path, text)
+                # Retain Python's existing platform-native text-file translation.
+                self.assertEqual(path.read_bytes(), expected.replace('\n', os.linesep).encode('utf-8'))
+
     def setUp(self):
         self.codec = AVP1Codec()
         self.sample = json.loads((ROOT / "examples/governed_mission.json").read_text())

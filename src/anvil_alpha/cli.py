@@ -15,10 +15,12 @@ def _load_json(path: Path):
 
 
 def _write(path: Path | None, text: str) -> None:
+    if not text.endswith('\n'):
+        text += '\n'
     if path is None:
-        print(text)
+        sys.stdout.write(text)
     else:
-        path.write_text(text + "\n", encoding="utf-8")
+        path.write_text(text, encoding="utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:

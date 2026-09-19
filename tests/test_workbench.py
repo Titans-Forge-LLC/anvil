@@ -49,6 +49,67 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_revisions_use_parent_and_diff_against_disk_without_writing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'sample.py'
+            original = '# keep\ndef f():\n    return 1\n'
+            path.write_text(original)
+            class Complete:
+                text = 'def f():\n    return 2\n'
+                def complete(self, messages, max_tokens):
+                    self.prompt = messages[1]['content']
+                    return {'text': self.text, 'complete': True}
+            c = Complete()
+            session = W.ProposalSession(c)
+            first = session.propose({'file': str(path), 'symbol': 'f', 'instruction': 'Return 2'})
+            c.text = 'def f():\n    return 3\n'
+            second = session.propose({'revise': first['proposal_id'], 'instruction': 'Return 3 instead'})
+            self.assertIn('return 2', c.prompt)
+            self.assertIn('-    return 1', second['diff_preview'])
+            self.assertIn('+    return 3', second['diff_preview'])
+            self.assertEqual(second['replacement_text'], original.replace('return 1', 'return 3'))
+            self.assertEqual(path.read_text(), original)
+            self.assertEqual(second['parent_proposal_id'], first['proposal_id'])
+
+    def test_revisions_reject_changed_source_unknown_parent_and_wrong_scope(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'sample.py'
+            path.write_text('def f():\n    return 1\n')
+            class Complete:
+                calls = 0
+                def complete(self, messages, max_tokens):
+                    self.calls += 1
+                    return {'text': 'def f():\n    return 2\n', 'complete': True}
+            c = Complete()
+            session = W.ProposalSession(c)
+            first = session.propose({'file': str(path), 'symbol': 'f', 'instruction': 'Return 2'})
+            for request in ({'revise': 'unknown'}, {'revise': first['proposal_id'], 'symbol': 'g'}):
+                with self.assertRaises(ValueError):
+                    session.propose({**request, 'instruction': 'Revise'})
+            path.write_text('def f():\n    return 9\n')
+            with self.assertRaisesRegex(ValueError, 'source changed'):
+                session.propose({'revise': first['proposal_id'], 'instruction': 'Revise'})
+            self.assertEqual(c.calls, 1)
+
+    def test_proposal_retention_bounded_and_incomplete_not_retained(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'sample.py'
+            path.write_text('x = 1\n')
+            class Complete:
+                finished = True
+                def complete(self, messages, max_tokens):
+                    return {'text': 'x = 2\n', 'complete': self.finished}
+            c = Complete()
+            session = W.ProposalSession(c)
+            for _ in range(9):
+                session.propose({'file': str(path), 'instruction': 'Change x'})
+            self.assertEqual(len(session.proposals), 8)
+            self.assertNotIn('p1', session.proposals)
+            c.finished = False
+            r = session.propose({'file': str(path), 'instruction': 'Change x'})
+            self.assertIsNone(r['proposal_id'])
+            self.assertEqual(len(session.proposals), 8)
+
     def test_named_function_preserves_surrounding_source(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'sample.py'
@@ -64,6 +125,19 @@ class WorkbenchTests(unittest.TestCase):
             self.assertEqual(r['replacement_text'], original.replace('return 1', 'return 2'))
             self.assertNotIn('import math', c.messages[1]['content'])
             self.assertEqual(path.read_bytes(), original.encode())
+
+    def test_source_backslashes_are_not_json_escaped_in_model_prompt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'sample.py'
+            source = 'def f():\n    return "\\n"\n'
+            path.write_text(source)
+            class Complete:
+                def complete(self, messages, max_tokens):
+                    self.prompt = messages[1]['content']
+                    return {'text': source, 'complete': True}
+            c = Complete()
+            W.propose(c, {'file': str(path), 'symbol': 'f', 'instruction': 'Keep behavior'})
+            self.assertIn(source, c.prompt)
 
     def test_function_rejects_extra_statements_wrong_name_and_bad_syntax(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -210,7 +210,7 @@ class MLXBackend:
         return self._run(tokens, cache, True)
 
 
-def propose(completion, request):
+def propose(completion, request, *, base_source=None, expected_sha256=None):
     """Reread exactly one selected file. Return a source-bound proposal, no write."""
     started = time.perf_counter()
     instruction = request.get('instruction')
@@ -223,7 +223,11 @@ def propose(completion, request):
         raw = stream.read(32769)
     if len(raw) > 32768:
         raise ValueError('file exceeds 32 KiB preview limit')
-    source = raw.decode('utf-8')
+    source_hash = hashlib.sha256(raw).hexdigest()
+    if expected_sha256 is not None and source_hash != expected_sha256:
+        raise ValueError('source changed since the parent proposal; start a new request')
+    original = raw.decode('utf-8')
+    source = original if base_source is None else base_source
     if '\x00' in source:
         raise ValueError('binary content rejected')
     symbol = request.get('symbol')
@@ -252,7 +256,7 @@ def propose(completion, request):
         )
     result = completion.complete([
         {'role': 'system', 'content': system},
-        {'role': 'user', 'content': json.dumps({'source': selected}) + '\nREQUEST:\n' + instruction},
+        {'role': 'user', 'content': 'SOURCE (verbatim):\n' + selected + '\nEND SOURCE\nREQUEST:\n' + instruction},
     ], request.get('max_tokens', 512))
     # Detect edits during generation; never present a patch as current in that case.
     with path.open('rb') as stream:
@@ -275,17 +279,61 @@ def propose(completion, request):
             replacement = source[:start] + replacement + source[end:]
         except (SyntaxError, ValueError) as exc:
             usable, rejection = False, str(exc)
+    if usable and len(replacement.encode('utf-8')) > 32768:
+        usable, rejection = False, 'replacement exceeds 32 KiB preview limit'
     patch = ''.join(difflib.unified_diff(
-        source.splitlines(keepends=True), replacement.splitlines(keepends=True),
+        original.splitlines(keepends=True), replacement.splitlines(keepends=True),
         fromfile='original', tofile='proposal')) if usable else None
     return {
-        **result, 'source_sha256': hashlib.sha256(raw).hexdigest(),
+        **result, 'source_sha256': source_hash,
         'source_changed': current != raw, 'reviewable': usable,
         'symbol': symbol, 'rejection': rejection,
         'replacement_text': replacement if usable else None,
         'diff_preview': patch, 'total_request_seconds': time.perf_counter() - started,
         'applied': False,
     }
+
+
+class ProposalSession:
+    """Bounded in-memory revisions, always diffed against unchanged disk source."""
+
+    def __init__(self, completion):
+        self.completion = completion
+        self.proposals = OrderedDict()
+        self.sequence = 0
+
+    def propose(self, request):
+        started = time.perf_counter()
+        request = dict(request)
+        parent_id = request.pop('revise', None)
+        base_source = expected = None
+        if parent_id is not None:
+            if not isinstance(parent_id, str) or parent_id not in self.proposals:
+                raise ValueError('unknown or expired proposal ID')
+            parent = self.proposals[parent_id]
+            path = Path(request.get('file', parent['file'])).expanduser().resolve(strict=True)
+            if str(path) != parent['file'] or request.get('symbol', parent['symbol']) != parent['symbol']:
+                raise ValueError('revision must keep the parent file and symbol')
+            request['file'], request['symbol'] = parent['file'], parent['symbol']
+            base_source, expected = parent['text'], parent['source_sha256']
+        else:
+            path = Path(request['file']).expanduser().resolve(strict=True)
+            request['file'] = str(path)
+        result = propose(self.completion, request, base_source=base_source, expected_sha256=expected)
+        result['proposal_id'] = None
+        result['parent_proposal_id'] = parent_id
+        if result['reviewable']:
+            self.sequence += 1
+            proposal_id = 'p' + str(self.sequence)
+            self.proposals[proposal_id] = {
+                'file': str(path), 'symbol': request.get('symbol'),
+                'text': result['replacement_text'], 'source_sha256': result['source_sha256'],
+            }
+            if len(self.proposals) > 8:
+                self.proposals.popitem(last=False)
+            result['proposal_id'] = proposal_id
+        result['total_request_seconds'] = time.perf_counter() - started
+        return result
 
 
 def main():
@@ -298,6 +346,7 @@ def main():
         parser.error('--memory-gib must be in [1, 128]')
     backend = MLXBackend(args.model, args.memory_gib)
     completion = Completion(backend, not args.ordinary)
+    proposals = ProposalSession(completion)
     print(json.dumps({'ready': True, 'load_seconds': backend.load_seconds, 'proposal_only': True}), flush=True)
     for line in sys.stdin:
         try:
@@ -306,7 +355,7 @@ def main():
             request = json.loads(line)
             if not isinstance(request, dict):
                 raise ValueError('request must be a JSON object')
-            print(json.dumps(propose(completion, request)), flush=True)
+            print(json.dumps(proposals.propose(request)), flush=True)
         except Exception as exc:
             print(json.dumps({'error': type(exc).__name__, 'message': str(exc), 'applied': False}), flush=True)
 
