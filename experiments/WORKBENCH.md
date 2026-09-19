@@ -43,9 +43,10 @@ automatic retries, server installs, downloads, server restarts or file writes.
 The startup `ready` event means the client is accepting requests, not that the
 server has passed a readiness check.
 
-Status: adapter tests pass against a local HTTP fixture, including a proposal
-revision. **Live Splash/model integration and combined performance remain
-unmeasured**; no Splash server was available during this implementation.
+Status: fixture tests include proposal revision and failure boundaries. A
+[live Splash 1.0 / 27B smoke](SPLASH_LIVE_SMOKE.md) completed 12 requests with
+six identical direct/ANVIL output pairs. Live revision behavior and engine-level
+combined source drafting remain unqualified. This is not an ANVIL speedup claim.
 Follow [upstream installation and serving instructions](https://github.com/incoai/splash#quick-start)
 to start a server before using the adapter. Then compare the same editing requests
 directly and through ANVIL, counting review, retries, startup and total request

@@ -2,6 +2,10 @@
 
 ## Experimental workbench preview — September 19, 2026
 
+- Ran Splash 1.0 with its supported 27B package: 12 completed requests, six
+  identical direct/ANVIL pairs, and three exact requested AST transformations.
+  Report startup and warm-cache effects separately; no combined speedup claim.
+
 - Added a loopback Splash chat-completion adapter for source-bound proposals and
   revisions. No MLX dependency on the client path; engine counters remain unknown.
 - Verified HTTP contract and failure boundaries with a local fixture. Live Splash
