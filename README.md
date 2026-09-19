@@ -14,6 +14,9 @@ The workbench also has a loopback Splash API adapter: engine-owned generation
 with ANVIL proposals/revisions. A [live 27B smoke](experiments/SPLASH_LIVE_SMOKE.md)
 completed 12 requests with six identical direct/ANVIL output pairs. The API
 adapter does not enable ANVIL token-level drafting inside Splash.
+An [isolated source-draft engine experiment](experiments/SPLASH_SOURCE_ENGINE_SCREEN.md)
+preserved baseline outputs but showed no meaningful aggregate cost advantage;
+it remains experimental and is not enabled in this package.
 
 Research detail: [What our local-agent experiments have demonstrated](INTERNAL_AGENT_EXPERIMENTS.md).
 

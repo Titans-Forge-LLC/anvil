@@ -69,6 +69,10 @@ source-drafting result or compare different models as an architecture ablation.
 
 ## Next useful implementation
 
+Update: the [isolated engine-hook screen](SPLASH_SOURCE_ENGINE_SCREEN.md) is now
+complete. It preserved outputs but did not earn default adoption. The proposal
+below records the experiment that was undertaken.
+
 Build one isolated engine hook for a caller-provided source draft, with ordinary
 Splash as the baseline. Reuse the engine's target verification and rollback; do
 not transplant MLX cache logic into its recurrent/drafter state. First compare
