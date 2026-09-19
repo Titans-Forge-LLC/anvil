@@ -2,6 +2,11 @@
 
 ## Experimental workbench preview — September 19, 2026
 
+- Added a loopback Splash chat-completion adapter for source-bound proposals and
+  revisions. No MLX dependency on the client path; engine counters remain unknown.
+- Verified HTTP contract and failure boundaries with a local fixture. Live Splash
+  performance and engine-level ANVIL source drafting remain unqualified.
+
 - Added opt-in source drafting for first edits, with target verification and
   ordinary fallback. Published a reproducible three-request comparison and
   metadata-only receipt; no general coding-speed or task-quality claim.
