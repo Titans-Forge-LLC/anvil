@@ -7,6 +7,9 @@ authority must survive decoding exactly.
 Status: `LIMITED PUBLIC BETA`
 
 Latest: [Try the persistent coding workbench preview](experiments/WORKBENCH.md).
+New opt-in `"format":"edit"` requests one exact source-bound change rather than
+a whole function. [A small live screen](experiments/EDIT_SPAN_SCREEN.md) used
+51.4% fewer output tokens and 29.6% less request/check time; one task was slower.
 It keeps a local model resident, verifies reused drafts, and returns reviewable
 single-file edit proposals. Optional Apple Silicon dependencies; no automatic
 code execution or file changes. This experimental track is separate from AVP1.
