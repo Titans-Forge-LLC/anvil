@@ -1,5 +1,16 @@
 # Changelog
 
+## Experimental workbench preview — September 19, 2026
+
+- Added a resident, local-only single-file editing proposal loop with optional MLX.
+- Retain exact responses and causal prefixes; target-check the previous answer
+  as a draft, rolling back and resuming ordinary generation on mismatch.
+- Include source-bound review diffs, timings, an ordinary-mode comparison,
+  a small editing exercise, and dependency-free correctness tests.
+- No automatic patch application, code execution, private data or weights.
+- Keep AVP1 and the existing beta tag unchanged; document the older model adapter
+  and the narrowly measured prototype result separately from this new preview.
+
 ## 0.2.0-beta.1 — Limited public beta
 
 - Set a target beta window through approximately September 11, 2026; full
