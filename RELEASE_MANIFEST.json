@@ -52,7 +52,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "40a647b4c19bdb95a6873d98fa725da543946f4624cca5c45b4cce8fd01305c3"
+      "sha256": "e87abd6006212cb473335d28eb697b2710dd92e8c252c76888f0eb0cfac99f56"
     },
     {
       "path": "CITATION.cff",
@@ -100,7 +100,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "c52af6447788f05dd0293ac1e08cc995f9009c6dae759d200b4e7839d7b6b66d"
+      "sha256": "753ec454f36fcba577ae99a2e62826d7665788b0829744b70830374351b5f291"
     },
     {
       "path": "RELEASE_EVIDENCE_PACKET.md",
@@ -128,7 +128,7 @@
     },
     {
       "path": "experiments/ATOMIC_EDIT_SCREEN.md",
-      "sha256": "83492e0c38e002ab39bb552f63cd6e8c16983348c262b9b325e718eecd44ce0f"
+      "sha256": "a9614512298806c9ce0c17205bc3c7b98bfdb20df27f885c574cd862722f5783"
     },
     {
       "path": "experiments/EDIT_SPAN_SCREEN.md",
@@ -148,7 +148,7 @@
     },
     {
       "path": "experiments/WORKBENCH.md",
-      "sha256": "41ebc9b450dca59d3d793ab900734ac67b5b014ba72734264cf8474978a83c2e"
+      "sha256": "63e1740d77348a37a82586d2ee67e4706b825ed2cd41a071c1557a6f3de3f466"
     },
     {
       "path": "experiments/compare_edit_proposals.py",
@@ -184,7 +184,7 @@
     },
     {
       "path": "experiments/workbench.py",
-      "sha256": "aedb7b8a91ca482ef48ce52ef6309c7e20d90cfc4d7ab313ed19e051b80e60b3"
+      "sha256": "992e28c77c3bc485b661ab1de234982ef9b3cec657230f609ad0190bdce35d86"
     },
     {
       "path": "licenses/MIT.txt",
@@ -296,7 +296,7 @@
     },
     {
       "path": "tests/test_workbench.py",
-      "sha256": "95e62b1583cfe903ed6a5b296b5f07314c9024bdc37ba5f354f75df992508be6"
+      "sha256": "5314141cb12ee17cd16e90fae86f8c021258539075996b1f357a076a08d21335"
     }
   ],
   "profile": "AVP1/governed-mission-v1",

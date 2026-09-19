@@ -1,5 +1,8 @@
 # Atomic edits: a faster successful replay, with failed development attempts
 
+Follow-up: the fixed format subsequently passed a fresh task without tuning;
+see [the fresh no-op task](#fresh-task-with-the-shipped-format-held-fixed) below.
+
 September 19, 2026. Goal: stop regenerating unchanged code when a task touches
 several locations in one function. No engine fork, new model or automatic execution.
 Whole-function replacement remains the default.
@@ -94,3 +97,47 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_splash_adapter.py'
 ```
 
 These reproduce product behavior checks, not the exact historical model timing.
+
+## Fresh task with the shipped format held fixed
+
+A subsequent task used the exact shipped format prompts, without tuning: reject
+unchanged proposals after reconstruction, comparing against the current revision
+source rather than the original disk file. Deliberately reverting a parent must
+remain valid; cancelling atomic edits must be rejected as unchanged. This prevents
+empty review work and wasted revision slots. A failing regression was frozen
+before dispatch and withheld from the model.
+
+Same engine/model/hardware profile as above; 4096-token cap for both formats.
+Order: edits, replacement, replacement, edits. This is **one fresh task repeated
+twice**, not four independent tasks. All four proposals passed the same behavioral
+check after manual review. No retries, fallback, repairs or prompt adjustments.
+
+| Across two requests each | Atomic edits | Whole function |
+| --- | ---: | ---: |
+| Input tokens | 4,174 | 3,936 |
+| Output tokens | 236 | 3,652 |
+| Request + host checks | 4.654 s | 25.941 s |
+| Behavioral checks | 0.006 s | 0.005 s |
+| Combined measured time | 4.660 s | 25.946 s |
+| Requested behavior | 2/2 pass | 2/2 pass |
+
+About 82.0% less measured request/check time (5.57x ratio) on this task.
+The output reduction is much greater than the input-plus-output reduction;
+the edit instruction costs 119 additional input tokens per request. Input tokens
+are counted even when a server might cache them; token counts are not FLOPs.
+
+Individual request times in order were 3.426, 13.929, 12.012 and 1.228 seconds.
+The first edit incurred cold-server/prefix costs. Shared cache and repetition
+affect timing, so neither the warm pair nor the aggregate establishes a broad
+coding-speed claim. This does not compare competing engines.
+
+Total trial startup/generation/shutdown: 36.876 s, including 6.015 s startup.
+Joint assistant review wall interval: approximately 12 seconds; no per-arm human
+review cost was measured. The selected edit was applied unchanged and the complete
+54-method local suite passed in 4.644 s. Investigation, test writing, implementation,
+documentation and CI remain outside the quoted request/check timings. This is not
+complete developer-job cost. Raw proposals/logs remain private.
+
+Decision: retain the opt-in format and ship the useful no-op guard. The fixed
+prompt generalized to this fresh task; one task does not establish general
+reliability or justify changing the default. No engine change or model training.

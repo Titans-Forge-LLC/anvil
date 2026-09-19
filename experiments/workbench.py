@@ -481,6 +481,8 @@ def propose(completion, request, *, base_source=None, expected_sha256=None):
             replacement = source[:start] + replacement + source[end:]
         except (SyntaxError, ValueError) as exc:
             usable, rejection = False, str(exc)
+    if usable and replacement == source:
+        usable, rejection = False, 'proposal is unchanged; no-op rejected'
     if usable and len(replacement.encode('utf-8')) > 32768:
         usable, rejection = False, 'replacement exceeds 32 KiB preview limit'
     patch = ''.join(difflib.unified_diff(

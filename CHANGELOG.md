@@ -2,6 +2,10 @@
 
 ## Experimental workbench preview — September 19, 2026
 
+- Reject unchanged proposals without consuming revision slots, while preserving
+  legitimate parent reversions. Shipped the reviewed model-generated fix after
+  a fresh fixed-format comparison; retained startup, review and timing limits.
+
 - Added opt-in atomic multi-edit proposals with unique snapshot-bound anchors and
   all-or-nothing overlap rejection. Published failed initial attempts and one
   successful adaptive replay; no change to the default format.
