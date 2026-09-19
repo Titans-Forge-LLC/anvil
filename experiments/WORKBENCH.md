@@ -33,8 +33,19 @@ Use the supplied exercise or select your own file. Start with a small file:
 source is limited to 32 KiB and prompt plus generation to 4,096 tokens.
 The entire replacement must fit the output budget. Enter another self-contained
 request to get a follow-up proposal; the process keeps its model and caches.
-Requests reread the selected file, not the last proposal. Review and save an edit
-yourself before asking for a change to that edited version. Ctrl-D ends the loop.
+Ordinary requests reread the selected file. To revise a proposal without touching
+disk, use its returned `proposal_id`:
+
+```json
+{"revise":"p1","instruction":"Keep that change, and preserve the original docstring.","max_tokens":512}
+```
+
+The revision uses the parent's replacement as source and returns a combined diff
+against the original disk file. It inherits the parent's file and symbol; changing
+either is rejected. The original file hash must still match, otherwise start a
+new request. Only the eight most recent reviewable proposals are kept in this
+process; IDs expire on eviction or restart. Incomplete/rejected responses do not
+get IDs. There is still no apply or execution command. Ctrl-D ends the loop.
 
 For a small edit inside a larger Python file, select a top-level function:
 
@@ -59,6 +70,27 @@ applied its minimal change: validate all mapping keys before sorting. The new
 regression test covers both key insertion orders, nested input and integer-only
 keys. Review, test and application time are not included in the inference timing.
 The workbench itself did not execute or apply the proposal.
+
+### Revision workflow result (including failure)
+
+On a second real maintenance task, `_write` needed to avoid adding redundant
+newlines. With JSON-wrapped source, the first proposal missed stdout and its
+revision incorrectly doubled a newline escape. Ordinary generation produced
+the same failures, so neither proposal was applied. Source is now supplied
+verbatim to avoid that extra escaping layer; this is not an injection defense.
+
+With verbatim source, the initial proposal still missed stdout. One explicit
+revision produced the correct combined change in both ordinary and draft modes.
+The maintainer reviewed and applied it; behavior tests cover empty text, existing
+newlines, blank lines, Unicode, stdout and files. A syntactically reviewable
+proposal is not necessarily correct, and speed is not a substitute for review.
+
+In that single paired run, ordinary requests took 1.377 + 1.342 seconds;
+draft-mode requests took 1.341 + 1.081 seconds. The revision verified 18 draft
+tokens. Shared loading took 2.746 seconds. These are request timings, not a
+general speedup claim: fixed ordinary-first order, one example, and review/test
+time excluded. The failed JSON-framed trials are retained here rather than
+counted as successful work. No private source or model paths are published.
 
 Output includes replacement `text`, completion status, `diff_preview`, source
 SHA-256, total request time, completion time, exact-cache hits, reused prefix

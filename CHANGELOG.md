@@ -2,6 +2,12 @@
 
 ## Experimental workbench preview — September 19, 2026
 
+- Added bounded, source-hash-bound in-memory proposal revisions via `revise` IDs.
+  Revisions preserve file/symbol scope and never apply changes automatically.
+- Supply code verbatim instead of JSON-escaping it in prompts; document both the
+  failed and corrected newline-maintenance trials.
+- Reviewed and applied the corrected CLI newline-handling proposal with tests.
+
 - Added named top-level Python function editing, preserving surrounding code
   and rejecting wrong-name, extra-statement and invalid-syntax replacements.
 - Used the workbench to propose the codec mixed-key validation repair; reviewed

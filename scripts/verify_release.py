@@ -158,6 +158,7 @@ def main() -> int:
         checks.append({"id": check_id, "status": "PASS" if result.returncode == 0 else "FAIL"})
         if result.returncode:
             failures.append(f"check failed: {check_id}")
+            print(f"{check_id} diagnostics:\n{result.stdout[-12000:]}\n{result.stderr[-12000:]}", file=sys.stderr)
 
     manifest = {
         "schema": "anvil-public-beta-release-manifest-v0.2",
