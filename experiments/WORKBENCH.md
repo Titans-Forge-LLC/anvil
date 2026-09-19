@@ -12,6 +12,47 @@ or telemetry is started. Treat output as untrusted code requiring review.
 
 ## Run
 
+### Use an existing local Splash server
+
+```sh
+python experiments/workbench.py --backend splash --splash-url http://127.0.0.1:8000
+```
+
+Use the same file/function requests and `revise` IDs described below. This client
+path needs only Python, not MLX. An optional `--model` identifies the package
+already served; it does not download it. Set `SPLASH_API_KEY` in both processes
+if the server requires authentication. No key, request body or server error body
+is logged by the adapter. Output proposals can contain private code; do not
+publish them inadvertently.
+
+This integration delegates generation to Splash's documented non-streaming chat
+completion API with reasoning disabled. Splash owns its model, learned drafter,
+KV cache and kernels; ANVIL owns the source-bound proposal/revision workflow.
+ANVIL's MLX `--source-draft` and `--ordinary` flags are rejected on this backend.
+An HTTP wrapper does **not** combine ANVIL source verification with DFlash.
+That requires a separate engine-level candidate-verification hook and correct
+target/drafter state synchronization. Unknown engine counters are reported as
+null, not invented as zero or one. HTTP request counts and elapsed time are local
+measurements. Server model-loading cost is not measured by this adapter.
+
+Only literal loopback HTTP endpoints are accepted (127.0.0.1 or ::1); proxies
+and redirects are disabled. The server is a trusted local dependency: ANVIL
+does not attest its identity or sandbox its internals. Truncated outputs are
+incomplete; tool-call/refusal/malformed responses are rejected. There are no
+automatic retries, server installs, downloads, server restarts or file writes.
+The startup `ready` event means the client is accepting requests, not that the
+server has passed a readiness check.
+
+Status: adapter tests pass against a local HTTP fixture, including a proposal
+revision. **Live Splash/model integration and combined performance remain
+unmeasured**; no Splash server was available during this implementation.
+Follow [upstream installation and serving instructions](https://github.com/incoai/splash#quick-start)
+to start a server before using the adapter. Then compare the same editing requests
+directly and through ANVIL, counting review, retries, startup and total request
+cost. Do not multiply independent speedup headlines.
+
+### Use the in-process MLX adapter
+
 Requires an Apple Silicon Mac, Python 3.10+, MLX and mlx-lm, and an existing
 local MLX-format Qwen2/Qwen2.5 model. The codec needs none of these.
 Install optional dependencies in a separate virtual environment:

@@ -62,6 +62,7 @@
     "tests/test_reasoning_signature.py",
     "tests/test_reasoning_signature_ollama.py",
     "tests/test_release_boundary.py",
+    "tests/test_splash_adapter.py",
     "tests/test_workbench.py"
   ],
   "excluded_generated_files": [

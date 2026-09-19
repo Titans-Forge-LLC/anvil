@@ -15,6 +15,9 @@ import os
 from pathlib import Path
 import sys
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 
 
 SYSTEM = (
@@ -133,6 +136,91 @@ class Completion:
         except Exception:
             self.cache, self.prefix = None, []
             raise
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+class SplashCompletion:
+    """Loopback HTTP adapter. Splash, not ANVIL, owns decoding and KV state.
+
+    This does not expose ANVIL token-level drafting through an HTTP wrapper.
+    No model dependencies are imported and no server is installed or started.
+    """
+
+    source_drafts = False
+
+    def __init__(self, base_url='http://127.0.0.1:8000', model=None, timeout=120):
+        url = urllib.parse.urlsplit(base_url)
+        if (url.scheme != 'http' or url.hostname not in ('127.0.0.1', '::1')
+                or url.username is not None or url.password is not None
+                or url.query or url.fragment or url.path.rstrip('/') not in ('', '/v1')):
+            raise ValueError('Splash URL must be literal loopback HTTP, optionally ending in /v1')
+        if url.port is not None and not 1 <= url.port <= 65535:
+            raise ValueError('invalid port')
+        self.endpoint = urllib.parse.urlunsplit(('http', url.netloc, '/v1/chat/completions', '', ''))
+        self.model, self.timeout = model, timeout
+        self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+
+    def complete(self, messages, max_tokens=512):
+        started = time.perf_counter()
+        if type(max_tokens) is not int or not 1 <= max_tokens <= 4096:
+            raise ValueError('max_tokens must be an integer in [1, 4096]')
+        payload = {'messages': messages, 'max_tokens': max_tokens, 'temperature': 0,
+                   'stream': False, 'reasoning_effort': 'none'}
+        if self.model:
+            payload['model'] = self.model
+        body = json.dumps(payload).encode('utf-8')
+        if len(body) > 262144:
+            raise ValueError('HTTP request exceeds 256 KiB preview limit')
+        headers = {'Content-Type': 'application/json'}
+        key = os.environ.get('SPLASH_API_KEY')
+        if key:
+            if not key.isascii() or any(ord(char) < 32 or ord(char) == 127 for char in key):
+                raise ValueError('invalid SPLASH_API_KEY header characters')
+            headers['Authorization'] = 'Bearer ' + key
+        request = urllib.request.Request(self.endpoint, data=body, headers=headers, method='POST')
+        try:
+            with self.opener.open(request, timeout=self.timeout) as response:
+                raw = response.read(1048577)
+        except urllib.error.HTTPError as exc:
+            code = exc.code
+            exc.close()
+            raise RuntimeError(f'Splash HTTP {code}; no retry or redirect performed') from None
+        except (urllib.error.URLError, TimeoutError, OSError):
+            raise RuntimeError('Splash connection failed or timed out; no automatic retry') from None
+        if len(raw) > 1048576:
+            raise ValueError('Splash response exceeds 1 MiB preview limit')
+        try:
+            data = json.loads(raw)
+            choices = data['choices']
+            if not isinstance(choices, list) or len(choices) != 1:
+                raise ValueError('expected one choice')
+            choice = choices[0]
+            message = choice['message']
+            content = message['content']
+            if (not isinstance(content, str) or not content.strip()
+                    or message.get('tool_calls') or message.get('function_call') or message.get('refusal')):
+                raise ValueError('expected text proposal, not tool call or refusal')
+            reason = choice['finish_reason']
+            if reason not in ('stop', 'length'):
+                raise ValueError('unknown completion state')
+            usage = data.get('usage') or {}
+            tokens = usage.get('completion_tokens')
+            if tokens is not None and (type(tokens) is not int or tokens < 0):
+                raise ValueError('invalid token count')
+        except (ValueError, TypeError, KeyError, AttributeError, IndexError):
+            raise ValueError('invalid Splash text-completion response') from None
+        return {
+            'text': content, 'complete': reason == 'stop', 'output_tokens': tokens,
+            'finish_reason': reason, 'backend': 'splash_http',
+            'http_requests': 1, 'model_calls': None, 'exact_hit': False,
+            'prefix_tokens_reused': None, 'draft_tokens_verified': None,
+            'draft_tokens_scored': None, 'draft_origin': 'server_managed',
+            'completion_seconds': time.perf_counter() - started,
+        }
 
 
 class MLXBackend:
@@ -356,7 +444,9 @@ class ProposalSession:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--model', required=True, help='existing local MLX Qwen2/Qwen2.5 directory')
+    parser.add_argument('--backend', choices=('mlx', 'splash'), default='mlx')
+    parser.add_argument('--model', help='local MLX directory, or optional served Splash model ID')
+    parser.add_argument('--splash-url', default='http://127.0.0.1:8000')
     parser.add_argument('--ordinary', action='store_true', help='disable draft reuse, retain exact/prefix caches')
     parser.add_argument('--source-draft', action='store_true', help='experimental: verify source instead of previous answer as draft')
     parser.add_argument('--memory-gib', type=int, default=20)
@@ -365,10 +455,21 @@ def main():
         parser.error('--memory-gib must be in [1, 128]')
     if args.ordinary and args.source_draft:
         parser.error('--ordinary and --source-draft are mutually exclusive')
-    backend = MLXBackend(args.model, args.memory_gib)
-    completion = Completion(backend, not args.ordinary, args.source_draft)
+    if args.backend == 'splash':
+        if args.ordinary or args.source_draft:
+            parser.error('Splash owns decoding: --ordinary and --source-draft are MLX-only')
+        completion = SplashCompletion(args.splash_url, args.model)
+        load_seconds = None
+    else:
+        if not args.model:
+            parser.error('--model is required for MLX')
+        backend = MLXBackend(args.model, args.memory_gib)
+        completion = Completion(backend, not args.ordinary, args.source_draft)
+        load_seconds = backend.load_seconds
     proposals = ProposalSession(completion)
-    print(json.dumps({'ready': True, 'load_seconds': backend.load_seconds, 'proposal_only': True}), flush=True)
+    print(json.dumps({'ready': True, 'backend': args.backend, 'load_seconds': load_seconds,
+                      'server_readiness': 'not_checked' if args.backend == 'splash' else 'not_applicable',
+                      'proposal_only': True}), flush=True)
     for line in sys.stdin:
         try:
             if len(line) > 16384:

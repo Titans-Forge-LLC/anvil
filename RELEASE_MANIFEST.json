@@ -1,5 +1,5 @@
 {
-  "allowlist_sha256": "6fa6fe86ee64451a9e5a28f9e1d687437e36d8afa428f4de74fffb7deb5ee267",
+  "allowlist_sha256": "00cd8a456d49a3a867ba61b5336e75a2890cbeafdbfff38f6f8ae5ad812770e6",
   "canonical_name": "Adaptive Neural Vector Instruction Language",
   "checks": [
     {
@@ -52,7 +52,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "009e3b05827d2aa035b0d4f748fc2d319f8b3836f303d4569f15b0c64c7da5a4"
+      "sha256": "a1f2aada10f406bd1f9ba979052033dd12318d450a3f8eab53210ca35188c857"
     },
     {
       "path": "CITATION.cff",
@@ -96,11 +96,11 @@
     },
     {
       "path": "PUBLIC_RELEASE_FILE_ALLOWLIST_V0_1.json",
-      "sha256": "6fa6fe86ee64451a9e5a28f9e1d687437e36d8afa428f4de74fffb7deb5ee267"
+      "sha256": "00cd8a456d49a3a867ba61b5336e75a2890cbeafdbfff38f6f8ae5ad812770e6"
     },
     {
       "path": "README.md",
-      "sha256": "c85cda46b3479475df32caedc3a36124eff322114249f85f57cbfc24a6052577"
+      "sha256": "937a3aaf74b108bf55b4916b82f038ecb8cc8a296b54d42f164ec799e34e771a"
     },
     {
       "path": "RELEASE_EVIDENCE_PACKET.md",
@@ -128,7 +128,7 @@
     },
     {
       "path": "experiments/WORKBENCH.md",
-      "sha256": "5bf8a7cd50f64ab25e1e981374ff3ba3f78eeab0070b5b0cb2e4bdeb137f5c83"
+      "sha256": "02e691ed7d13adbb5b40c68e3bb0df606e7fc464d6bd7b2f46c91095995d58cb"
     },
     {
       "path": "experiments/compare_source_drafts.py",
@@ -152,7 +152,7 @@
     },
     {
       "path": "experiments/workbench.py",
-      "sha256": "ee1fd525c12ca9711d0e82dd555cbee13c23ea29008aacee6e0861a1ffd2a6bd"
+      "sha256": "6c1d87ebdb2fca23cc3bf28d99379317f088f4aab3be4c85593922e0b5187a49"
     },
     {
       "path": "licenses/MIT.txt",
@@ -253,6 +253,10 @@
     {
       "path": "tests/test_release_boundary.py",
       "sha256": "9d609015fa8c4c559e96e0444b45f5f7df4614d97c14f2a47d79b4e38764a580"
+    },
+    {
+      "path": "tests/test_splash_adapter.py",
+      "sha256": "9eb49632ca36ea023cf32251aa7790ed52dff0bd1fe23de698920187dd51c66e"
     },
     {
       "path": "tests/test_workbench.py",
