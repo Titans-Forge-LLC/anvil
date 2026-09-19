@@ -49,6 +49,44 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_unchanged_proposals_not_retained_but_reverting_parent_is_valid(self):
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'sample.py'
+            original = 'def f():\n    return 1\n'
+            path.write_bytes(original.encode('utf-8'))
+            class Complete:
+                text = original
+                def complete(self, messages, max_tokens):
+                    return {'text': self.text, 'complete': True}
+            c = Complete()
+            session = W.ProposalSession(c)
+            request = dict(file=str(path), symbol='f', instruction='Edit')
+            for extra in ({}, {'symbol': None}):
+                result = session.propose({**request, **extra})
+                self.assertFalse(result['reviewable'])
+                self.assertIn('unchanged', result['rejection'])
+                self.assertIsNone(result['replacement_text'])
+                self.assertIsNone(result['diff_preview'])
+                self.assertIsNone(result['proposal_id'])
+            self.assertEqual(len(session.proposals), 0)
+            c.text = original.replace('1', '2')
+            parent = session.propose(request)
+            same = session.propose(dict(revise=parent['proposal_id'], instruction='Again'))
+            self.assertFalse(same['reviewable'])
+            self.assertEqual(len(session.proposals), 1)
+            c.text = original
+            revert = session.propose(dict(revise=parent['proposal_id'], instruction='Revert'))
+            self.assertTrue(revert['reviewable'])
+            self.assertEqual(revert['replacement_text'], original)
+            # Two individually changing edits can cancel in the combined result.
+            c.text = json.dumps({'edits': [{'old': 'return ', 'new': 'ret'},
+                                         {'old': '1', 'new': 'urn 1'}]})
+            result = session.propose({**request, 'format': 'edits'})
+            self.assertFalse(result['reviewable'])
+            self.assertIn('unchanged', result['rejection'])
+            self.assertEqual(path.read_text(), original)
+
     def test_function_selection_uses_python_physical_lines(self):
         for separator in ('\u2028', '\u2029', '\x85', '\v', '\f'):
             for newline in ('\n', '\r\n', '\r'):

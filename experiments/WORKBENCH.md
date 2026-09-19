@@ -155,6 +155,10 @@ assume speed or correctness from a smaller-looking representation. Splash
 responses now include `input_tokens` when the server reports it; missing counts
 remain `null` and are never estimated.
 
+Unchanged reconstructed proposals are rejected without a diff or revision slot.
+For revisions, "unchanged" means equal to the parent proposal, not the disk file;
+deliberately reverting a parent to disk content is still a valid proposal.
+
 ### First real maintenance use
 
 The function mode proposed the shipped `normalize` key-validation repair on the

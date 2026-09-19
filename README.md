@@ -8,8 +8,8 @@ Status: `LIMITED PUBLIC BETA`
 
 Latest: [Try the persistent coding workbench preview](experiments/WORKBENCH.md).
 Opt-in atomic `"format":"edits"` can change several spans without regenerating
-the whole function. [One adaptive development replay](experiments/ATOMIC_EDIT_SCREEN.md)
-passed with lower request/check time, after two failed initial attempts. It is
+the whole function. [An adaptive replay and a fresh fixed-format task](experiments/ATOMIC_EDIT_SCREEN.md)
+passed with lower request/check time, after two failed initial development attempts. It is
 not a general speedup or competitor benchmark; whole-function output stays default.
 New opt-in `"format":"edit"` requests one exact source-bound change rather than
 a whole function. [A small live screen](experiments/EDIT_SPAN_SCREEN.md) used
