@@ -49,6 +49,38 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_named_function_preserves_surrounding_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'sample.py'
+            original = '# café\nimport math\n\ndef f():\n    return 1\n\n# keep\nx = 3\n'
+            path.write_bytes(original.encode())
+            class Complete:
+                def complete(self, messages, max_tokens):
+                    self.messages = messages
+                    return {'text': 'def f():\n    return 2', 'complete': True}
+            c = Complete()
+            r = W.propose(c, {'file': str(path), 'symbol': 'f', 'instruction': 'Return 2'})
+            self.assertTrue(r['reviewable'])
+            self.assertEqual(r['replacement_text'], original.replace('return 1', 'return 2'))
+            self.assertNotIn('import math', c.messages[1]['content'])
+            self.assertEqual(path.read_bytes(), original.encode())
+
+    def test_function_rejects_extra_statements_wrong_name_and_bad_syntax(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'sample.py'
+            path.write_text('def f():\n    return 1\n')
+            class Complete:
+                def complete(self, messages, max_tokens):
+                    return {'text': self.text, 'complete': True}
+            c = Complete()
+            for text in ('def g():\n    return 2', 'def f():\n    return 2\nx=1', 'def f('):
+                c.text = text
+                r = W.propose(c, {'file': str(path), 'symbol': 'f', 'instruction': 'Return 2'})
+                self.assertFalse(r['reviewable'])
+                self.assertIsNone(r['replacement_text'])
+            with self.assertRaises(ValueError):
+                W.propose(c, {'file': str(path), 'symbol': 'missing', 'instruction': 'Return 2'})
+
     def test_block_mismatch_rollback_and_full_acceptance_match_ordinary(self):
         draft, ordinary = W.Completion(Backend()), W.Completion(Backend(), False)
         for prompt in ([10, 1], [10, 2], [10, 4], [10, 1]):

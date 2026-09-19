@@ -36,6 +36,30 @@ request to get a follow-up proposal; the process keeps its model and caches.
 Requests reread the selected file, not the last proposal. Review and save an edit
 yourself before asking for a change to that edited version. Ctrl-D ends the loop.
 
+For a small edit inside a larger Python file, select a top-level function:
+
+```json
+{"file":"src/anvil_alpha/codec.py","symbol":"normalize","instruction":"Review key validation and preserve all other behavior, annotations and docstring.","max_tokens":512}
+```
+
+Only that function is sent as source context. Its surrounding module is retained
+verbatim by the host when composing `replacement_text`. The generated replacement
+must parse as exactly one function of the same name and kind; otherwise no
+reviewable replacement is returned. Imports and other globals are not supplied,
+so include necessary context in your instruction. Nested functions and methods
+are not selectable in this preview. File size and generation limits still apply.
+
+### First real maintenance use
+
+The function mode proposed the shipped `normalize` key-validation repair on the
+existing 14B adapter: 177 output tokens, 3.667 s total request time, plus 2.149 s
+model loading. This was a first request with no reused draft, not a speedup test.
+The maintainer reproduced three mixed-key failures, reviewed the proposal, and
+applied its minimal change: validate all mapping keys before sorting. The new
+regression test covers both key insertion orders, nested input and integer-only
+keys. Review, test and application time are not included in the inference timing.
+The workbench itself did not execute or apply the proposal.
+
 Output includes replacement `text`, completion status, `diff_preview`, source
 SHA-256, total request time, completion time, exact-cache hits, reused prefix
 positions, and verified/scored draft tokens. The diff is for inspection, not an

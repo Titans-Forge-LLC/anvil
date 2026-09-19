@@ -2,6 +2,11 @@
 
 ## Experimental workbench preview — September 19, 2026
 
+- Added named top-level Python function editing, preserving surrounding code
+  and rejecting wrong-name, extra-statement and invalid-syntax replacements.
+- Used the workbench to propose the codec mixed-key validation repair; reviewed
+  and applied it with regression coverage. Valid-input wire encoding is unchanged.
+
 - Added a resident, local-only single-file editing proposal loop with optional MLX.
 - Retain exact responses and causal prefixes; target-check the previous answer
   as a draft, rolling back and resuming ordinary generation on mismatch.
