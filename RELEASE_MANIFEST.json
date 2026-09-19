@@ -1,5 +1,5 @@
 {
-  "allowlist_sha256": "790876f61dedfae883dd4116b7dfa6c3b0262b18d5e8ecd27630db797290ce2c",
+  "allowlist_sha256": "0ecd3b858dfa71452dad57996760cd503d5b731a5681c8a03e995bba9f2fe145",
   "canonical_name": "Adaptive Neural Vector Instruction Language",
   "checks": [
     {
@@ -52,7 +52,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "c98592e556dfb2102d76efddd619ece243ce3d281baeb3188658e1f01f544c11"
+      "sha256": "9f40ea59e061ccb43d3e7d835be7ae45254d69b00b5f47dfe56be67bde5e940d"
     },
     {
       "path": "CITATION.cff",
@@ -96,11 +96,11 @@
     },
     {
       "path": "PUBLIC_RELEASE_FILE_ALLOWLIST_V0_1.json",
-      "sha256": "790876f61dedfae883dd4116b7dfa6c3b0262b18d5e8ecd27630db797290ce2c"
+      "sha256": "0ecd3b858dfa71452dad57996760cd503d5b731a5681c8a03e995bba9f2fe145"
     },
     {
       "path": "README.md",
-      "sha256": "6a48f19b169cf5c6f3427d19dbec179295c1559b3dc8fc96d7d1fd7aa4f893a6"
+      "sha256": "c85cda46b3479475df32caedc3a36124eff322114249f85f57cbfc24a6052577"
     },
     {
       "path": "RELEASE_EVIDENCE_PACKET.md",
@@ -123,6 +123,14 @@
       "sha256": "b9db9d356a3db4d932b592853bc93b53ed8b62dcb7dd1b411c7bb27ec5b3f32d"
     },
     {
+      "path": "examples/workbench_sample.py",
+      "sha256": "cfd0e84678557caeb571735dcc2b5066dff0a170e0d3bfbe9cd1824a598d2a2c"
+    },
+    {
+      "path": "experiments/WORKBENCH.md",
+      "sha256": "cded03a2683c1ec278e20a93c5109ad6951f5c1c1d014195030a6f4d73d81c07"
+    },
+    {
       "path": "experiments/reasoning-signature/README.md",
       "sha256": "560fa5cb42a95885dd8bc7979b21666ab5799dda7365dcaaba3b9cd198bfee64"
     },
@@ -133,6 +141,10 @@
     {
       "path": "experiments/reasoning-signature/contract.json",
       "sha256": "2b5914bd732958610aa7c8dcccd48a8a450e81fbf7c2569881b336ca0620872c"
+    },
+    {
+      "path": "experiments/workbench.py",
+      "sha256": "88b685fbb1c132b2fe4248f485cf35f1ea17d5d06b9301819b1a8ea0883abffe"
     },
     {
       "path": "licenses/MIT.txt",
@@ -233,6 +245,10 @@
     {
       "path": "tests/test_release_boundary.py",
       "sha256": "9d609015fa8c4c559e96e0444b45f5f7df4614d97c14f2a47d79b4e38764a580"
+    },
+    {
+      "path": "tests/test_workbench.py",
+      "sha256": "fa897678d428f8e98adc3a75bfbb611837ce527e2eef09381da676f68ee8e253"
     }
   ],
   "profile": "AVP1/governed-mission-v1",

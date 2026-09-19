@@ -29,9 +29,12 @@
     "SECURITY.md",
     "TESTING.md",
     "examples/governed_mission.json",
+    "examples/workbench_sample.py",
+    "experiments/WORKBENCH.md",
     "experiments/reasoning-signature/README.md",
     "experiments/reasoning-signature/cases.json",
     "experiments/reasoning-signature/contract.json",
+    "experiments/workbench.py",
     "licenses/MIT.txt",
     "pyproject.toml",
     "scripts/create_test_receipt.py",
@@ -56,7 +59,8 @@
     "tests/test_codec.py",
     "tests/test_reasoning_signature.py",
     "tests/test_reasoning_signature_ollama.py",
-    "tests/test_release_boundary.py"
+    "tests/test_release_boundary.py",
+    "tests/test_workbench.py"
   ],
   "excluded_generated_files": [
     "RELEASE_MANIFEST.json"

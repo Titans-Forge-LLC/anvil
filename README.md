@@ -6,14 +6,16 @@ authority must survive decoding exactly.
 
 Status: `LIMITED PUBLIC BETA`
 
-Latest: [Development update — September 5, 2026](DEVELOPMENT_UPDATE_2026_09_05.md).
+Latest: [Try the persistent coding workbench preview](experiments/WORKBENCH.md).
+It keeps a local model resident, verifies reused drafts, and returns reviewable
+single-file edit proposals. Optional Apple Silicon dependencies; no automatic
+code execution or file changes. This experimental track is separate from AVP1.
 
 Research detail: [What our local-agent experiments have demonstrated](INTERNAL_AGENT_EXPERIMENTS.md).
 
-Beta window: public testing is planned through approximately September 11,
-2026. The full-release date is a target, not an automatic promotion: semantic
-or authority failures, privacy issues, or unresolved release-critical defects
-will extend the beta.
+The beta remains open. The earlier September 11 target was not a full-release
+promotion. We are shipping incremental previews while keeping measured results
+and unsupported claims separate.
 
 Patent Pending.
 
