@@ -381,7 +381,9 @@ def propose(completion, request, *, base_source=None, expected_sha256=None):
         if len(nodes) != 1:
             raise ValueError('symbol must identify exactly one top-level function')
         node = nodes[0]
-        lines = source.splitlines(keepends=True)
+        # Match Python's physical lines without splitting Unicode inside literals/comments.
+        import re
+        lines = re.findall(r'[^\r\n]*(?:\r\n|\r|\n|$)', source)
         first = min([node.lineno] + [d.lineno for d in node.decorator_list])
         start = sum(map(len, lines[:first - 1]))
         end = sum(map(len, lines[:node.end_lineno]))
@@ -418,7 +420,9 @@ def propose(completion, request, *, base_source=None, expected_sha256=None):
     if usable and mode == 'edit':
         try:
             replacement = reconstruct_edit(selected, result['text'])
-            boundary = '\r\n' if selected.endswith('\r\n') else '\n' if selected.endswith('\n') else ''
+            boundary = ('\r\n' if selected.endswith('\r\n') else
+                        '\n' if selected.endswith('\n') else
+                        '\r' if selected.endswith('\r') else '')
             if boundary and not replacement.endswith(boundary):
                 raise ValueError('edit must preserve the selected function newline boundary')
         except (ValueError, UnicodeError) as exc:
@@ -436,6 +440,8 @@ def propose(completion, request, *, base_source=None, expected_sha256=None):
                     replacement += '\r\n'
                 elif selected.endswith('\n'):
                     replacement += '\n'
+                elif selected.endswith('\r'):
+                    replacement += '\r'
             replacement = source[:start] + replacement + source[end:]
         except (SyntaxError, ValueError) as exc:
             usable, rejection = False, str(exc)

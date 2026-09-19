@@ -49,6 +49,26 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_function_selection_uses_python_physical_lines(self):
+        for separator in ('\u2028', '\u2029', '\x85', '\v', '\f'):
+            for newline in ('\n', '\r\n', '\r'):
+                with self.subTest(separator=repr(separator), newline=repr(newline)):
+                    with tempfile.TemporaryDirectory() as directory:
+                        path = Path(directory) / 'sample.py'
+                        selected = f'def f():{newline}    # inside {separator} comment{newline}    return 1{newline}'
+                        original = f'# before {separator} comment{newline}{selected}x = 3{newline}'
+                        path.write_bytes(original.encode())
+                        class Complete:
+                            def complete(self, messages, max_tokens):
+                                self.prompt = messages[1]['content']
+                                return {'text': selected.replace('return 1', 'return 2'), 'complete': True}
+                        c = Complete()
+                        result = W.propose(c, {'file': str(path), 'symbol': 'f', 'instruction': 'Return 2'})
+                        self.assertIn('SOURCE (verbatim):\n' + selected + '\nEND SOURCE', c.prompt)
+                        self.assertTrue(result['reviewable'])
+                        self.assertEqual(result['replacement_text'], original.replace('return 1', 'return 2'))
+                        self.assertEqual(path.read_bytes(), original.encode())
+
     def test_first_request_source_draft_matches_target_after_mismatch(self):
         b = Backend()
         b.encode_text = lambda text: list(range(100, 140))
