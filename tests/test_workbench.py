@@ -53,7 +53,7 @@ class WorkbenchTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'sample.py'
             original = '# keep\ndef f():\n    return 1\n'
-            path.write_text(original)
+            path.write_bytes(original.encode('utf-8'))
             class Complete:
                 text = 'def f():\n    return 2\n'
                 def complete(self, messages, max_tokens):
@@ -130,7 +130,7 @@ class WorkbenchTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'sample.py'
             source = 'def f():\n    return "\\n"\n'
-            path.write_text(source)
+            path.write_bytes(source.encode('utf-8'))
             class Complete:
                 def complete(self, messages, max_tokens):
                     self.prompt = messages[1]['content']

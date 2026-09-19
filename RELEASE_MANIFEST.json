@@ -172,7 +172,7 @@
     },
     {
       "path": "scripts/verify_release.py",
-      "sha256": "e97347c68d2621d994f22d0bde64762df6fd2f761294ed8a14098d160c57234d"
+      "sha256": "b54d76a89cc3abb55c57060f4e37eb628107c447c2f010fc76f4141d3e2178b9"
     },
     {
       "path": "site/app.js",
@@ -248,7 +248,7 @@
     },
     {
       "path": "tests/test_workbench.py",
-      "sha256": "aa4974457eb8d912d106858e3fa4f093a2554e6be57ffe79385d947ffadd901a"
+      "sha256": "db941cffff79e5ba7ed6a1b41e8c17ce1e03fba47c69f0cfef240f99350cfcd0"
     }
   ],
   "profile": "AVP1/governed-mission-v1",
