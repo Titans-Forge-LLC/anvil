@@ -106,6 +106,42 @@ reported separately; include it in cold-start comparisons.
 
 ## Compare without draft reuse
 
+### Optional first-request source drafts
+
+Add `--source-draft` to use the selected source code (or parent proposal on a
+revision) as the candidate instead of the previous answer. Every candidate token
+is target-checked. The first mismatch rolls back and falls back as before; there
+is no assumption that unchanged-looking source must remain correct. Tokenization
+is counted in request time. Source containing special control tokens is not used
+as a draft. The ordinary flag and source-draft flag are mutually exclusive.
+
+```sh
+python experiments/workbench.py --model /absolute/path/to/local/model --source-draft
+python experiments/compare_source_drafts.py --model /absolute/path/to/local/model
+```
+
+The comparison uses three declared requests on public functions, fresh sessions
+per request, and two repetitions with reversed arm order. Both arms have the same
+resident target and cache implementation. It prints metadata and output hashes,
+not proposal bodies. It does not execute or apply generated code.
+
+[Recorded screen](source_draft_screen.json), existing Qwen2.5-14B adapter:
+
+| Editing request | Ordinary total (s) | Source draft total (s) |
+|---|---:|---:|
+| Late mapping-loop change | 8.220 | 4.223 |
+| JSON loader encoding change | 1.118 | 0.591 |
+| Early docstring insertion | 4.776 | 4.446 |
+| **Total across both repetitions** | **14.114** | **9.260** |
+
+All six paired outputs were complete and text-identical. Request time decreased
+34.4% in this small screen (1.52x); shared loading was 2.295 s and the full
+two-arm campaign took 25.730 s. Model forward calls fell from 682 to 366, but
+block calls do more work than single-token calls: this is not a FLOP reduction
+measurement. Review and behavior-testing time are excluded, and syntax/text
+agreement does not establish task correctness. Benefits were much smaller for
+the early edit. Other requests can lose time; the option remains experimental.
+
 Add `--ordinary` for the same target, exact-response cache and causal-prefix
 cache without draft verification. Run the same file snapshots and instructions
 in each mode. Count load plus total request time for cold use, and total request
