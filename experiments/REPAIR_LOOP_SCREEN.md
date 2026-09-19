@@ -136,3 +136,21 @@ Decision: retain the fast default and explicit reasoning option. Do not add an
 automatic scheduler or claim general speedups. Next evidence should come from
 ordinary maintenance jobs that need doing, including failures when they occur,
 not from increasingly contrived tasks designed to trigger the repair branch.
+
+## Ordinary maintenance follow-through: larger modules
+
+The next useful job was removing the full-file 32 KiB obstacle when editing a
+small named function. One fast atomic-edit proposal took 5.490 s on the same
+stock model. It failed the frozen behavior check: it increased the initial read
+limit but left the post-generation reread at the old limit, so a larger unchanged
+file was treated as changed. It also omitted the whole-file input restriction.
+No second model attempt was made. The host implementation was corrected manually,
+with both reads bounded consistently and separate module/function limits.
+
+The failed check took 0.009 s; whole trial including startup, review and shutdown
+was 37.649 s, of which startup was 6.018 s. Manual correction and the subsequent
+regression suite are additional work, not credited as autonomous model success.
+The resulting product change accepts modules up to 1 MiB in named-function mode,
+preserves 32 KiB function and whole-file limits, and keeps source hashes/revisions.
+This is a delivered usability improvement, not a speed comparison. It reinforces
+why complete-job outcomes must include host review and correction.

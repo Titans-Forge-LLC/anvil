@@ -72,7 +72,13 @@ After the `ready` JSON line, enter one JSON object per line:
 ```
 
 Use the supplied exercise or select your own file. Start with a small file:
-source is limited to 32 KiB and prompt plus generation to 4,096 tokens.
+whole-file source is limited to 32 KiB and MLX prompt plus generation to 4,096 tokens.
+Named-function mode accepts modules up to 1 MiB while the selected function and
+its replacement remain limited to 32 KiB. Only that function enters the model
+prompt. The complete module remains hash-bound and is reread after generation;
+unchanged surrounding text is preserved in the returned proposal. Eight retained
+revision entries can therefore hold up to roughly 8 MiB of source text, plus
+Python object overhead. Backend context/token limits still apply.
 The entire replacement must fit the output budget. Enter another self-contained
 request to get a follow-up proposal; the process keeps its model and caches.
 Ordinary requests reread the selected file. To revise a proposal without touching

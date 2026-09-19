@@ -1,5 +1,9 @@
 # Changelog
 
+- Named-function workbench edits now support modules up to 1 MiB, with 32 KiB
+  selection/replacement limits and unchanged whole-file limits. Full-module
+  source binding and stale-revision checks remain in force.
+
 - Workbench: reject invalid Unicode in edit sources/envelopes/scalars with
   consistent ValueError; preserve valid emoji and existing atomic edit checks.
 - Publish two fresh maintenance-policy results, including shared costs and the
