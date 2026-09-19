@@ -54,7 +54,7 @@ class WorkbenchTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'sample.py'
             original = 'def f():\n    return 1\n'
-            path.write_text(original)
+            path.write_bytes(original.encode('utf-8'))
             class Complete:
                 text = original
                 def complete(self, messages, max_tokens):

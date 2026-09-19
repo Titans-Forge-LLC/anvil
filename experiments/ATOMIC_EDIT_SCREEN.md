@@ -131,6 +131,11 @@ The first edit incurred cold-server/prefix costs. Shared cache and repetition
 affect timing, so neither the warm pair nor the aggregate establishes a broad
 coding-speed claim. This does not compare competing engines.
 
+Initial Windows CI exposed newline translation in the new regression fixture:
+text-mode writing produced CRLF while the mocked response used LF. The fixture
+now writes explicit UTF-8 bytes, matching the original Mac experiment. No product
+or model output was changed for this correction; failed CI remains in PR history.
+
 Total trial startup/generation/shutdown: 36.876 s, including 6.015 s startup.
 Joint assistant review wall interval: approximately 12 seconds; no per-arm human
 review cost was measured. The selected edit was applied unchanged and the complete
