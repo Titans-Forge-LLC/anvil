@@ -66,6 +66,21 @@ class SplashAdapterTests(unittest.TestCase):
         self.reply['choices'][0]['finish_reason'] = 'length'
         self.assertFalse(self.client.complete([])['complete'])
 
+    def test_input_token_accounting_is_explicit_and_strict(self):
+        for tokens in (None, 0, 123):
+            with self.subTest(tokens=tokens):
+                self.reply['usage']['prompt_tokens'] = tokens
+                result = self.client.complete([])
+                self.assertEqual(result['input_tokens'], tokens)
+                self.assertEqual(result['output_tokens'], 10)
+        del self.reply['usage']['prompt_tokens']
+        self.assertIsNone(self.client.complete([])['input_tokens'])
+        for tokens in (True, False, -1, 1.5, '12', [], {}):
+            with self.subTest(tokens=tokens):
+                self.reply['usage']['prompt_tokens'] = tokens
+                with self.assertRaises(ValueError):
+                    self.client.complete([])
+
     def test_invalid_or_tool_responses_rejected(self):
         for reply in ({}, {'choices': []}, {'choices': [{'finish_reason': 'stop', 'message': {
             'content': 'text', 'tool_calls': [{'id': 'x'}]}}]},

@@ -22,6 +22,51 @@ class Completion:
 
 
 class EditTests(unittest.TestCase):
+    def test_atomic_edits_use_original_snapshot_independent_of_order(self):
+        edits = [{'old': 'abc', 'new': 'XYZ'}, {'old': 'XYZ', 'new': 'abc'}]
+        for order in (edits, edits[::-1]):
+            self.assertEqual(W.reconstruct_edit('abc---XYZ', json.dumps({'edits': order}),
+                                                multiple=True), 'XYZ---abc')
+        self.assertEqual(W.reconstruct_edit('ab', json.dumps({'edits': [
+            {'old': 'a', 'new': ''}, {'old': 'b', 'new': 'B'}]}), multiple=True), 'B')
+
+    def test_atomic_edits_reject_overlap_cascade_and_bad_envelopes(self):
+        for edits in ([], [{'old': 'ab', 'new': 'X'}, {'old': 'bc', 'new': 'Y'}],
+                      [{'old': 'a', 'new': 'X'}, {'old': 'a', 'new': 'Y'}],
+                      [{'old': 'a', 'new': 'X'}, {'old': 'X', 'new': 'Y'}],
+                      [{'old': 'a', 'new': 'X'}] * 17, {}, [None]):
+            with self.subTest(edits=edits), self.assertRaises(ValueError):
+                W.reconstruct_edit('abc', json.dumps({'edits': edits}), multiple=True)
+        for envelope in ('{"edits":[],"edits":[]}', '{"edits":[{"old":"a","old":"b","new":"c"}]}',
+                         '{"old":"a","new":"b"}', '{"edits":[],"extra":1}'):
+            with self.assertRaises(ValueError):
+                W.reconstruct_edit('abc', envelope, multiple=True)
+
+    def test_atomic_proposal_revision_and_all_or_nothing_rejection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'sample.py'
+            raw = b'# keep\r\ndef f():\r\n    a = 1\r\n    return a\r\nx = 3\r\n'
+            path.write_bytes(raw)
+            c = Completion(json.dumps({'edits': [{'old': 'a = 1', 'new': 'b = 2'},
+                                                {'old': 'return a', 'new': 'return b'}]}))
+            session = W.ProposalSession(c)
+            request = dict(file=str(path), symbol='f', instruction='Edit', format='edits')
+            first = session.propose(request)
+            self.assertTrue(first['reviewable'])
+            self.assertEqual(first['replacement_text'].encode(),
+                             raw.replace(b'a = 1', b'b = 2').replace(b'return a', b'return b'))
+            c.text = json.dumps({'edits': [{'old': 'b = 2', 'new': 'b = 4'}]})
+            revised = session.propose(dict(revise=first['proposal_id'], instruction='Again'))
+            self.assertEqual(revised['format'], 'edits')
+            self.assertTrue(revised['reviewable'])
+            for bad in ('absent', 'x = 3'):
+                c.text = json.dumps({'edits': [{'old': 'a = 1', 'new': 'a = 2'},
+                                              {'old': bad, 'new': 'x = 4'}]})
+                result = session.propose(request)
+                self.assertFalse(result['reviewable'])
+                self.assertIsNone(result['replacement_text'])
+            self.assertEqual(path.read_bytes(), raw)
+
     def test_exact_unicode_crlf_preservation(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'sample.py'
