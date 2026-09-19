@@ -399,15 +399,18 @@ def propose(completion, request, *, base_source=None, expected_sha256=None):
     path = Path(request['file']).expanduser().resolve(strict=True)
     if not path.is_file():
         raise ValueError('select a regular UTF-8 file')
+    source_limit = 1048576 if request.get('symbol') is not None else 32768
     with path.open('rb') as stream:
-        raw = stream.read(32769)
-    if len(raw) > 32768:
-        raise ValueError('file exceeds 32 KiB preview limit')
+        raw = stream.read(source_limit + 1)
+    if len(raw) > source_limit:
+        raise ValueError(f'file exceeds {source_limit} byte preview limit')
     source_hash = hashlib.sha256(raw).hexdigest()
     if expected_sha256 is not None and source_hash != expected_sha256:
         raise ValueError('source changed since the parent proposal; start a new request')
     original = raw.decode('utf-8')
     source = original if base_source is None else base_source
+    if len(source.encode('utf-8')) > source_limit:
+        raise ValueError(f'base source exceeds {source_limit} byte preview limit')
     if '\x00' in source:
         raise ValueError('binary content rejected')
     symbol = request.get('symbol')
@@ -430,6 +433,8 @@ def propose(completion, request, *, base_source=None, expected_sha256=None):
         start = sum(map(len, lines[:first - 1]))
         end = sum(map(len, lines[:node.end_lineno]))
         selected = source[start:end]
+        if len(selected.encode('utf-8')) > 32768:
+            raise ValueError('selected function exceeds 32 KiB preview limit')
         system = (
             'Edit only the supplied Python function. Return its complete replacement, '
             'including decorators and docstring, without Markdown or explanation. '
@@ -473,7 +478,7 @@ def propose(completion, request, *, base_source=None, expected_sha256=None):
     ], request.get('max_tokens', 512), **options)
     # Detect edits during generation; never present a patch as current in that case.
     with path.open('rb') as stream:
-        current = stream.read(32769)
+        current = stream.read(source_limit + 1)
     usable = result['complete'] and current == raw and not result['text'].lstrip().startswith('```')
     replacement = result['text']
     rejection = None
@@ -489,6 +494,8 @@ def propose(completion, request, *, base_source=None, expected_sha256=None):
             usable, rejection = False, str(exc)
     if usable and symbol is not None:
         try:
+            if len(replacement.encode('utf-8')) > 32768:
+                raise ValueError('replacement function exceeds 32 KiB preview limit')
             body = ast.parse(replacement).body
             if (len(body) != 1 or type(body[0]) is not type(node)
                     or body[0].name != symbol):
@@ -502,13 +509,15 @@ def propose(completion, request, *, base_source=None, expected_sha256=None):
                     replacement += '\n'
                 elif selected.endswith('\r'):
                     replacement += '\r'
+            if len(replacement.encode('utf-8')) > 32768:
+                raise ValueError('replacement function exceeds 32 KiB preview limit')
             replacement = source[:start] + replacement + source[end:]
         except (SyntaxError, ValueError) as exc:
             usable, rejection = False, str(exc)
     if usable and replacement == source:
         usable, rejection = False, 'proposal is unchanged; no-op rejected'
-    if usable and len(replacement.encode('utf-8')) > 32768:
-        usable, rejection = False, 'replacement exceeds 32 KiB preview limit'
+    if usable and len(replacement.encode('utf-8')) > source_limit:
+        usable, rejection = False, f'replacement exceeds {source_limit} byte preview limit'
     patch = ''.join(difflib.unified_diff(
         original.splitlines(keepends=True), replacement.splitlines(keepends=True),
         fromfile='original', tofile='proposal')) if usable else None

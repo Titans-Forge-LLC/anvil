@@ -52,6 +52,54 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_large_module_small_selection_and_revision(self):
+        class Complete:
+            def complete(self, messages, *args, **kwargs):
+                self.prompt = messages[-1]['content']
+                return dict(text='def f():\n    return 2\n', complete=True)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'large.py'
+            prefix = '#' + 'x' * 40000 + '\n'
+            raw = (prefix + 'def f():\n    return 1\n').encode()
+            path.write_bytes(raw)
+            client = Complete()
+            session = W.ProposalSession(client)
+            result = session.propose(dict(file=str(path), symbol='f', instruction='Return 2'))
+            self.assertTrue(result['reviewable'])
+            self.assertEqual(result['replacement_text'], prefix + 'def f():\n    return 2\n')
+            self.assertNotIn('x' * 100, client.prompt)
+            unchanged = session.propose(dict(revise=result['proposal_id'], instruction='Return 2'))
+            self.assertFalse(unchanged['reviewable'])
+            self.assertEqual(path.read_bytes(), raw)
+            with self.assertRaises(ValueError):
+                session.propose(dict(file=str(path), instruction='Edit'))
+            with self.assertRaises(ValueError):
+                W.propose(client, dict(file=str(path), symbol='f', instruction='Edit'), base_source='x' * 1048577)
+            path.write_bytes(raw + b'#changed')
+            with self.assertRaises(ValueError):
+                session.propose(dict(revise=result['proposal_id'], instruction='Edit'))
+
+    def test_large_edit_size_boundaries(self):
+        class Complete:
+            calls = 0
+            text = 'def f():\n    return 2\n'
+            def complete(self, *args, **kwargs):
+                self.calls += 1
+                return dict(text=self.text, complete=True)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'large.py'
+            client = Complete()
+            request = dict(file=str(path), symbol='f', instruction='Edit')
+            for raw in (b'#' + b'x' * 1048576, b'def f():\n    #' + b'x' * 33000 + b'\n    return 1\n'):
+                path.write_bytes(raw)
+                with self.assertRaises(ValueError): W.propose(client, request)
+                self.assertEqual(client.calls, 0)
+            tail = b'\ndef f():\n    return 1\n'
+            path.write_bytes(b'#' + b'x' * (1048576-len(tail)-1) + tail)
+            self.assertTrue(W.propose(client, request)['reviewable'])
+            client.text = 'def f():\n    #' + 'x' * 33000 + '\n    return 2\n'
+            self.assertFalse(W.propose(client, request)['reviewable'])
+
     def test_edit_unicode_errors_are_value_errors(self):
         cases = [('\ud800abc', '{"old":"a","new":"x"}'), ('abc', '\ud800')]
         for item in ({'old': 'a', 'new': '\ud800'}, {'old': '\udfff', 'new': 'x'}):
