@@ -2,6 +2,8 @@
 
 Follow-up: the fixed format subsequently passed a fresh task without tuning;
 see [the fresh no-op task](#fresh-task-with-the-shipped-format-held-fixed) below.
+The subsequent [larger streaming-loop task](#larger-fresh-task-bounded-input)
+required manual repair in both formats. Retain both outcomes.
 
 September 19, 2026. Goal: stop regenerating unchanged code when a task touches
 several locations in one function. No engine fork, new model or automatic execution.
@@ -146,3 +148,50 @@ complete developer-job cost. Raw proposals/logs remain private.
 Decision: retain the opt-in format and ship the useful no-op guard. The fixed
 prompt generalized to this fresh task; one task does not establish general
 reliability or justify changing the default. No engine change or model training.
+
+## Larger fresh task: bounded input
+
+The next fixed-format task changed the CLI input loop. Iterating stdin allocated
+an unbounded line before checking its length. The required behavior: bounded
+reads, drain oversized lines without dispatching fragments, emit exactly one
+error per oversized line, recover for the next valid request, and handle EOF.
+Keep the existing 16,384-character limit, including line terminator. This is a
+character limit, despite the legacy error message saying "16 KiB".
+
+No changes to shipped format prompts, engine, model or task-specific prompting.
+Order replacement/edits/edits/replacement, 4096-token budget for both. One fresh
+task repeated twice per format, same source and instructions. The frozen test
+reproduced the unbounded iteration defect before model inference.
+
+| Two requests per format | Atomic edits | Whole function |
+| --- | ---: | ---: |
+| Input tokens | 1,746 | 1,508 |
+| Output tokens | 662 | 1,286 |
+| Request + host-check time | 5.723 s | 9.253 s |
+| Initial frozen acceptance | 2/2 pass | 2/2 pass |
+| Review-derived boundary check | 0/2 pass | 0/2 pass |
+| Accepted without manual repair | 0/2 | 0/2 |
+
+All four proposals unconditionally drained another chunk after seeing an
+oversized initial chunk. When that chunk was exactly 16,385 characters and
+already ended with newline, this swallowed the following valid request. Review
+identified the defect; an additional test confirmed it in all candidates. The
+original frozen test used a longer line and missed this boundary. Its passing
+results are preserved, not retroactively described as complete acceptance.
+
+The repair checks whether the current chunk already ends with newline before
+reading again. Applied the reviewed edit with this direct correction. No model
+retries or prompt tuning. The full 55-method local suite passes. This is another
+useful shipped fix, but **not evidence of faster completed work**: generation
+was cheaper while both formats required manual repair.
+
+Model trial including startup and shutdown: 21.251 s, of which startup was
+6.027 s. Initial checks across all four proposals: 0.010 s; added boundary checks:
+0.012 s. Joint assistant review interval was approximately 34 seconds, not
+per-arm human labor. Manual repair, test development, documentation and CI were
+not fully timed. Raw logs and both versions of the check results are retained
+privately. No candidate was executed before diff review.
+
+Current fixed-format evidence covers two fresh tasks: the no-op guard succeeded
+without repair; this larger control-flow change required repair. That is too
+small and mixed to change the default or claim general agent/competitor speed.

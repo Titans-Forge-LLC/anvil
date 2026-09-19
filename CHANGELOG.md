@@ -2,6 +2,10 @@
 
 ## Experimental workbench preview — September 19, 2026
 
+- Bound CLI input reads and drain oversized requests without losing the next
+  valid request. Preserve the shared model boundary failure and counted direct
+  repair from the larger fixed-format maintenance experiment.
+
 - Reject unchanged proposals without consuming revision slots, while preserving
   legitimate parent reversions. Shipped the reviewed model-generated fix after
   a fresh fixed-format comparison; retained startup, review and timing limits.

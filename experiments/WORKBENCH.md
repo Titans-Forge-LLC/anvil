@@ -159,6 +159,12 @@ Unchanged reconstructed proposals are rejected without a diff or revision slot.
 For revisions, "unchanged" means equal to the parent proposal, not the disk file;
 deliberately reverting a parent to disk content is still a valid proposal.
 
+CLI request lines are read in bounded chunks with a maximum of 16,384 characters
+including the line terminator. Oversized lines emit one error and are drained;
+the next valid request remains usable. No fragment is dispatched. Draining is
+memory-bounded, not time-bounded: an input stream that never supplies a newline
+or EOF can still keep the reader waiting. This is a local CLI, not a network service.
+
 ### First real maintenance use
 
 The function mode proposed the shipped `normalize` key-validation repair on the
