@@ -18,6 +18,13 @@ class AVP1CodecTests(unittest.TestCase):
         wire = self.codec.encode(self.sample)
         self.assertEqual(canonical_json(self.sample), canonical_json(self.codec.decode(wire)))
 
+    def test_non_string_keys_raise_codec_error_before_sorting(self):
+        for value in ({1: 'x', 'a': 'y'}, {'a': 'y', 1: 'x'},
+                      {'nested': [{1: 'x', 'a': 'y'}]}, {1: 'x'}):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(CodecError, '^JSON object keys must be strings$'):
+                    self.codec.encode(value)
+
     def test_authority_round_trip(self):
         decoded = self.codec.decode(self.codec.encode(self.sample))
         self.assertEqual(self.sample["authority"], decoded["authority"])

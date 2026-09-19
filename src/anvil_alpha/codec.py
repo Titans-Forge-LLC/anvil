@@ -92,10 +92,10 @@ def normalize(value: Any) -> Any:
     if isinstance(value, list):
         return [normalize(item) for item in value]
     if isinstance(value, Mapping):
+        if not all(isinstance(key, str) for key in value):
+            raise CodecError("JSON object keys must be strings")
         normalized = {}
         for key in sorted(value):
-            if not isinstance(key, str):
-                raise CodecError("JSON object keys must be strings")
             normalized[key] = normalize(value[key])
         return normalized
     raise CodecError(f"unsupported JSON type: {type(value).__name__}")
