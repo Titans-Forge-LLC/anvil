@@ -30,6 +30,7 @@
     "TESTING.md",
     "examples/governed_mission.json",
     "examples/workbench_sample.py",
+    "experiments/ATOMIC_EDIT_SCREEN.md",
     "experiments/EDIT_SPAN_SCREEN.md",
     "experiments/FRESH_MAINTENANCE.md",
     "experiments/SPLASH_LIVE_SMOKE.md",

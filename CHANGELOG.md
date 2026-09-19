@@ -2,6 +2,12 @@
 
 ## Experimental workbench preview — September 19, 2026
 
+- Added opt-in atomic multi-edit proposals with unique snapshot-bound anchors and
+  all-or-nothing overlap rejection. Published failed initial attempts and one
+  successful adaptive replay; no change to the default format.
+- Applied the reviewed local-model input-token accounting change to the Splash
+  adapter, with strict validation and unknown counts preserved as null.
+
 - Fixed Python physical-line source selection and bare-CR proposal boundaries.
   A fresh maintenance trial found both model formats needed correction; published
   those failures rather than treating fewer output tokens as a completed-job win.

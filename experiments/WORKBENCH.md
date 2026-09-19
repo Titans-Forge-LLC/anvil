@@ -133,6 +133,28 @@ In the [small live comparison](EDIT_SPAN_SCREEN.md), spans reduced emitted token
 and total request time while passing all six task-specific AST checks. The tiny
 loader task was slower, so do not assume this is always the better format.
 
+### Atomic multi-edit proposals (opt-in)
+
+Use `"format":"edits"` when a change touches several places in one function:
+
+```json
+{"file":"examples/workbench_sample.py","symbol":"normalize","format":"edits","instruction":"Make the requested changes while preserving unrelated behavior","max_tokens":1024}
+```
+
+The model returns `{"edits":[{"old":"...","new":"..."}, ...]}` with 1–16
+literal edits. All anchors resolve against the same original selected function,
+not against text inserted by earlier edits. Ambiguous, missing or overlapping
+anchors reject the entire proposal. Adjacent edits are allowed. Existing source
+hash, syntax, scope, size and newline checks still apply, including revisions.
+No edits are written or executed; review the reconstructed diff yourself.
+
+The [first multi-edit experiment](ATOMIC_EDIT_SCREEN.md) failed twice before a
+task-independent envelope example and lower output cap produced a correct,
+faster adaptive replay. This mode is experimental, not the default. Do not
+assume speed or correctness from a smaller-looking representation. Splash
+responses now include `input_tokens` when the server reports it; missing counts
+remain `null` and are never estimated.
+
 ### First real maintenance use
 
 The function mode proposed the shipped `normalize` key-validation repair on the
