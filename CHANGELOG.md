@@ -2,6 +2,11 @@
 
 ## Experimental workbench preview — September 19, 2026
 
+- Added explicit Splash reasoning defaults and per-request/revision overrides;
+  keep none as default, preserve source bindings, and reject unsupported MLX CLI
+  settings. Publish failed bounded repairs and a separate successful reasoning-on
+  intervention, counting reported completion tokens and shared review costs.
+
 - Bound CLI input reads and drain oversized requests without losing the next
   valid request. Preserve the shared model boundary failure and counted direct
   repair from the larger fixed-format maintenance experiment.

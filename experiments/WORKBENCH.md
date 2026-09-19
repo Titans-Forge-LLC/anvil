@@ -165,6 +165,28 @@ the next valid request remains usable. No fragment is dispatched. Draining is
 memory-bounded, not time-bounded: an input stream that never supplies a newline
 or EOF can still keep the reader waiting. This is a local CLI, not a network service.
 
+### Opt-in reasoning for a repair
+
+Splash defaults to `none`. Set a session default with `--reasoning-effort low`,
+or override just one request/revision:
+
+```json
+{"revise":"p1","instruction":"The boundary test failed: explain the observed failure here and request a correction.","reasoning_effort":"low","max_tokens":4096}
+```
+
+Use the actual returned proposal ID, not necessarily `p1`. Omitted or null effort
+uses the client's configured default; an override is not sticky. Valid effort
+names are `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`. Support and
+meaning depend on the served model/template; errors are not silently retried
+with thinking disabled. Non-default CLI effort is rejected for MLX before loading.
+Reasoning consumes output budget and time; `output_tokens` is the server's total
+completion count, not just visible code. `reasoning_effort` is recorded in results.
+The product does not run tests or choose an escalation policy for you.
+
+In [one repair-loop replay](REPAIR_LOOP_SCREEN.md), both fast repairs failed;
+both reasoning-enabled repairs passed. That supports testing this option, not
+enabling it universally or claiming a general repair-success rate.
+
 ### First real maintenance use
 
 The function mode proposed the shipped `normalize` key-validation repair on the
