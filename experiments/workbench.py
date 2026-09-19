@@ -328,8 +328,15 @@ class MLXBackend:
 
 def reconstruct_edit(selected, text, *, multiple=False):
     """Resolve literal edits against one snapshot, then reconstruct atomically."""
-    if len(text.encode('utf-8')) > 32768:
-        raise ValueError('edit envelope exceeds 32 KiB')
+    try:
+        selected.encode('utf-8')
+    except UnicodeEncodeError:
+        raise ValueError('selected contains non-UTF-8-encodable text')
+    try:
+        if len(text.encode('utf-8')) > 32768:
+            raise ValueError('edit envelope exceeds 32 KiB')
+    except UnicodeEncodeError:
+        raise ValueError('edit envelope contains non-UTF-8-encodable text')
     def unique_keys(pairs):
         result = {}
         for key, value in pairs:
@@ -353,6 +360,11 @@ def reconstruct_edit(selected, text, *, multiple=False):
         old, new = item['old'], item['new']
         if not isinstance(old, str) or not old or not isinstance(new, str):
             raise ValueError('old must be nonempty text; new must be text')
+        try:
+            old.encode('utf-8')
+            new.encode('utf-8')
+        except UnicodeEncodeError:
+            raise ValueError('edit strings must be UTF-8 encodable')
         if old == new or '\x00' in old or '\x00' in new:
             raise ValueError('edit must change text and contain no NUL')
         position = selected.find(old)

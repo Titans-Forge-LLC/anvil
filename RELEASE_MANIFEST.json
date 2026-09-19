@@ -52,7 +52,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "8ac601639fac5a4c7a796bd8c2b0a46371e5b3012e4be9fbb482c2cfbd61cf9e"
+      "sha256": "1b570663fb7a426c7325a23ecdf7764311da61a7a44e789d1ae794171628ad0a"
     },
     {
       "path": "CITATION.cff",
@@ -140,7 +140,7 @@
     },
     {
       "path": "experiments/REPAIR_LOOP_SCREEN.md",
-      "sha256": "fadb03c2c75fb5175a571881592f9166e06a48af145b41e82c24e34ea9d9dbbd"
+      "sha256": "fa99f71a5720db3a185656d2f2f6bff3e2071a63dc531c9273f2e66524441e84"
     },
     {
       "path": "experiments/SPLASH_LIVE_SMOKE.md",
@@ -188,7 +188,7 @@
     },
     {
       "path": "experiments/workbench.py",
-      "sha256": "95fd1f3f43d4cc6148a5b55414f3df5d17a27b1cdd943f1a5c3d1ed9bb70e5f3"
+      "sha256": "baa8728160bdad5b623483c2686553836b9e30f020c2d974ad35f39d7d622954"
     },
     {
       "path": "licenses/MIT.txt",
@@ -300,7 +300,7 @@
     },
     {
       "path": "tests/test_workbench.py",
-      "sha256": "534bbf0a19b58c3b9f95b03a0e3c791b75d2499cb8cea2895500a3edb0e6e2c6"
+      "sha256": "05b45cf2b9ea2941c7d873a74e215cf5f1695a1565fb82c743d59eda5f992495"
     }
   ],
   "profile": "AVP1/governed-mission-v1",

@@ -1,5 +1,10 @@
 # Changelog
 
+- Workbench: reject invalid Unicode in edit sources/envelopes/scalars with
+  consistent ValueError; preserve valid emoji and existing atomic edit checks.
+- Publish two fresh maintenance-policy results, including shared costs and the
+  unexercised repair-branch limitation; keep fast defaults unchanged.
+
 ## Experimental workbench preview — September 19, 2026
 
 - Added explicit Splash reasoning defaults and per-request/revision overrides;

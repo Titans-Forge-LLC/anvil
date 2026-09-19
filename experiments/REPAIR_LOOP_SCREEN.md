@@ -88,3 +88,51 @@ a reason to test that policy, not to declare it qualified already.
 Model snapshot: `9d27070b71f7142c6b6025f03ac011d70a73cb48`.
 Raw proposals, exact-batch review approvals, test logs and trial receipts remain
 private. No credentials, private user payloads or machine-specific paths appear here.
+
+## Follow-up: two fresh maintenance tasks
+
+Two developer-authored requests against commit
+`31fa8bfc2b258072ae53f180ac6efa2d22406bda`, frozen before model generation:
+configurable edit-count validation and consistent invalid-Unicode rejection.
+Both operated on the existing edit parser, independently from the same snapshot.
+These are new tasks for this investigation, not independent customer workloads.
+
+Both policies used atomic edits, identical requirements, 4096 completion cap,
+the same stock server/model/hardware above, and identical acceptance checks.
+Fast-first used `none` initially; deliberate used `low`. Each allowed at most
+one `low` repair after failure. Task order was edit limit then Unicode; policy
+order reversed between tasks. All four proposals were reviewed before execution.
+
+| Task, request plus verification | Fast-first | Reasoning from start |
+| --- | ---: | ---: |
+| Edit-count limit | 2.900 s | 9.310 s |
+| Unicode rejection | 3.563 s | 30.533 s |
+| Total measured machine work | **6.463 s** | **39.843 s** |
+| Completion tokens including reasoning | 637 | 4,213 |
+| Initial passes | 2/2 | 2/2 |
+| Repairs needed | 0 | 0 |
+
+Checks included requested behavior plus single-edit behavior, atomic swaps,
+duplicate keys, overlapping spans, ambiguous matches and unchanged edits.
+Both policies completed the scoped acceptance tests without manual correction.
+The fast Unicode candidate checked reconstructed output; the deliberate one
+checked source immediately. Both passed. The latter was chosen for clearer
+entry validation and carried into the workbench after review; configurable
+edit counts remain experimental rather than adding an unused public option.
+
+Total shared trial: **90.997 s**, including **10.040 s** startup, **34.428 s**
+review/coordination pauses, requests, checks and shutdown. Engineering, test
+preparation and CI are additional. No startup or shared review time is silently
+allocated to one policy. Raw request totals were 6.454 s and 39.834 s; verification
+totals were 0.009 s and 0.009 s respectively.
+
+The roughly 6.16x machine-time ratio is only for these two small same-function
+tasks. Shared server caches, small sample, developer-authored requirements and
+non-independent task types limit inference. **No failure occurred, so the repair
+branch was not exercised and the escalation policy is not qualified.** This is
+not an ANVIL-versus-Splash comparison: both policies used Splash.
+
+Decision: retain the fast default and explicit reasoning option. Do not add an
+automatic scheduler or claim general speedups. Next evidence should come from
+ordinary maintenance jobs that need doing, including failures when they occur,
+not from increasingly contrived tasks designed to trigger the repair branch.
