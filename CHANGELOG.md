@@ -2,6 +2,10 @@
 
 ## Experimental workbench preview — September 19, 2026
 
+- Tested a source-draft hook inside an isolated Splash engine. Published mixed
+  economics, corrupted-draft fallback and output-equivalence observations;
+  retain the experiment without changing the public runtime default.
+
 - Ran Splash 1.0 with its supported 27B package: 12 completed requests, six
   identical direct/ANVIL pairs, and three exact requested AST transformations.
   Report startup and warm-cache effects separately; no combined speedup claim.
