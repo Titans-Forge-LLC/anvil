@@ -20,9 +20,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def command_result(command: list[str]) -> dict[str, object]:
     try:
-        result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
+        result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, timeout=300)
     except FileNotFoundError:
         return {"status": "FAIL", "returncode": None, "error_code": "executable_not_found"}
+    except subprocess.TimeoutExpired:
+        return {"status": "FAIL", "returncode": None, "error_code": "timeout"}
     return {
         "status": "PASS" if result.returncode == 0 else "FAIL",
         "returncode": result.returncode,
@@ -32,9 +34,11 @@ def command_result(command: list[str]) -> dict[str, object]:
 def git_commit() -> str | None:
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True, timeout=10
         )
     except FileNotFoundError:
+        return None
+    except subprocess.TimeoutExpired:
         return None
     return result.stdout.strip() if result.returncode == 0 else None
 
@@ -42,9 +46,11 @@ def git_commit() -> str | None:
 def node_version() -> str | None:
     try:
         result = subprocess.run(
-            ["node", "--version"], cwd=ROOT, text=True, capture_output=True
+            ["node", "--version"], cwd=ROOT, text=True, capture_output=True, timeout=10
         )
     except FileNotFoundError:
+        return None
+    except subprocess.TimeoutExpired:
         return None
     return result.stdout.strip() if result.returncode == 0 else None
 

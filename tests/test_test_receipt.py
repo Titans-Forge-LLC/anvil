@@ -13,6 +13,27 @@ R = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(R)
 
 class ReceiptTests(unittest.TestCase):
+    def test_timeout_budgets_and_private_error_handling(self):
+        for function, args, budget in ((R.command_result, (['fixture'],), 300), (R.git_commit, (), 10), (R.node_version, (), 10)):
+            with self.subTest(function=function.__name__):
+                with patch.object(R.subprocess, 'run', side_effect=subprocess.TimeoutExpired('PRIVATE_COMMAND', budget, output='PRIVATE_OUTPUT')) as run:
+                    result = function(*args)
+                    self.assertEqual(run.call_args.kwargs['timeout'], budget)
+                    self.assertEqual(result, {'status':'FAIL','returncode':None,'error_code':'timeout'} if function is R.command_result else None)
+
+    def test_timeouts_still_produce_complete_failure_receipt(self):
+        output = io.StringIO()
+        with patch.object(R.subprocess, 'run', side_effect=subprocess.TimeoutExpired('PRIVATE_COMMAND', 300, output='PRIVATE_OUTPUT')), patch.object(sys, 'argv', ['receipt']), patch.object(sys, 'stdout', output):
+            result = R.main()
+        receipt = json.loads(output.getvalue())
+        self.assertEqual(result, 1)
+        self.assertEqual(receipt['status'], 'FAIL')
+        self.assertIsNone(receipt['source']['commit'])
+        self.assertIsNone(receipt['environment']['node'])
+        self.assertNotIn('PRIVATE', output.getvalue())
+        for key in ('python_conformance','javascript_conformance'):
+            self.assertEqual(receipt['checks'][key]['error_code'], 'timeout')
+
     def run_receipt(self, missing):
         def run(command, **kwargs):
             if command[0] in missing:
