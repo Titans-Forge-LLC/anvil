@@ -52,6 +52,80 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_explicit_helper_context_is_read_only_and_inherited(self):
+        class Complete:
+            text = 'def f():\n    return helper(2)\n'
+            def complete(self, messages, *args, **kwargs):
+                self.messages = messages
+                return dict(text=self.text, complete=True)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'helpers.py'
+            helper = '@decorator\ndef helper(x):\n    return x * 2\n'
+            other = 'def unrelated():\n    return "NOT_REQUESTED"\n'
+            raw = (helper + other + 'def f():\n    return helper(1)\n').encode()
+            path.write_bytes(raw)
+            client = Complete()
+            session = W.ProposalSession(client)
+            request = dict(file=str(path), symbol='f', instruction='Use 2')
+            baseline = session.propose(request)
+            self.assertNotIn('READ-ONLY CONTEXT', client.messages[1]['content'])
+            self.assertEqual(baseline['context_bytes'], 0)
+            result = session.propose(dict(request, context_symbols=['helper']))
+            self.assertTrue(result['reviewable'])
+            self.assertIn(helper, client.messages[1]['content'])
+            self.assertNotIn('NOT_REQUESTED', client.messages[1]['content'])
+            self.assertEqual(result['context_bytes'], len(helper.encode()))
+            self.assertEqual(result['context_sha256'], W.hashlib.sha256(helper.encode()).hexdigest())
+            self.assertTrue(result['replacement_text'].startswith(helper + other))
+            client.text = 'def f():\n    return helper(3)\n'
+            revision = session.propose(dict(revise=result['proposal_id'], instruction='Use 3'))
+            self.assertEqual(revision['context_symbols'], ['helper'])
+            self.assertEqual(revision['context_sha256'], result['context_sha256'])
+            client.text = 'def f():\n    return helper(4)\n'
+            cleared = session.propose(dict(revise=revision['proposal_id'], instruction='Use 4', context_symbols=[]))
+            self.assertEqual(cleared['context_symbols'], [])
+            self.assertNotIn('READ-ONLY CONTEXT', client.messages[1]['content'])
+            self.assertEqual(path.read_bytes(), raw)
+            path.write_bytes(raw.replace(b'x * 2', b'x * 3'))
+            with self.assertRaises(ValueError):
+                session.propose(dict(revise=result['proposal_id'], instruction='Use 3'))
+
+    def test_invalid_helper_context_never_calls_model(self):
+        class Complete:
+            def complete(self, *args, **kwargs):
+                raise AssertionError('model must not be called')
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'helpers.py'
+            base = 'def helper():\n    return 1\ndef f():\n    return 1\n'
+            path.write_bytes(base.encode())
+            request = dict(file=str(path), symbol='f', instruction='Edit')
+            for names in (None, 'helper', ['helper','helper'], ['f'], ['missing'], ['x.y'], [1], ['a','b','c','d','e']):
+                with self.subTest(names=names), self.assertRaises(ValueError):
+                    W.propose(Complete(), dict(request, context_symbols=names))
+            with self.assertRaises(ValueError):
+                W.propose(Complete(), dict(request, symbol=None, context_symbols=['helper']))
+            for extra in ('def helper():\n    return 2\n', ''):
+                source = base + extra if extra else 'def helper():\n    #' + 'é'*5000 + '\n    return 1\ndef f():\n    return 1\n'
+                path.write_bytes(source.encode())
+                with self.assertRaises(ValueError):
+                    W.propose(Complete(), dict(request, context_symbols=['helper']))
+
+    def test_helper_cannot_be_edited_through_context(self):
+        class Complete:
+            text = ''
+            def complete(self, *args, **kwargs): return dict(text=self.text, complete=True)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'helpers.py'
+            raw = b'def helper():\n    return 99\ndef f():\n    return helper()\n'
+            path.write_bytes(raw)
+            client = Complete()
+            request = dict(file=str(path),symbol='f',instruction='Edit',context_symbols=['helper'])
+            client.text = '{"old":"return 99","new":"return 100"}'
+            self.assertFalse(W.propose(client,dict(request,format='edit'))['reviewable'])
+            client.text = 'def f():\n    return 1\ndef helper():\n    return 100\n'
+            self.assertFalse(W.propose(client,request)['reviewable'])
+            self.assertEqual(path.read_bytes(),raw)
+
     def test_large_module_small_selection_and_revision(self):
         class Complete:
             def complete(self, messages, *args, **kwargs):
