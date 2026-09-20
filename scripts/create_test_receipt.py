@@ -19,7 +19,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def command_result(command: list[str]) -> dict[str, object]:
-    result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
+    try:
+        result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
+    except FileNotFoundError:
+        return {"status": "FAIL", "returncode": None, "error_code": "executable_not_found"}
     return {
         "status": "PASS" if result.returncode == 0 else "FAIL",
         "returncode": result.returncode,
@@ -27,16 +30,22 @@ def command_result(command: list[str]) -> dict[str, object]:
 
 
 def git_commit() -> str | None:
-    result = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True
-    )
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True
+        )
+    except FileNotFoundError:
+        return None
     return result.stdout.strip() if result.returncode == 0 else None
 
 
 def node_version() -> str | None:
-    result = subprocess.run(
-        ["node", "--version"], cwd=ROOT, text=True, capture_output=True
-    )
+    try:
+        result = subprocess.run(
+            ["node", "--version"], cwd=ROOT, text=True, capture_output=True
+        )
+    except FileNotFoundError:
+        return None
     return result.stdout.strip() if result.returncode == 0 else None
 
 
