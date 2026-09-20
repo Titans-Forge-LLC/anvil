@@ -154,3 +154,31 @@ The resulting product change accepts modules up to 1 MiB in named-function mode,
 preserves 32 KiB function and whole-file limits, and keeps source hashes/revisions.
 This is a delivered usability improvement, not a speed comparison. It reinforces
 why complete-job outcomes must include host review and correction.
+
+## Helper-context trial: missing-executable receipts
+
+September 20, 2026. A real usability defect in `create_test_receipt.py`: a
+missing Node/Git executable could crash receipt creation. One fast atomic-edit
+request per arm, same task and 4096 completion cap, stock Splash/Qwen3.8-27B.
+Order: no context, then the three explicit command/version helpers (691 bytes).
+Both requests restricted editing to `main`. No retries or rescoring.
+
+| Result | Without helpers | With helpers |
+| --- | ---: | ---: |
+| Request and host validation | 4.064 s | 28.591 s |
+| Prompt tokens | 1,051 | 1,265 |
+| Completion tokens | 335 | 4,096 |
+| Outcome | Rejected: extra function | Incomplete: output limit |
+
+Neither candidate reached behavioral execution; the harness recorded rejection
+in under 0.001 seconds each. Neither completed the job. Shared whole trial was
+61.917 s, including 10.015 s startup and 19.026 s review/coordination pause.
+Source remained unchanged. No evidence here that adding context improves results.
+
+Task decomposition was also a limitation: the natural correction belongs in
+the three helpers, not `main`. The manual product fix catches FileNotFoundError
+at those boundaries, retaining successful behavior and propagating unexpected
+exceptions. That manual correction and its regression checks are additional work,
+not credited to the model. One ordered task does not establish that helper
+context is generally harmful. Keep it opt-in; select the right edit scope before
+adding more context or output budget. No automatic scope expansion was added.

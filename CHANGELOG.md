@@ -1,5 +1,9 @@
 # Changelog
 
+- Test-receipt tool now emits a complete FAIL receipt when a conformance
+  executable is missing, and null for unavailable Git/Node metadata. Exception
+  messages and filesystem paths are not included; unexpected errors propagate.
+
 - Workbench: opt-in `context_symbols` supplies up to four read-only helper
   functions from the same file, capped at 8 KiB. Revisions inherit context;
   edits remain restricted to the selected target. No default prompt change.

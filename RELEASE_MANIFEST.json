@@ -1,5 +1,5 @@
 {
-  "allowlist_sha256": "4c24f91e336f346467cd6e5ceec3091c500a0fe6d1d3cf9a8ab6109bd4cb1a2a",
+  "allowlist_sha256": "7707e9ca74deddbdc6a6b9cd2b8b296d5eeac907019c527d5324faa20a558d46",
   "canonical_name": "Adaptive Neural Vector Instruction Language",
   "checks": [
     {
@@ -52,7 +52,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "2087fab177e19aec117e060d6188489f4bb43909a265a3a1d6ca96ccfd1d06b6"
+      "sha256": "a62879a93c88b1239a64f73129b40e16b40e6e266f6cad38a54659c7a8436689"
     },
     {
       "path": "CITATION.cff",
@@ -96,7 +96,7 @@
     },
     {
       "path": "PUBLIC_RELEASE_FILE_ALLOWLIST_V0_1.json",
-      "sha256": "4c24f91e336f346467cd6e5ceec3091c500a0fe6d1d3cf9a8ab6109bd4cb1a2a"
+      "sha256": "7707e9ca74deddbdc6a6b9cd2b8b296d5eeac907019c527d5324faa20a558d46"
     },
     {
       "path": "README.md",
@@ -140,7 +140,7 @@
     },
     {
       "path": "experiments/REPAIR_LOOP_SCREEN.md",
-      "sha256": "592392ebb7557c2a28eab48b9076bddf6e3019be429efd0b8aedbe1cb6ecc61d"
+      "sha256": "1fd1741d9b3f87d345f7df79f7a3ebf1bf71396c08883c5df75351b84383a2ac"
     },
     {
       "path": "experiments/SPLASH_LIVE_SMOKE.md",
@@ -200,7 +200,7 @@
     },
     {
       "path": "scripts/create_test_receipt.py",
-      "sha256": "f1e4c59782eab6e4bc6a6d95a1ee09c957f0083e25c05cd86e6d34b48b855d61"
+      "sha256": "08b85ad9d6d2e6e37a95c259cdcc8573abe62115518af676700eb0827900e93e"
     },
     {
       "path": "scripts/reasoning_signature.py",
@@ -297,6 +297,10 @@
     {
       "path": "tests/test_splash_adapter.py",
       "sha256": "e62a4db45f130bac13962b5d56cd8be2e17214d0477cfa44278fee57def9519a"
+    },
+    {
+      "path": "tests/test_test_receipt.py",
+      "sha256": "d64f8ffb2d9fc87d1977ae08cc1b7151fa8bd8f25f5e992fbe6b09030cf77d0e"
     },
     {
       "path": "tests/test_workbench.py",
