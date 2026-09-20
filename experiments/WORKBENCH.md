@@ -108,6 +108,36 @@ reviewable replacement is returned. Imports and other globals are not supplied,
 so include necessary context in your instruction. Nested functions and methods
 are not selectable in this preview. File size and generation limits still apply.
 
+### Read-only helper context (opt-in)
+
+If a function depends on a helper in the same file, explicitly include it:
+
+```json
+{"file":"module.py","symbol":"build_report","context_symbols":["normalize_record","format_record"],"format":"edits","instruction":"Skip empty records while preserving the helpers' conventions.","max_tokens":1024}
+```
+
+`context_symbols` accepts up to four distinct top-level function names, including
+async functions and their decorators. Combined helper source is capped at 8 KiB
+UTF-8, including separators. Missing/ambiguous names, duplicates, the editable
+target itself, and oversized context are rejected before inference. Class methods,
+imports, globals and other files are not automatically collected. Only the
+explicitly requested helper definitions enter this extra context.
+
+Helpers are source data, not instructions or additional edit targets. Literal
+edit anchors are resolved only inside the selected function; full replacements
+must still contain only that function. This confines the patch, but does not
+guarantee the model understands the helper or ignores instructions in source.
+
+The response includes `context_symbols`, `context_bytes`, and `context_sha256`.
+The existing full-file hash covers both target and helpers; these hashes do not
+grant authority. Revisions inherit helper names unless explicitly overridden;
+use `"context_symbols":[]` to clear them. Context comes from the current proposal
+base, and any external disk change invalidates the revision.
+
+No context is sent by default: the prior prompt remains unchanged. Added context
+consumes the backend's token budget and may increase latency. Host behavior is
+covered by dependency-free tests; no model-quality or speed improvement is claimed.
+
 ### Opt-in exact edit spans
 
 Use `"format":"edit"` with a named function to request only a change:

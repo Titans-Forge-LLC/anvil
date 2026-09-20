@@ -1,5 +1,9 @@
 # Changelog
 
+- Workbench: opt-in `context_symbols` supplies up to four read-only helper
+  functions from the same file, capped at 8 KiB. Revisions inherit context;
+  edits remain restricted to the selected target. No default prompt change.
+
 - Named-function workbench edits now support modules up to 1 MiB, with 32 KiB
   selection/replacement limits and unchanged whole-file limits. Full-module
   source binding and stale-revision checks remain in force.
