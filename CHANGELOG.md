@@ -1,5 +1,8 @@
 # Changelog
 
+- Test-receipt commands now request 300-second subprocess timeouts; optional
+  Git/Node metadata uses 10 seconds. Timeout failures remain privacy-safe.
+
 - Test-receipt tool now emits a complete FAIL receipt when a conformance
   executable is missing, and null for unavailable Git/Node metadata. Exception
   messages and filesystem paths are not included; unexpected errors propagate.

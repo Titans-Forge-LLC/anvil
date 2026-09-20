@@ -182,3 +182,34 @@ exceptions. That manual correction and its regression checks are additional work
 not credited to the model. One ordered task does not establish that helper
 context is generally harmful. Keep it opt-in; select the right edit scope before
 adding more context or output budget. No automatic scope expansion was added.
+
+## Correct-scope follow-through: bounded receipt waits
+
+The next maintenance job put timeouts in the three existing command helpers,
+instead of forcing a change through `main`. Three separate proposals, no context,
+reasoning `none`, whole-function format, 1024 completion cap each. Same stock
+Splash/Qwen3.8-27B model; baseline `cda44be7e6247f57b00e56a98e45985ab3862e1e`.
+
+| Helper | Request time | Completion tokens | Mocked behavior checks |
+| --- | ---: | ---: | --- |
+| command_result | 1.338 s | 138 | Pass |
+| git_commit | 0.847 s | 87 | Pass |
+| node_version | 0.773 s | 83 | Pass |
+
+All three passed first try, with no code corrections. Request total 2.957 s;
+mocked-check total 0.005 s. Whole trial 31.727 s, including 10.035 s startup and
+18.479 s review/coordination pause. No retries. Integration, regression tests,
+documentation and CI are additional work. The host manually integrated the exact
+reviewed function replacements; this was not autonomous application.
+
+Checks covered requested timeout kwargs, TimeoutExpired, missing executables,
+successful/nonzero exits and propagation of unexpected exceptions. They mock
+subprocess execution; they do not demonstrate waiting for a real hung process.
+Conformance subprocesses request 300 seconds each; optional metadata requests 10.
+These are subprocess timeouts, not a guaranteed whole-job deadline or process-tree
+sandbox. Descendant-process handling and process creation have separate limits.
+
+This is successful delivery of a small scoped job, not a controlled causal test
+of scoping. Task, output format and budget differ from the preceding failure.
+Do not divide those runs' timings and claim a speedup. No new planner, automatic
+scope expansion or multi-function editing engine was needed for this job.

@@ -52,7 +52,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "a62879a93c88b1239a64f73129b40e16b40e6e266f6cad38a54659c7a8436689"
+      "sha256": "7e1893d6f3c428186a6225504ed65fcc46d7302378b263d10686311e4d042faa"
     },
     {
       "path": "CITATION.cff",
@@ -140,7 +140,7 @@
     },
     {
       "path": "experiments/REPAIR_LOOP_SCREEN.md",
-      "sha256": "1fd1741d9b3f87d345f7df79f7a3ebf1bf71396c08883c5df75351b84383a2ac"
+      "sha256": "9ab62e23771249c8438c17adb65611678a381c4332dc2896a8a7c9b1a14157be"
     },
     {
       "path": "experiments/SPLASH_LIVE_SMOKE.md",
@@ -200,7 +200,7 @@
     },
     {
       "path": "scripts/create_test_receipt.py",
-      "sha256": "08b85ad9d6d2e6e37a95c259cdcc8573abe62115518af676700eb0827900e93e"
+      "sha256": "b8950e1d79c21bf52c18b4fe93d97265f6541a4187d547ade011595acd09d025"
     },
     {
       "path": "scripts/reasoning_signature.py",
@@ -300,7 +300,7 @@
     },
     {
       "path": "tests/test_test_receipt.py",
-      "sha256": "d64f8ffb2d9fc87d1977ae08cc1b7151fa8bd8f25f5e992fbe6b09030cf77d0e"
+      "sha256": "a5b52eaa2db68e85063f06134279d7f5ae8835ebf04e0fab75c0ab571bc8d428"
     },
     {
       "path": "tests/test_workbench.py",
