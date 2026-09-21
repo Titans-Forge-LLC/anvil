@@ -608,6 +608,54 @@ class ProposalSession:
         result['total_request_seconds'] = time.perf_counter() - started
         return result
 
+    def export_patch(self, proposal_id, project_root, output):
+        """Export a retained proposal against current disk bytes; never apply it."""
+        if not isinstance(proposal_id, str) or proposal_id not in self.proposals:
+            raise ValueError('unknown or expired proposal ID')
+        proposal = self.proposals[proposal_id]
+        root = Path(project_root).expanduser().resolve(strict=True)
+        if not root.is_dir():
+            raise ValueError('project_root must be a directory')
+        source_path = Path(proposal['file']).resolve(strict=True)
+        relative = source_path.relative_to(root).as_posix()
+        if any(char in relative for char in '\\"\t\r\n') or any(
+                ord(char) < 32 or ord(char) == 127 for char in relative):
+            raise ValueError('source path contains unsupported patch header characters')
+        limit = 1048576 if proposal['symbol'] is not None else 32768
+        with source_path.open('rb') as stream:
+            original = stream.read(limit + 1)
+        if len(original) > limit or hashlib.sha256(original).hexdigest() != proposal['source_sha256']:
+            raise ValueError('source changed since proposal; start a new request')
+
+        def physical_lines(data):
+            parts = data.split(b'\n')
+            return [part + b'\n' for part in parts[:-1]] + ([parts[-1]] if parts[-1] else [])
+
+        replacement = proposal['text'].encode('utf-8')
+        # A trailing tab delimits filenames containing spaces from timestamps.
+        patch_lines = difflib.diff_bytes(
+            difflib.unified_diff, physical_lines(original), physical_lines(replacement),
+            fromfile=('a/' + relative + '\t').encode('utf-8'),
+            tofile=('b/' + relative + '\t').encode('utf-8'))
+        patch_bytes = b''.join(line if line.endswith(b'\n') else
+                               line + b'\n\\ No newline at end of file\n'
+                               for line in patch_lines)
+        if not patch_bytes:
+            raise ValueError('proposal has no changes to export')
+        # Point-in-time check, not a lock against other editors or processes.
+        with source_path.open('rb') as stream:
+            if stream.read(limit + 1) != original:
+                raise ValueError('source changed during export; start a new request')
+        destination = Path(output).expanduser().absolute()
+        # Do not resolve the final component: exclusive creation also refuses symlinks.
+        with destination.open('xb') as stream:
+            stream.write(patch_bytes)
+        return {'exported': True, 'proposal_id': proposal_id, 'output': str(destination),
+                'source_sha256': proposal['source_sha256'],
+                'replacement_sha256': hashlib.sha256(replacement).hexdigest(),
+                'patch_sha256': hashlib.sha256(patch_bytes).hexdigest(),
+                'patch_bytes': len(patch_bytes), 'applied': False}
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -656,7 +704,13 @@ def main():
             request = json.loads(line)
             if not isinstance(request, dict):
                 raise ValueError('request must be a JSON object')
-            print(json.dumps(proposals.propose(request)), flush=True)
+            if 'export' in request:
+                if set(request) != {'export', 'project_root', 'output'}:
+                    raise ValueError('export requires exactly export, project_root and output')
+                result = proposals.export_patch(request['export'], request['project_root'], request['output'])
+            else:
+                result = proposals.propose(request)
+            print(json.dumps(result), flush=True)
         except Exception as exc:
             print(json.dumps({'error': type(exc).__name__, 'message': str(exc), 'applied': False}), flush=True)
 

@@ -7,6 +7,8 @@ authority must survive decoding exactly.
 Status: `LIMITED PUBLIC BETA`
 
 Latest: [Try the persistent coding workbench preview](experiments/WORKBENCH.md).
+Reviewed proposals can now be exported as source-checked patch files for your
+normal Git review workflow, without another model call or automatic application.
 Splash revisions can now opt into reasoning without losing the parent proposal.
 [One replay](experiments/REPAIR_LOOP_SCREEN.md) repaired a bug that both
 no-reasoning attempts missed; it cost more and is not a general reliability claim.
