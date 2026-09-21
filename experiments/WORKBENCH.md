@@ -104,7 +104,15 @@ For a small edit inside a larger Python file, select a top-level function:
 Only that function is sent as source context. Its surrounding module is retained
 verbatim by the host when composing `replacement_text`. The generated replacement
 must parse as exactly one function of the same name and kind; otherwise no
-reviewable replacement is returned. Imports and other globals are not supplied,
+reviewable replacement is returned. The reconstructed full module must also
+compile under the Python interpreter running ANVIL. Compilation does not execute
+imports, decorators or function bodies, and does not inherit the workbench's
+future flags. A compiler error anywhere in the composed module rejects the
+proposal, even if the error was already present outside the selected function.
+This catches errors that parsing alone misses, such as duplicate arguments or
+`break` outside a loop. It is not behavioral validation, a sandbox or a guarantee
+of compatibility with other Python versions. Whole-file text mode is not compiled.
+Imports and other globals are not supplied,
 so include necessary context in your instruction. Nested functions and methods
 are not selectable in this preview. File size and generation limits still apply.
 

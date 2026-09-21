@@ -1,5 +1,9 @@
 # Changelog
 
+- Named-function proposals now compile the composed Python module without
+  executing it before becoming reviewable. Invalid control flow, duplicate
+  arguments and other compiler errors are rejected; whole-file text mode is unchanged.
+
 - Test-receipt commands now request 300-second subprocess timeouts; optional
   Git/Node metadata uses 10 seconds. Timeout failures remain privacy-safe.
 
