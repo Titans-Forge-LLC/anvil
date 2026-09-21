@@ -1,5 +1,9 @@
 # Changelog
 
+- Workbench: explicitly export retained proposals as project-relative patches.
+  Refuse stale source, expired IDs and existing destinations; preserve revision
+  diffs and newline bytes. Export does not invoke the model, apply or execute code.
+
 - Named-function proposals now compile the composed Python module without
   executing it before becoming reviewable. Invalid control flow, duplicate
   arguments and other compiler errors are rejected; whole-file text mode is unchanged.

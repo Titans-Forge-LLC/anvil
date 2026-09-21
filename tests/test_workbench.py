@@ -2,6 +2,8 @@
 import importlib.util
 import io
 import json
+import shutil
+import subprocess
 from unittest.mock import patch
 from pathlib import Path
 import tempfile
@@ -52,6 +54,108 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_patch_export_applies_exact_bytes_without_model_calls(self):
+        git = shutil.which('git')
+        if not git:
+            self.skipTest('git is required for patch interoperability')
+        class Complete:
+            calls = 0
+            def complete(self, *args, **kwargs):
+                self.calls += 1
+                return dict(text=self.text, complete=True)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run([git, 'init', '-q', str(root)], check=True, capture_output=True)
+            path = root / 'module é space.py'
+            client = Complete()
+            for newline in ('\n', '\r\n', ''):
+                with self.subTest(newline=repr(newline)):
+                    original = ('def f():\n    return "é\u2028one"' + newline).encode()
+                    path.write_bytes(original)
+                    session = W.ProposalSession(client)
+                    client.text = 'def f():\n    return "é\u2028two"' + newline
+                    first = session.propose(dict(file=str(path), symbol='f', instruction='Use two'))
+                    client.text = 'def f():\n    return "é\u2028three"' + newline
+                    final = session.propose(dict(revise=first['proposal_id'], instruction='Use three'))
+                    before = client.calls
+                    output = root / ('export-' + str(len(newline)) + '.patch')
+                    receipt = session.export_patch(final['proposal_id'], root, output)
+                    self.assertEqual(client.calls, before)
+                    self.assertFalse(receipt['applied'])
+                    self.assertEqual(path.read_bytes(), original)
+                    self.assertEqual(receipt['patch_sha256'], W.hashlib.sha256(output.read_bytes()).hexdigest())
+                    subprocess.run([git, '-c', 'core.autocrlf=false', 'apply', '--check', str(output)], cwd=root, check=True, capture_output=True)
+                    subprocess.run([git, '-c', 'core.autocrlf=false', 'apply', str(output)], cwd=root, check=True, capture_output=True)
+                    self.assertEqual(path.read_bytes(), final['replacement_text'].encode())
+
+    def test_patch_export_rejects_stale_expired_outside_and_existing(self):
+        class Complete:
+            def complete(self, *args, **kwargs):
+                return dict(text='def f():\n    return 2\n', complete=True)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / 'sample.py'
+            original = b'def f():\n    return 1\n'
+            path.write_bytes(original)
+            session = W.ProposalSession(Complete())
+            request = dict(file=str(path), symbol='f', instruction='Use two')
+            result = session.propose(request)
+            output = root / 'fix.patch'
+            output.write_bytes(b'do not overwrite')
+            with self.assertRaises(FileExistsError):
+                session.export_patch(result['proposal_id'], root, output)
+            self.assertEqual(output.read_bytes(), b'do not overwrite')
+            with self.assertRaises(FileExistsError):
+                session.export_patch(result['proposal_id'], root, path)
+            self.assertEqual(path.read_bytes(), original)
+            sub = root / 'sub'
+            sub.mkdir()
+            with self.assertRaises(ValueError):
+                session.export_patch(result['proposal_id'], sub, sub / 'fix.patch')
+            self.assertFalse((sub / 'fix.patch').exists())
+            path.write_bytes(original + b'# external edit\n')
+            with self.assertRaises(ValueError):
+                session.export_patch(result['proposal_id'], root, root / 'stale.patch')
+            self.assertFalse((root / 'stale.patch').exists())
+            path.write_bytes(original)
+            for _ in range(8):
+                session.propose(request)
+            with self.assertRaises(ValueError):
+                session.export_patch(result['proposal_id'], root, root / 'expired.patch')
+
+    def test_patch_export_rejects_symlink_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / 'sample.py'
+            original = b'def f():\n    return 1\n'
+            path.write_bytes(original)
+            output, target = root / 'link.patch', root / 'missing.patch'
+            try:
+                output.symlink_to(target)
+            except (OSError, NotImplementedError):
+                self.skipTest('symlinks unavailable')
+            session = W.ProposalSession(None)
+            session.proposals['p1'] = dict(file=str(path), symbol='f',
+                source_sha256=W.hashlib.sha256(original).hexdigest(), text='def f():\n    return 2\n')
+            with self.assertRaises(FileExistsError):
+                session.export_patch('p1', root, output)
+            self.assertFalse(target.exists())
+
+    def test_export_command_dispatch(self):
+        requests = '\n'.join(json.dumps(request) for request in (
+            dict(export='p1', project_root='.', output='fix.patch'),
+            dict(export='p1', project_root='.', output='fix.patch', instruction='ambiguous')))
+        with patch.object(W.sys, 'argv', ['workbench', '--backend', 'splash']), \
+             patch.object(W.sys, 'stdin', io.StringIO(requests)), \
+             patch.object(W.sys, 'stdout', io.StringIO()) as stdout, \
+             patch.object(W, 'SplashCompletion'), \
+             patch.object(W.ProposalSession, 'export_patch', return_value=dict(exported=True, applied=False)) as export:
+            W.main()
+        export.assert_called_once_with('p1', '.', 'fix.patch')
+        rows = [json.loads(line) for line in stdout.getvalue().splitlines()]
+        self.assertTrue(rows[1]['exported'])
+        self.assertEqual(rows[2]['error'], 'ValueError')
+
     def test_named_proposals_compile_without_executing(self):
         class Complete:
             def complete(self, *args, **kwargs):

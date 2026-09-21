@@ -7,7 +7,8 @@ first mismatch it rolls back rejected KV rows and continues normally.
 
 This is a single-file proposal loop, not an autonomous coding agent.
 It reads only the file you select, returns replacement text and a review diff,
-and never applies changes, executes generated code, or calls tools. No server
+and never applies changes, executes generated code, or calls tools. Explicit patch
+export can create a new file at a destination you choose. No server
 or telemetry is started. Treat output as untrusted code requiring review.
 
 ## Run
@@ -39,7 +40,7 @@ Only literal loopback HTTP endpoints are accepted (127.0.0.1 or ::1); proxies
 and redirects are disabled. The server is a trusted local dependency: ANVIL
 does not attest its identity or sandbox its internals. Truncated outputs are
 incomplete; tool-call/refusal/malformed responses are rejected. There are no
-automatic retries, server installs, downloads, server restarts or file writes.
+automatic retries, server installs, downloads, server restarts or source writes.
 The startup `ready` event means the client is accepting requests, not that the
 server has passed a readiness check.
 
@@ -94,6 +95,43 @@ either is rejected. The original file hash must still match, otherwise start a
 new request. Only the eight most recent reviewable proposals are kept in this
 process; IDs expire on eviction or restart. Incomplete/rejected responses do not
 get IDs. There is still no apply or execution command. Ctrl-D ends the loop.
+
+### Export a reviewed proposal
+
+After reviewing a proposal, export its combined diff against the original file:
+
+```json
+{"export":"p2","project_root":"/path/to/project","output":"/path/to/reviewed.patch"}
+```
+
+This is an explicit file-writing action, not another inference request. The
+destination must not exist (including symlinks), its parent directory must exist,
+and the selected source must be inside the supplied project root. Export refuses
+unknown/expired IDs and changed source. Source and proposal remain untouched;
+no patch is applied and no code is executed. Exporting a revision includes the
+entire change from the original disk source, not just the last revision.
+
+The response includes source, replacement and patch SHA-256 values and patch
+size. The patch uses project-relative paths; content may contain private source.
+Do not publish it without review. Filenames with spaces and Unicode are supported;
+backslashes, double quotes and control characters in relative paths are rejected.
+CRLF and missing final newlines are preserved. File permissions are not changed.
+
+In your usual shell, from the same project root, inspect and check the patch:
+
+```sh
+git -c core.autocrlf=false apply --check /path/to/reviewed.patch
+```
+
+Apply it yourself only after review. The patch preserves source newline bytes;
+Git settings and repository attributes can transform them during application.
+The exact-byte interoperability test disables `core.autocrlf`; use the same
+setting when applying if byte preservation is required, and check your attributes.
+Source/destination checking is point-in-time, not a lock
+against another editor: subsequent changes can invalidate the exported patch.
+Do not use export destinations controlled by a hostile concurrent process.
+Compilation and a successful patch check do not establish behavioral correctness.
+There is no automatic apply, commit or test-execution step.
 
 For a small edit inside a larger Python file, select a top-level function:
 
