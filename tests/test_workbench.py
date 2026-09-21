@@ -84,8 +84,8 @@ class WorkbenchTests(unittest.TestCase):
                     self.assertFalse(receipt['applied'])
                     self.assertEqual(path.read_bytes(), original)
                     self.assertEqual(receipt['patch_sha256'], W.hashlib.sha256(output.read_bytes()).hexdigest())
-                    subprocess.run([git, 'apply', '--check', str(output)], cwd=root, check=True, capture_output=True)
-                    subprocess.run([git, 'apply', str(output)], cwd=root, check=True, capture_output=True)
+                    subprocess.run([git, '-c', 'core.autocrlf=false', 'apply', '--check', str(output)], cwd=root, check=True, capture_output=True)
+                    subprocess.run([git, '-c', 'core.autocrlf=false', 'apply', str(output)], cwd=root, check=True, capture_output=True)
                     self.assertEqual(path.read_bytes(), final['replacement_text'].encode())
 
     def test_patch_export_rejects_stale_expired_outside_and_existing(self):

@@ -647,7 +647,11 @@ class ProposalSession:
             if stream.read(limit + 1) != original:
                 raise ValueError('source changed during export; start a new request')
         destination = Path(output).expanduser().absolute()
-        # Do not resolve the final component: exclusive creation also refuses symlinks.
+        # Windows may follow dangling symlinks even in exclusive-create mode.
+        # This precheck is not a sandbox against concurrent filesystem mutation.
+        if destination.is_symlink() or destination.exists():
+            raise FileExistsError('export destination already exists')
+        # Do not resolve the final component; refuse ordinary creation races too.
         with destination.open('xb') as stream:
             stream.write(patch_bytes)
         return {'exported': True, 'proposal_id': proposal_id, 'output': str(destination),

@@ -120,11 +120,16 @@ CRLF and missing final newlines are preserved. File permissions are not changed.
 In your usual shell, from the same project root, inspect and check the patch:
 
 ```sh
-git apply --check /path/to/reviewed.patch
+git -c core.autocrlf=false apply --check /path/to/reviewed.patch
 ```
 
-Apply it yourself only after review. Source checking is point-in-time, not a lock
+Apply it yourself only after review. The patch preserves source newline bytes;
+Git settings and repository attributes can transform them during application.
+The exact-byte interoperability test disables `core.autocrlf`; use the same
+setting when applying if byte preservation is required, and check your attributes.
+Source/destination checking is point-in-time, not a lock
 against another editor: subsequent changes can invalidate the exported patch.
+Do not use export destinations controlled by a hostile concurrent process.
 Compilation and a successful patch check do not establish behavioral correctness.
 There is no automatic apply, commit or test-execution step.
 
