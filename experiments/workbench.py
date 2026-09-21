@@ -537,6 +537,7 @@ def propose(completion, request, *, base_source=None, expected_sha256=None):
             if len(replacement.encode('utf-8')) > 32768:
                 raise ValueError('replacement function exceeds 32 KiB preview limit')
             replacement = source[:start] + replacement + source[end:]
+            compile(replacement, str(path), 'exec', dont_inherit=True)
         except (SyntaxError, ValueError) as exc:
             usable, rejection = False, str(exc)
     if usable and replacement == source:

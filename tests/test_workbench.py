@@ -52,6 +52,47 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_named_proposals_compile_without_executing(self):
+        class Complete:
+            def complete(self, *args, **kwargs):
+                return dict(text=self.text, complete=True)
+
+        cases = [
+            ('def f():\n    return 1\n', 'def f(a, a):\n    return 2\n', False),
+            ('def f():\n    return 1\n', 'def f():\n    break\n', False),
+            ('def f():\n    return 1\n', 'def f():\n    nonlocal missing\n', False),
+            ('async def f():\n    yield 1\n', 'async def f():\n    yield 1\n    return 2\n', False),
+            ('return 0\ndef f():\n    return 1\n', 'def f():\n    return 2\n', False),
+            ('raise RuntimeError("must not execute")\n@missing\ndef f():\n    return 1\n',
+             '@missing\ndef f():\n    return 2\n', True),
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'sample.py'
+            client = Complete()
+            for original, replacement, valid in cases:
+                for mode in ('replacement', 'edit', 'edits'):
+                    with self.subTest(original=original, replacement=replacement, mode=mode):
+                        path.write_bytes(original.encode())
+                        marker = '@missing' if '@missing' in original else (
+                            'async def' if 'async def' in original else 'def f')
+                        selected = original[original.index(marker):]
+                        edit = dict(old=selected, new=replacement)
+                        client.text = replacement if mode == 'replacement' else json.dumps(
+                            edit if mode == 'edit' else dict(edits=[edit]))
+                        result = W.ProposalSession(client).propose(dict(
+                            file=str(path), symbol='f', format=mode, instruction='Change function'))
+                        self.assertEqual(result['reviewable'], valid)
+                        self.assertEqual(path.read_bytes(), original.encode())
+                        if not valid:
+                            self.assertIsNone(result['proposal_id'])
+                            self.assertIsNone(result['replacement_text'])
+                            self.assertIsNone(result['diff_preview'])
+                            self.assertTrue(result['rejection'])
+            path.write_bytes(b'plain text\n')
+            client.text = 'changed plain text\n'
+            self.assertTrue(W.propose(client, dict(
+                file=str(path), instruction='Change text'))['reviewable'])
+
     def test_explicit_helper_context_is_read_only_and_inherited(self):
         class Complete:
             text = 'def f():\n    return helper(2)\n'

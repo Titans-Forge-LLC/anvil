@@ -213,3 +213,30 @@ This is successful delivery of a small scoped job, not a controlled causal test
 of scoping. Task, output format and budget differ from the preceding failure.
 Do not divide those runs' timings and claim a speedup. No new planner, automatic
 scope expansion or multi-function editing engine was needed for this job.
+
+## Compile-only gate delivery
+
+The next maintenance job targeted `propose`: reject named-function proposals
+that parse but cannot compile, checking the composed module without executing it.
+One stock Splash 1.0 / local 27B request used atomic edits, reasoning `none`, and
+a 2,048-token output cap. It returned a one-line change, integrated unchanged
+after review. No retries, automatic application or additional planner.
+
+The prewritten acceptance test exposed 15 invalid reviewable results in the old
+implementation: five compiler-error cases across replacement, edit and edits
+formats. The proposed fix passed those cases, three valid no-execution controls
+and a whole-file non-Python control. Cases include duplicate arguments, illegal
+break/nonlocal, async-generator return, and invalid surrounding module code.
+The tests execute the reviewed workbench implementation, not the proposed fixture
+functions. Rejected proposals receive no ID, replacement or diff; disk is unchanged.
+
+- Request: **23.3868 s**, 2,754 input / 175 completion tokens.
+- Acceptance execution: **0.0076 s**.
+- Complete trial: **79.9576 s**, including **30.0539 s** startup and
+  **26.2230 s** review/coordination pause; integration and regression/CI extra.
+- Local regression suite: **72 tests passed**.
+
+This is one developer-specified maintenance success, not autonomous bug discovery
+or a speedup against another tool. Compilation checks the running interpreter's
+rules, not semantic correctness, runtime safety or cross-version compatibility.
+Existing compiler errors elsewhere in the module also prevent reviewability.
