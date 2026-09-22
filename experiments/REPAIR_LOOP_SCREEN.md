@@ -240,3 +240,38 @@ This is one developer-specified maintenance success, not autonomous bug discover
 or a speedup against another tool. Compilation checks the running interpreter's
 rules, not semantic correctness, runtime safety or cross-version compatibility.
 Existing compiler errors elsewhere in the module also prevent reviewability.
+
+## First paired product job: shell pipeline support
+
+September 22, 2026. Add stdin/stdout `-` support to the codec CLI so users can
+compose commands without temporary files. This needs edits across helpers and
+the command dispatcher, so both arms received the complete small CLI module.
+
+Direct model use and ANVIL received identical messages, the same stock local
+Splash 1.0 / 27B model, reasoning `none`, and a 4,096-token output cap. Direct
+ran first, ANVIL second on one server. Both produced identical source and passed
+the prewritten behavior checks on their first attempts; no repair was needed.
+
+| Measurement | Direct | ANVIL |
+| --- | ---: | ---: |
+| Request seconds | 6.7196 | 5.6620 |
+| Input / output tokens | 944 / 879 | 944 / 879 |
+| Acceptance-check seconds | 0.0126 | 0.0066 |
+| Correct task outcome | Pass | Pass |
+
+Whole shared trial: **45.7695 s**, including **10.0311 s** startup and **23.0946 s**
+review/coordination pause. Integration, regression, documentation and CI are
+additional; the pause is not a measurement of active human effort. Fixed order
+and shared server/cache prevent causal timing conclusions. This is a one-job
+screen, not proof of lower completed-job costs or autonomous bug discovery.
+Both arms used the same HTTP adapter; the direct arm omitted ANVIL's proposal
+session and source tracking. Both received compile and behavior checks after
+review. No engine counters were inferred from the timing difference.
+
+Acceptance covers streamed encode/decode/benchmark, either single verify stdin
+operand, refusal of two verify stdin operands before reading, malformed streams,
+ordinary file roundtrips and absence of a literal dash output file. The shared
+solution was manually integrated with its final file newline restored, without
+behavioral correction. A real shell encode-to-decode pipeline also round-tripped
+the public fixture exactly. The useful outcome is pipeline support; the added
+comparative value of ANVIL remains unproven on this job.

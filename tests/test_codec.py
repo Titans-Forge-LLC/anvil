@@ -5,16 +5,56 @@ import tempfile
 from contextlib import redirect_stdout
 import subprocess
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from anvil_alpha import AVP1Codec, CodecError, ContextMismatchError, canonical_json
 from anvil_alpha.cli import _write
+from anvil_alpha import cli
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class AVP1CodecTests(unittest.TestCase):
+    def test_cli_pipeline_and_file_operands(self):
+        source = {'authority': {'allow': ['read']}, 'text': 'café', 'value': 3}
+        payload = json.dumps(source)
+
+        def run(args, stdin=''):
+            with patch.object(cli.sys, 'stdin', io.StringIO(stdin)), redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(cli.main(args), 0)
+                return out.getvalue()
+
+        wire = run(['encode', '-', '-'], payload)
+        self.assertEqual(json.loads(run(['decode', '-', '-'], wire)), source)
+        self.assertTrue(json.loads(run(['benchmark', '-'], payload))['semantic_exact'])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            src, packed, dst = root / 'source.json', root / 'wire.avp1', root / 'decoded.json'
+            src.write_text(payload, encoding='utf-8')
+            run(['encode', str(src), str(packed)])
+            run(['decode', str(packed), str(dst)])
+            self.assertEqual(json.loads(dst.read_text(encoding='utf-8')), source)
+            self.assertTrue(json.loads(run(['verify', '-', str(packed)], payload))['semantic_exact'])
+            self.assertTrue(json.loads(run(['verify', str(src), '-'], wire))['authority_exact'])
+            self.assertTrue(json.loads(run(['verify', str(src), str(packed)]))['semantic_exact'])
+
+    def test_cli_double_stdin_rejected_before_reading(self):
+        class NoRead:
+            def read(self, *args):
+                raise AssertionError('must reject before reading')
+        with patch.object(cli.sys, 'stdin', NoRead()), patch.object(cli.sys, 'stderr', io.StringIO()):
+            with self.assertRaises(SystemExit) as error:
+                cli.main(['verify', '-', '-'])
+        self.assertEqual(error.exception.code, 2)
+
+    def test_cli_malformed_streams_rejected(self):
+        for command, value in [('encode', 'not JSON'), ('decode', 'not a wire')]:
+            with self.subTest(command=command), patch.object(cli.sys, 'stdin', io.StringIO(value)):
+                with self.assertRaises(ValueError):
+                    cli.main([command, '-'])
+
     def test_cli_write_adds_only_missing_newline(self):
         for text in ('', 'hello', 'hello\n', 'hello\n\n', 'café\n', 'x\r\n'):
             expected = text if text.endswith('\n') else text + '\n'
