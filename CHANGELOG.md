@@ -1,5 +1,9 @@
 # Changelog
 
+- CLI: standard input/output via `-` for encode/decode, JSON stdin for benchmark,
+  and one stdin operand for verify. Reject ambiguous double-stdin verification
+  before reading; ordinary file operands remain supported.
+
 - Workbench: explicitly export retained proposals as project-relative patches.
   Refuse stale source, expired IDs and existing destinations; preserve revision
   diffs and newline bytes. Export does not invoke the model, apply or execute code.

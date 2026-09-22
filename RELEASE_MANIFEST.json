@@ -52,7 +52,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "da6186020c7d4c6b867773add47cef90de74d811d42163d539f1903dcc98c585"
+      "sha256": "a0a94f1e33f16e4e42578eb87297fe8f1801758dd775f3e55f56aaa96cf31924"
     },
     {
       "path": "CITATION.cff",
@@ -100,7 +100,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "7ab0f25ce52c7c79e77bba71efece64a3e831d905a32a90ba83494176a6f9595"
+      "sha256": "d6b859c791d735b3970f386061f9949132cc9d9851fbbb5aee98ab46c2edcaed"
     },
     {
       "path": "RELEASE_EVIDENCE_PACKET.md",
@@ -140,7 +140,7 @@
     },
     {
       "path": "experiments/REPAIR_LOOP_SCREEN.md",
-      "sha256": "69316d970a0e7806fb3356c960b9ae8ea8d84a249f50e334d5488ae4ec47c85a"
+      "sha256": "df82e92cb32e244d7a18c943d5cb047eb47273e95dda0b76bb6e006cd6825312"
     },
     {
       "path": "experiments/SPLASH_LIVE_SMOKE.md",
@@ -264,7 +264,7 @@
     },
     {
       "path": "src/anvil_alpha/cli.py",
-      "sha256": "b5bd697fe470e24b2eadf4b3ab414c842cf26e62ee924c00a12004f5332c5a17"
+      "sha256": "03fea749d5dcd460707f338bad7c061eab3151997015f6eafc438cb41f449035"
     },
     {
       "path": "src/anvil_alpha/codec.py",
@@ -276,7 +276,7 @@
     },
     {
       "path": "tests/test_codec.py",
-      "sha256": "bf91dd493c1797ce1263d6e819a9bcf4a1fbb46d18c88ff453ac80ed266f018b"
+      "sha256": "edb2b8c69e9298e43d5651748a157fc9c6e5d891b0179b704325c91d25802c50"
     },
     {
       "path": "tests/test_edit_proposals.py",

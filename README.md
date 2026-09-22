@@ -78,6 +78,18 @@ PYTHONPATH=src python3 -m anvil_alpha.cli benchmark \
 Open `site/index.html` directly to use the browser demo. It makes no network
 requests and does not execute mission operations.
 
+The CLI also accepts `-` for standard input/output, so commands can be piped:
+
+```sh
+PYTHONPATH=src python3 -m anvil_alpha.cli encode examples/governed_mission.json - | \
+  PYTHONPATH=src python3 -m anvil_alpha.cli decode - -
+```
+
+`benchmark -` reads JSON from stdin. For `verify`, either the JSON source or the
+wire may be `-`, but not both: one stdin stream cannot supply both documents.
+Omitting the output still writes to stdout. To access a file literally named `-`,
+use its absolute path (`./-` is normalized to `-` by the path parser).
+
 A network-free Python installation requires `setuptools>=68` and `wheel` to be
 present in the build environment before running `pip install --no-build-isolation .`.
 Normal connected `pip install .` environments may obtain those declared build

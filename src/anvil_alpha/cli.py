@@ -11,16 +11,24 @@ from .codec import AVP1Codec, canonical_json, semantic_sha256
 
 
 def _load_json(path: Path):
+    if path == Path("-"):
+        return json.loads(sys.stdin.read())
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _write(path: Path | None, text: str) -> None:
     if not text.endswith('\n'):
         text += '\n'
-    if path is None:
+    if path is None or path == Path("-"):
         sys.stdout.write(text)
     else:
         path.write_text(text, encoding="utf-8")
+
+
+def _read_text(path: Path) -> str:
+    if path == Path("-"):
+        return sys.stdin.read()
+    return path.read_text(encoding="utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -43,18 +51,23 @@ def main(argv: list[str] | None = None) -> int:
     benchmark.add_argument("input", type=Path)
 
     args = parser.parse_args(argv)
+
+    if args.command == "verify":
+        if args.source == Path("-") and args.wire == Path("-"):
+            parser.error("cannot use '-' for both source and wire")
+
     codec = AVP1Codec()
 
     if args.command == "encode":
         _write(args.output, codec.encode(_load_json(args.input)))
         return 0
     if args.command == "decode":
-        decoded = codec.decode(args.input.read_text(encoding="utf-8").strip())
+        decoded = codec.decode(_read_text(args.input).strip())
         _write(args.output, json.dumps(decoded, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     if args.command == "verify":
         source = _load_json(args.source)
-        wire = args.wire.read_text(encoding="utf-8").strip()
+        wire = _read_text(args.wire).strip()
         decoded = codec.decode(wire)
         exact = canonical_json(source) == canonical_json(decoded)
         authority_exact = semantic_sha256(source.get("authority")) == semantic_sha256(
