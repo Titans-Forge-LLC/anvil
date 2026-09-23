@@ -115,6 +115,39 @@ class AVP1CodecTests(unittest.TestCase):
         self.assertEqual(wire,self.codec.encode(self.sample))
         self.assertEqual(self.codec.decode(wire),self.sample)
 
+    def test_key_order_and_data_properties_cross_runtime(self):
+        cases = [
+            {'10': 1, '2': 2},
+            {'4294967294': 1, '9': 2, '01': 3, '0': 4},
+            {'\U00010000': 1, '\ue000': 2},
+            {'a\U00010000': 1, 'a\ue000': 2, 'a': 3, 'aa': 4},
+            {'é': 'composed', 'e\u0301': 'decomposed', '': 'empty'},
+            {'nested': [{'10': 1, '2': 2}, {'\U0001f600': 1, '\uffff': 2}]},
+            {'__proto__': {'polluted': True}, 'constructor': 'data'},
+            {'@0': '#0', 'version': '0.1', '10': {'2': '@a'}},
+        ]
+        script = """
+import {canonicalJson, encode, decode} from './site/codec.mjs';
+import {readFileSync} from 'node:fs';
+const cases = JSON.parse(readFileSync(0, 'utf8'));
+process.stdout.write(JSON.stringify(cases.map(row => ({
+  canonical: canonicalJson(row.value), wire: encode(row.value),
+  decoded: decode(row.wire)
+}))));
+"""
+        records = [{'value': v, 'wire': self.codec.encode(v)} for v in cases]
+        result = subprocess.run(['node', '--input-type=module', '-e', script],
+                                cwd=ROOT, input=json.dumps(records), encoding='utf-8',
+                                capture_output=True, check=True, timeout=15)
+        decoded_results = json.loads(result.stdout)
+        self.assertEqual(len(decoded_results), len(cases))
+        for value, actual in zip(cases, decoded_results):
+            with self.subTest(value=value):
+                self.assertEqual(actual['canonical'], canonical_json(value))
+                self.assertEqual(actual['wire'], self.codec.encode(value))
+                self.assertEqual(actual['decoded'], value)
+                self.assertEqual(self.codec.decode(actual['wire']), value)
+
 
 if __name__ == "__main__":
     unittest.main()

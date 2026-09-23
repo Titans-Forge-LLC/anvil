@@ -52,7 +52,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "a0a94f1e33f16e4e42578eb87297fe8f1801758dd775f3e55f56aaa96cf31924"
+      "sha256": "49af4d02df2e9749d7188b8004c7871a735b9e664652220356e4cebbc560420a"
     },
     {
       "path": "CITATION.cff",
@@ -60,7 +60,7 @@
     },
     {
       "path": "CLAIMS_AND_LIMITATIONS.md",
-      "sha256": "790134a3abc7cac54257f1bce07bf70b7ff415f19a92b85300745665c2bcba73"
+      "sha256": "8a58938968548c0067cef351eb85cbea48f3c0255353893a2a28290639a9f746"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -232,7 +232,7 @@
     },
     {
       "path": "site/codec.mjs",
-      "sha256": "5e964ba4b053fa7974291d912982e44760d12617c960adab66f81b2cd98b38d9"
+      "sha256": "16227eb837f860c48c5ae68cd7cd5f9fe47a94384c6b101119e5a839ba3c37da"
     },
     {
       "path": "site/exports/anvil-public-beta-desktop.png",
@@ -272,11 +272,11 @@
     },
     {
       "path": "tests/test_codec.mjs",
-      "sha256": "a70dfc25f491f8dabecbce2b211a660bde21e67ea359a9be28d56f6c8f05dfbf"
+      "sha256": "300898cf4bda6831c8c9e91a8247c4403ba0111a9fb937ce4fdf583c850eda9f"
     },
     {
       "path": "tests/test_codec.py",
-      "sha256": "edb2b8c69e9298e43d5651748a157fc9c6e5d891b0179b704325c91d25802c50"
+      "sha256": "108113dbf3ee365e4579353afa2d1fdb96144917253a1215c3d0e14c1cade36b"
     },
     {
       "path": "tests/test_edit_proposals.py",
