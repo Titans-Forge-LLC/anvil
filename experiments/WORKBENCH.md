@@ -13,6 +13,31 @@ or telemetry is started. Treat output as untrusted code requiring review.
 
 ## Run
 
+### Review a local edit without writing JSON
+
+With a local Splash server already running, start the human-facing mode:
+
+```sh
+python experiments/workbench.py --backend splash --interactive --project-root /path/to/project
+```
+
+The same `--interactive --project-root` flags work with the MLX backend and its
+required `--model` argument. The shell asks for a Python file inside that root,
+lists its unambiguous top-level functions, and lets you choose one editable
+function or the whole file. You may explicitly name up to four read-only helpers
+from that file. Enter an instruction, inspect the source-bound diff, then choose
+whether to revise, export a patch, or leave it. There is no automatic patch
+application, test execution, or source crawling. Export creates a new patch file
+inside the project root only after you request it; an existing destination is
+never overwritten. The default output budget is 1,024 tokens; use
+`--max-tokens N` (up to 4,096) for a larger replacement. The model's own context
+limit still applies. The original JSON-lines interface remains available for
+automation and exact request control.
+
+This is an interaction improvement, not a demonstrated coding-quality or
+end-to-end speed gain. Keep the model server and project local; displayed diffs
+and exported patches may contain private code.
+
 ### Use an existing local Splash server
 
 ```sh

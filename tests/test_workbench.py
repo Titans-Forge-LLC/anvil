@@ -54,6 +54,66 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_interactive_selects_function_and_exports_only_on_request(self):
+        class Complete:
+            calls = 0
+            def complete(self, *args, **kwargs):
+                self.calls += 1
+                return dict(text='def f():\n    return 2\n', complete=True)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / 'sample.py'
+            original = b'def f():\n    return 1\n\ndef g():\n    return 3\n'
+            path.write_bytes(original)
+            client = Complete()
+            session = W.ProposalSession(client)
+            answers = 'sample.py\n1\n\nUse two\n\ne\nreview.patch\nq\n'
+            with patch.object(W.sys, 'stdin', io.StringIO(answers)), \
+                 patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(session, root)
+            self.assertEqual(client.calls, 1)
+            self.assertEqual(path.read_bytes(), original)
+            self.assertTrue((root / 'review.patch').exists())
+            self.assertIn('Nothing was applied or executed', output.getvalue())
+            self.assertIn('proposal: p1', output.getvalue())
+
+    def test_interactive_rejects_path_escape_before_model(self):
+        class Complete:
+            calls = 0
+            def complete(self, *args, **kwargs):
+                self.calls += 1
+                raise AssertionError('model should not run')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'root'
+            root.mkdir()
+            (root.parent / 'outside.py').write_text('def f(): pass\n')
+            client = Complete()
+            with patch.object(W.sys, 'stdin', io.StringIO('../outside.py\n\n')), \
+                 patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(W.ProposalSession(client), root)
+            self.assertEqual(client.calls, 0)
+            self.assertIn('ValueError', output.getvalue())
+
+    def test_interactive_revision_stays_source_bound(self):
+        class Complete:
+            calls = 0
+            def complete(self, *args, **kwargs):
+                self.calls += 1
+                return dict(text=f'def f():\n    return {self.calls + 1}\n', complete=True)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / 'sample.py'
+            original = b'def f():\n    return 1\n'
+            path.write_bytes(original)
+            client = Complete()
+            answers = 'sample.py\n1\n\nUse two\n\nr\nUse three\nq\n'
+            with patch.object(W.sys, 'stdin', io.StringIO(answers)), \
+                 patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(W.ProposalSession(client), root)
+            self.assertEqual(client.calls, 2)
+            self.assertEqual(path.read_bytes(), original)
+            self.assertIn('proposal: p2', output.getvalue())
+
     def test_patch_export_applies_exact_bytes_without_model_calls(self):
         git = shutil.which('git')
         if not git:
