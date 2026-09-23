@@ -37,6 +37,21 @@ The beta remains open. The earlier September 11 target was not a full-release
 promotion. We are shipping incremental previews while keeping measured results
 and unsupported claims separate.
 
+If you saved wires from the earlier browser encoder, an offline migration command
+can convert its exact canonical wires to the corrected format. From the repository
+root, use a new output file and keep your original:
+
+```sh
+(set -C; node scripts/migrate_legacy_browser.mjs < old-wire.avp1 > migrated-wire.avp1)
+```
+
+The command accepts only the registered `AVP1/governed-mission-v1` profile. On
+refusal it exits with status 1 and writes no wire to stdout; inspect and remove
+any empty output file created by shell redirection. It never runs automatically.
+Normal decoding continues to reject noncanonical old wires. This repairs known
+browser ordering cases; it does not recover precision lost before encoding or
+establish universal Python/JavaScript number compatibility.
+
 Patent Pending.
 
 Repository target: `https://github.com/Titans-Forge-LLC/anvil`

@@ -29,8 +29,12 @@ For the tested portable subset use Unicode scalar strings and safe integer
 values, alongside ordinary arrays, objects, booleans and null.
 
 Corrected ordering changes wires for affected objects. Old browser-only
-misordered wires are refused rather than silently treated as canonical. Re-encode
-from the original JSON; this package does not automatically migrate stored wires.
+misordered wires are refused by normal decoding. The explicit offline command
+`node scripts/migrate_legacy_browser.mjs` can convert exact wires from the
+original browser encoder for the registered profile, while preserving decoded
+data. It refuses ambiguous or noncanonical inputs and does not run automatically.
+When the original JSON is available, re-encoding from it remains the simplest
+path. The tool does not restore precision lost before the old wire was written.
 
 ## Historical AVD2 claim
 

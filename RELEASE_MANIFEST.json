@@ -1,5 +1,5 @@
 {
-  "allowlist_sha256": "7707e9ca74deddbdc6a6b9cd2b8b296d5eeac907019c527d5324faa20a558d46",
+  "allowlist_sha256": "3ce170404c9a1b15a31a1b91b6a9dc79eb345bcf2a85a171699915ee69913e1f",
   "canonical_name": "Adaptive Neural Vector Instruction Language",
   "checks": [
     {
@@ -8,6 +8,10 @@
     },
     {
       "id": "javascript_codec_conformance",
+      "status": "PASS"
+    },
+    {
+      "id": "legacy_migration_conformance",
       "status": "PASS"
     }
   ],
@@ -52,7 +56,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "49af4d02df2e9749d7188b8004c7871a735b9e664652220356e4cebbc560420a"
+      "sha256": "4374856b52ecb73bf886015f0e8c27f8e38189ab3dc5e132a099bd71cf0e9ab5"
     },
     {
       "path": "CITATION.cff",
@@ -60,7 +64,7 @@
     },
     {
       "path": "CLAIMS_AND_LIMITATIONS.md",
-      "sha256": "8a58938968548c0067cef351eb85cbea48f3c0255353893a2a28290639a9f746"
+      "sha256": "2912894c11af0ecc2f833d2c5f76b621a6d70d35491586b2ca6222cc3f85db6b"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -96,11 +100,11 @@
     },
     {
       "path": "PUBLIC_RELEASE_FILE_ALLOWLIST_V0_1.json",
-      "sha256": "7707e9ca74deddbdc6a6b9cd2b8b296d5eeac907019c527d5324faa20a558d46"
+      "sha256": "3ce170404c9a1b15a31a1b91b6a9dc79eb345bcf2a85a171699915ee69913e1f"
     },
     {
       "path": "README.md",
-      "sha256": "d6b859c791d735b3970f386061f9949132cc9d9851fbbb5aee98ab46c2edcaed"
+      "sha256": "30d5106a95dd957ac895fb8736021dc9cf4803babc251e39c1becf6eca873213"
     },
     {
       "path": "RELEASE_EVIDENCE_PACKET.md",
@@ -203,6 +207,10 @@
       "sha256": "b8950e1d79c21bf52c18b4fe93d97265f6541a4187d547ade011595acd09d025"
     },
     {
+      "path": "scripts/migrate_legacy_browser.mjs",
+      "sha256": "b47e289fd24f788053ca00ee28c3b44e4bdcbc9843e6b5feaa437a439a073d5f"
+    },
+    {
       "path": "scripts/reasoning_signature.py",
       "sha256": "2152998c9d1ad9e98fc95101961c8a5db38c167c2ca6db3449ac193f073ff4b4"
     },
@@ -216,7 +224,7 @@
     },
     {
       "path": "scripts/verify_release.py",
-      "sha256": "b54d76a89cc3abb55c57060f4e37eb628107c447c2f010fc76f4141d3e2178b9"
+      "sha256": "1d619790e90c287deb52749a8808800fb5d640a5f95d60c9ed3fe2de2ff1609a"
     },
     {
       "path": "site/app.js",
@@ -225,6 +233,10 @@
     {
       "path": "site/app.mjs",
       "sha256": "c607e77cee761b342916ff601ce1261dd75ea5d8171b519f87c43e1a7b2ee965"
+    },
+    {
+      "path": "site/codec-legacy.mjs",
+      "sha256": "5e964ba4b053fa7974291d912982e44760d12617c960adab66f81b2cd98b38d9"
     },
     {
       "path": "site/codec.js",
@@ -281,6 +293,10 @@
     {
       "path": "tests/test_edit_proposals.py",
       "sha256": "d0d339d240dbc9f7a63852047f8c76ca62b7607edbd04778d7c7fcf0ce7cb631"
+    },
+    {
+      "path": "tests/test_legacy_migration.mjs",
+      "sha256": "d3ebdc6c7b259ffc5ab5f4a74a947dc7d32625cbeaedfa7021256c2e159d1b5c"
     },
     {
       "path": "tests/test_reasoning_signature.py",
