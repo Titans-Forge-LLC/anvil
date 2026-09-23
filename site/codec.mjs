@@ -20,6 +20,28 @@ const symbolToValue = new Map([...valueToSymbol].map(([key, value]) => [value, k
 export class CodecError extends Error {}
 export class ContextMismatchError extends CodecError {}
 
+function compareKeys(a, b) {
+  const left = Array.from(a), right = Array.from(b);
+  for (let i = 0; i < Math.min(left.length, right.length); i++) {
+    const delta = left[i].codePointAt(0) - right[i].codePointAt(0);
+    if (delta) return delta;
+  }
+  return left.length - right.length;
+}
+
+// Emit object members directly: rebuilding a sorted object lets JavaScript
+// reorder integer-like keys. Primitives retain the existing JSON number rules.
+function stringifyCanonical(value) {
+  if (Array.isArray(value)) {
+    return '[' + Array.from(value, item => item === undefined ? 'null' : stringifyCanonical(item)).join(',') + ']';
+  }
+  if (value !== null && typeof value === 'object') {
+    return '{' + Object.keys(value).sort(compareKeys)
+      .map(key => JSON.stringify(key) + ':' + stringifyCanonical(value[key])).join(',') + '}';
+  }
+  return JSON.stringify(value);
+}
+
 export function normalize(value) {
   if (value === null || typeof value === 'boolean' || typeof value === 'string') return value;
   if (typeof value === 'number') {
@@ -28,13 +50,13 @@ export function normalize(value) {
   }
   if (Array.isArray(value)) return value.map(normalize);
   if (typeof value === 'object') {
-    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, normalize(value[key])]));
+    return Object.fromEntries(Object.keys(value).sort(compareKeys).map((key) => [key, normalize(value[key])]));
   }
   throw new CodecError(`unsupported JSON type: ${typeof value}`);
 }
 
 export function canonicalJson(value) {
-  return JSON.stringify(normalize(value));
+  return stringifyCanonical(normalize(value));
 }
 
 function encodeKey(key) {
@@ -68,7 +90,7 @@ function unpack(value) {
   }
   if (Array.isArray(value)) return value.map(unpack);
   if (value && typeof value === 'object') {
-    const result = {};
+    const result = Object.create(null);
     for (const [key, item] of Object.entries(value)) {
       const decodedKey = decodeKey(key);
       if (Object.hasOwn(result, decodedKey)) throw new CodecError(`decoded key collision: ${decodedKey}`);
@@ -80,7 +102,7 @@ function unpack(value) {
 }
 
 export function encode(value, profileId = PROFILE_ID) {
-  return `${PREFIX}|${profileId}|${JSON.stringify(pack(normalize(value)))}`;
+  return `${PREFIX}|${profileId}|${stringifyCanonical(pack(normalize(value)))}`;
 }
 
 export function decode(wire, profileId = PROFILE_ID) {

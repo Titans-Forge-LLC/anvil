@@ -1,5 +1,12 @@
 # Changelog
 
+- Browser codec: emit numeric-like object keys lexicographically and compare
+  Unicode keys by complete code-point sequence, matching the Python reference.
+  Preserve `__proto__` as data during decoding. Existing JavaScript numeric
+  acceptance/rendering is unchanged; floating-point cross-runtime gaps remain.
+  Previously emitted JavaScript-only misordered wires are now rejected as
+  noncanonical; re-encode from the original JSON with the corrected codec.
+
 - CLI: standard input/output via `-` for encode/decode, JSON stdin for benchmark,
   and one stdin operand for verify. Reject ambiguous double-stdin verification
   before reading; ordinary file operands remain supported.

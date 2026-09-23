@@ -14,6 +14,24 @@ The AVP1 reference profile may be described as:
 
 These claims must be accompanied by the tested version or release manifest.
 
+### Cross-runtime boundary
+
+The browser codec now matches Python's key ordering for numeric-looking keys
+and Unicode code points, including common prefixes. It also preserves the
+`__proto__` data property. Regressions compare canonical bytes, wires and decoded
+values directly between both runtimes, in addition to the shipped fixture.
+
+This does not establish universal JSON interchange: Python and JavaScript still
+differ in floating-point rendering, negative zero, large-number precision and
+lone-surrogate handling. JavaScript retains its existing finite-number behavior;
+the experimental integer-only serializer has not replaced the public API.
+For the tested portable subset use Unicode scalar strings and safe integer
+values, alongside ordinary arrays, objects, booleans and null.
+
+Corrected ordering changes wires for affected objects. Old browser-only
+misordered wires are refused rather than silently treated as canonical. Re-encode
+from the original JSON; this package does not automatically migrate stored wires.
+
 ## Historical AVD2 claim
 
 The following sentence is the approved bounded form:
