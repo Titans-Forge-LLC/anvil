@@ -149,6 +149,7 @@ def main() -> int:
     commands = [
         ("python_codec_conformance", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"]),
         ("javascript_codec_conformance", ["node", "tests/test_codec.mjs"]),
+        ("legacy_migration_conformance", ["node", "tests/test_legacy_migration.mjs"]),
     ]
     env = dict(__import__("os").environ)
     env["PYTHONPATH"] = str(ROOT / "src")

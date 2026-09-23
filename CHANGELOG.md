@@ -1,5 +1,11 @@
 # Changelog
 
+- Add an opt-in offline migration command for exact wires emitted by the earlier
+  browser encoder. It verifies old or current canonicality, preserves decoded
+  data and emits the corrected wire. Normal decoding remains strict. The command
+  reports only input/output hashes and whether bytes changed; originals are not
+  overwritten. Supported profile: `AVP1/governed-mission-v1`.
+
 - Browser codec: emit numeric-like object keys lexicographically and compare
   Unicode keys by complete code-point sequence, matching the Python reference.
   Preserve `__proto__` as data during decoding. Existing JavaScript numeric
