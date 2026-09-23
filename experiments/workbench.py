@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import argparse
 import ast
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 import difflib
 import hashlib
 import json
@@ -661,6 +661,111 @@ class ProposalSession:
                 'patch_bytes': len(patch_bytes), 'applied': False}
 
 
+def interactive_symbols(path):
+    """List only selectable top-level functions; no imports or code execution."""
+    with path.open('rb') as stream:
+        raw = stream.read(1048577)
+    if len(raw) > 1048576:
+        raise ValueError('file exceeds 1 MiB named-function preview limit')
+    body = ast.parse(raw.decode('utf-8')).body
+    names = [node.name for node in body
+             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    counts = Counter(names)
+    return [name for name in names if counts[name] == 1]
+
+
+def run_interactive(session, project_root, max_tokens=1024):
+    """Human review shell over the existing proposal-only session."""
+    root = Path(project_root).expanduser().resolve(strict=True)
+    if not root.is_dir():
+        raise ValueError('project_root must be a directory')
+
+    def ask(label):
+        print(label, end='', flush=True)
+        answer = sys.stdin.readline(16385)
+        if len(answer) > 16384:
+            while answer and not answer.endswith('\n'):
+                answer = sys.stdin.readline(16385)
+            raise ValueError('interactive answer exceeds 16 KiB')
+        return answer.rstrip('\r\n') if answer else None
+
+    print('ANVIL review workbench. Proposal only: no code is applied or executed.')
+    print('Enter a file relative to the project root; blank input exits.')
+    while True:
+        filename = ask('File: ')
+        if not filename:
+            return
+        try:
+            path = (root / filename).resolve(strict=True)
+            path.relative_to(root)
+            if not path.is_file() or path.suffix != '.py':
+                raise ValueError('choose a regular Python file inside the project root')
+            symbols = interactive_symbols(path)
+            print('0: entire file (32 KiB maximum)')
+            for index, name in enumerate(symbols, 1):
+                print(f'{index}: {name}')
+            choice = ask('Editable scope number: ')
+            if choice is None or not choice.isdecimal() or int(choice) > len(symbols):
+                raise ValueError('choose a displayed scope number')
+            symbol = symbols[int(choice) - 1] if int(choice) else None
+            helpers = []
+            if symbol is not None:
+                helper_input = ask('Read-only helper names (comma-separated, blank for none): ')
+                if helper_input is None:
+                    return
+                helpers = [name.strip() for name in helper_input.split(',') if name.strip()]
+                if (len(helpers) > 4 or len(set(helpers)) != len(helpers)
+                        or any(name not in symbols or name == symbol for name in helpers)):
+                    raise ValueError('choose up to four distinct displayed helper functions')
+            instruction = ask('Requested change: ')
+            if instruction is None:
+                return
+            mode = 'replacement'
+            if symbol is not None:
+                mode_input = ask('Output format [replacement/edit/edits] (default replacement): ')
+                if mode_input is None:
+                    return
+                mode = mode_input or mode
+                if mode not in ('replacement', 'edit', 'edits'):
+                    raise ValueError('unknown output format')
+            request = {'file': str(path), 'symbol': symbol, 'context_symbols': helpers,
+                       'instruction': instruction, 'format': mode, 'max_tokens': max_tokens}
+            result = session.propose(request)
+            while True:
+                print(f"Reviewable: {result['reviewable']} | source changed: {result['source_changed']}"
+                      f" | proposal: {result['proposal_id'] or '-'}")
+                print(f"Output tokens: {result.get('output_tokens', 'unknown')}"
+                      f" | request seconds: {result['total_request_seconds']:.3f}"
+                      f" | rejection: {result['rejection'] or '-'}")
+                if result['reviewable']:
+                    print(result['diff_preview'])
+                action = ask('[r]evise, [e]xport reviewed patch, [n]ew file, [q]uit: ')
+                if action in (None, 'q'):
+                    return
+                if action == 'n':
+                    break
+                if action not in ('r', 'e') or not result['proposal_id']:
+                    print('That action requires a reviewable proposal.')
+                    continue
+                if action == 'r':
+                    instruction = ask('Revision request: ')
+                    if instruction is None:
+                        return
+                    result = session.propose({'revise': result['proposal_id'],
+                                              'instruction': instruction, 'max_tokens': max_tokens})
+                else:
+                    output = ask('New patch path relative to project root: ')
+                    if output is None:
+                        return
+                    destination = (root / output).absolute()
+                    destination.parent.resolve(strict=True).relative_to(root)
+                    receipt = session.export_patch(result['proposal_id'], root, destination)
+                    print(f"Exported {receipt['output']} ({receipt['patch_bytes']} bytes)."
+                          ' Nothing was applied or executed.')
+        except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
+            print(f'{type(exc).__name__}: {exc}')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--backend', choices=('mlx', 'splash'), default='mlx')
@@ -672,7 +777,16 @@ def main():
     parser.add_argument('--ordinary', action='store_true', help='disable draft reuse, retain exact/prefix caches')
     parser.add_argument('--source-draft', action='store_true', help='experimental: verify source instead of previous answer as draft')
     parser.add_argument('--memory-gib', type=int, default=20)
+    parser.add_argument('--interactive', action='store_true',
+                        help='human file/function selection and review instead of JSON lines')
+    parser.add_argument('--project-root', help='required project directory for --interactive')
+    parser.add_argument('--max-tokens', type=int, default=1024,
+                        help='interactive output budget, 1..4096 (default 1024)')
     args = parser.parse_args()
+    if args.interactive != bool(args.project_root):
+        parser.error('--interactive and --project-root must be used together')
+    if not 1 <= args.max_tokens <= 4096:
+        parser.error('--max-tokens must be in [1, 4096]')
     if not 1 <= args.memory_gib <= 128:
         parser.error('--memory-gib must be in [1, 128]')
     if args.ordinary and args.source_draft:
@@ -691,6 +805,9 @@ def main():
         completion = Completion(backend, not args.ordinary, args.source_draft)
         load_seconds = backend.load_seconds
     proposals = ProposalSession(completion)
+    if args.interactive:
+        run_interactive(proposals, args.project_root, args.max_tokens)
+        return
     print(json.dumps({'ready': True, 'backend': args.backend, 'load_seconds': load_seconds,
                       'server_readiness': 'not_checked' if args.backend == 'splash' else 'not_applicable',
                       'proposal_only': True}), flush=True)
