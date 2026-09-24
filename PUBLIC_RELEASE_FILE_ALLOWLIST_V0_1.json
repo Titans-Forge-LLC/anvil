@@ -68,6 +68,7 @@
     "src/anvil_alpha/__init__.py",
     "src/anvil_alpha/cli.py",
     "src/anvil_alpha/codec.py",
+    "tests/test_cli_limits.py",
     "tests/test_codec.mjs",
     "tests/test_codec.py",
     "tests/test_edit_proposals.py",
