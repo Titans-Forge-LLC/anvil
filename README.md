@@ -102,6 +102,11 @@ PYTHONPATH=src python3 -m anvil_alpha.cli encode examples/governed_mission.json 
 
 `benchmark -` reads JSON from stdin. For `verify`, either the JSON source or the
 wire may be `-`, but not both: one stdin stream cannot supply both documents.
+Each input operand is limited to 1,048,576 raw UTF-8 bytes. Oversized JSON or
+AVP1 input is rejected before decoding or writing an output file. The CLI reads
+at most one byte beyond the limit from binary streams, or one character beyond
+from text-only stdin, then checks its UTF-8 byte count. This applies to files
+and stdin.
 Omitting the output still writes to stdout. To access a file literally named `-`,
 use its absolute path (`./-` is normalized to `-` by the path parser).
 

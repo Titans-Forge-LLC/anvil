@@ -9,11 +9,30 @@ from pathlib import Path
 
 from .codec import AVP1Codec, canonical_json, semantic_sha256
 
+MAX_INPUT_BYTES = 1_048_576
+
+
+def _read_bounded_bytes(path: Path) -> bytes:
+    """Read an input operand with one byte or character of look-ahead."""
+    if path == Path("-"):
+        binary = getattr(sys.stdin, "buffer", None)
+        if binary is not None:
+            return binary.read(MAX_INPUT_BYTES + 1)
+        # Text-only streams must also be bounded before counting UTF-8 bytes.
+        return sys.stdin.read(MAX_INPUT_BYTES + 1).encode("utf-8")
+    with path.open("rb") as stream:
+        return stream.read(MAX_INPUT_BYTES + 1)
+
+
+def _check_limit(data: bytes) -> None:
+    if len(data) > MAX_INPUT_BYTES:
+        raise ValueError(f"input exceeds {MAX_INPUT_BYTES} byte limit")
+
 
 def _load_json(path: Path):
-    if path == Path("-"):
-        return json.loads(sys.stdin.read())
-    return json.loads(path.read_text(encoding="utf-8"))
+    data = _read_bounded_bytes(path)
+    _check_limit(data)
+    return json.loads(data.decode("utf-8"))
 
 
 def _write(path: Path | None, text: str) -> None:
@@ -26,9 +45,9 @@ def _write(path: Path | None, text: str) -> None:
 
 
 def _read_text(path: Path) -> str:
-    if path == Path("-"):
-        return sys.stdin.read()
-    return path.read_text(encoding="utf-8")
+    data = _read_bounded_bytes(path)
+    _check_limit(data)
+    return data.decode("utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:

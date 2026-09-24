@@ -1,5 +1,5 @@
 {
-  "allowlist_sha256": "3ce170404c9a1b15a31a1b91b6a9dc79eb345bcf2a85a171699915ee69913e1f",
+  "allowlist_sha256": "c9cf9a9bad5aee54229715688c0b738b07b8813c8029b05cc0bb5934b6f97d48",
   "canonical_name": "Adaptive Neural Vector Instruction Language",
   "checks": [
     {
@@ -100,11 +100,11 @@
     },
     {
       "path": "PUBLIC_RELEASE_FILE_ALLOWLIST_V0_1.json",
-      "sha256": "3ce170404c9a1b15a31a1b91b6a9dc79eb345bcf2a85a171699915ee69913e1f"
+      "sha256": "c9cf9a9bad5aee54229715688c0b738b07b8813c8029b05cc0bb5934b6f97d48"
     },
     {
       "path": "README.md",
-      "sha256": "30d5106a95dd957ac895fb8736021dc9cf4803babc251e39c1becf6eca873213"
+      "sha256": "10c3c8eff43dac06d9e1e7d6c000fdf073f8260368c2324c742a781a31fbfdc7"
     },
     {
       "path": "RELEASE_EVIDENCE_PACKET.md",
@@ -276,11 +276,15 @@
     },
     {
       "path": "src/anvil_alpha/cli.py",
-      "sha256": "03fea749d5dcd460707f338bad7c061eab3151997015f6eafc438cb41f449035"
+      "sha256": "2895d11f5ab1ac51f6955253717e038dabda2605b61aeac5ea591e65e4bb54ce"
     },
     {
       "path": "src/anvil_alpha/codec.py",
       "sha256": "2968fd04ba67c6eef33995e2d0d9f6ef278b51c97ba54cfa29024a79d4b363d9"
+    },
+    {
+      "path": "tests/test_cli_limits.py",
+      "sha256": "58706528d3ab5e4a05b07f1e23a98454b904ecc63206ae5afa8502c2ddf8cbbd"
     },
     {
       "path": "tests/test_codec.mjs",
