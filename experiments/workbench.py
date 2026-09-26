@@ -537,6 +537,12 @@ def propose(completion, request, *, base_source=None, expected_sha256=None):
     usable = result['complete'] and current == raw and not result['text'].lstrip().startswith('```')
     replacement = result['text']
     rejection = None
+    if not result['complete']:
+        rejection = 'model output is incomplete; request a smaller change or increase max_tokens'
+    elif current != raw:
+        rejection = 'source changed during generation; start a new request'
+    elif result['text'].lstrip().startswith('```'):
+        rejection = 'Markdown-wrapped output rejected; start a new request asking for raw code without fences'
     if usable and mode in ('edit', 'edits'):
         try:
             replacement = reconstruct_edit(selected, result['text'], multiple=mode == 'edits')

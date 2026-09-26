@@ -78,6 +78,7 @@ the code. If you decide to apply it yourself, verify these behaviors afterward:
 - **Connection failure:** confirm your server is running and the local port is
   correct. If authentication is enabled, set matching `SPLASH_API_KEY` values
   for the server and client. Do not share the key in a bug report.
+- **Markdown-wrapped answer:** choose `n` for a new request and add “Return only raw Python code, without Markdown fences or explanation.”
 - **Incomplete or rejected answer:** start with this tiny example; use
   `--max-tokens 2048` if the replacement does not fit. Inspect every new result.
 - **Source changed:** request a fresh proposal using the current file.

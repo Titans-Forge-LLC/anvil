@@ -54,6 +54,25 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_unreviewable_format_and_incomplete_output_explain_next_step(self):
+        class Complete:
+            def complete(self, *args, **kwargs):
+                return self.result
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / 'sample.py'
+            source.write_text('def f():\n    return 1\n')
+            for text, complete, expected in [
+                ('```python\ndef f(): return 2\n```', True, 'Markdown-wrapped'),
+                ('def f():', False, 'incomplete'),
+            ]:
+                client = Complete()
+                client.result = dict(text=text, complete=complete)
+                result = W.ProposalSession(client).propose({'file': str(source), 'instruction': 'Use two'})
+                self.assertFalse(result['reviewable'])
+                self.assertIsNone(result['proposal_id'])
+                self.assertIn(expected, result['rejection'])
+                self.assertEqual(source.read_text(), 'def f():\n    return 1\n')
+
     def test_server_catalog_preflight_is_bounded_and_sends_no_source(self):
         from unittest.mock import MagicMock
         client = W.SplashCompletion('http://127.0.0.1:8000/v1', model='local')
