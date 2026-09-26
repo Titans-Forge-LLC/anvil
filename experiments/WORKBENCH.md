@@ -15,6 +15,44 @@ or telemetry is started. Treat output as untrusted code requiring review.
 
 ## Run
 
+### Save a transaction and resume without a model
+
+At the review prompt, choose `s` and save a new file such as
+`work.anvil-checkpoint.json`. It contains the proposed source, editable scope,
+project-relative source path and content checksums. Keep it private: checkpoints
+contain code and are neither encrypted nor authenticated. They do not contain
+model weights/KV state, API credentials, an approval, or a proof of correctness.
+New files request owner-only permissions on POSIX systems; filesystem protections
+on other platforms depend on the local environment. Existing files are not overwritten.
+
+You can close the session, stop the model, and reopen the workbench offline:
+
+```sh
+python experiments/workbench.py --backend offline --interactive --project-root /path/to/project
+```
+
+At `File:`, enter `:load work.anvil-checkpoint.json`. ANVIL checks the source hash,
+scope and reconstructed proposal before displaying the diff and imported scope.
+Review/export/save needs no model. To request a new revision, restart with a model
+backend and load the checkpoint there. Changed source is refused; there is no
+automatic rebase. Scope checks prevent a named-function checkpoint from changing
+surrounding bytes. Whole-file checkpoints retain whole-file scope. Checksums
+detect corruption, not an attacker who rewrites both the data and its checksums;
+review the imported scope and diff, and do not treat an unknown checkpoint as trusted.
+
+JSON-lines equivalents (all operations are explicit):
+
+```json
+{"save":"p1","project_root":"/path/to/project","output":"/path/to/work.anvil-checkpoint.json"}
+{"load":"/path/to/work.anvil-checkpoint.json","project_root":"/path/to/project"}
+```
+
+Restore assigns a new session proposal ID and reports zero model requests.
+It does not preserve or certify a model's identity, reasoning, test results or
+review approval. No generated code is executed or applied. Checkpoints larger
+than 8 MiB are refused. This is explicit proposal persistence, not automatic
+semantic caching or reuse after dependencies change.
+
 ### Coherent changes across several functions
 
 Select 2..4 comma-separated function numbers in interactive mode, or send:
