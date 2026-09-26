@@ -54,6 +54,25 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_invalid_project_root_fails_before_backend_creation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ordinary_file = root / 'file.py'
+            ordinary_file.write_text('pass')
+            for path in (root / 'missing', ordinary_file):
+                for backend in ('splash', 'mlx'):
+                    with patch.object(W.sys, 'argv', ['workbench', '--backend', backend,
+                            '--interactive', '--project-root', str(path), '--model', 'unused']), \
+                         patch.object(W.sys, 'stderr', io.StringIO()) as errors, \
+                         patch.object(W, 'SplashCompletion') as splash, \
+                         patch.object(W, 'MLXBackend') as mlx:
+                        with self.assertRaises(SystemExit) as caught:
+                            W.main()
+                        self.assertEqual(caught.exception.code, 2)
+                        splash.assert_not_called()
+                        mlx.assert_not_called()
+                        self.assertIn('--project-root', errors.getvalue())
+
     def test_unreviewable_format_and_incomplete_output_explain_next_step(self):
         class Complete:
             def complete(self, *args, **kwargs):
