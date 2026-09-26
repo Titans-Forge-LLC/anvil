@@ -829,6 +829,15 @@ def main():
         parser.error('--max-tokens must be in [1, 4096]')
     if not 1 <= args.memory_gib <= 128:
         parser.error('--memory-gib must be in [1, 128]')
+    if args.interactive:
+        try:
+            project_root = Path(args.project_root).expanduser().resolve(strict=True)
+            if not project_root.is_dir():
+                parser.error('--project-root must be an existing directory')
+            args.project_root = str(project_root)
+        except (OSError, RuntimeError) as exc:
+            parser.error(f'Invalid --project-root: {exc}')
+
     if args.ordinary and args.source_draft:
         parser.error('--ordinary and --source-draft are mutually exclusive')
     if args.backend == 'splash':
