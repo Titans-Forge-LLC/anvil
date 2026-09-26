@@ -814,6 +814,13 @@ def propose(completion, request, *, base_source=None, expected_sha256=None):
     }
 
 
+class OfflineCompletion:
+    """Review retained work without loading or contacting a model."""
+
+    def complete(self, *args, **kwargs):
+        raise RuntimeError('Offline mode cannot generate or revise; restart with a model backend.')
+
+
 class ProposalSession:
     """Bounded in-memory revisions, always diffed against unchanged disk source."""
 
@@ -865,6 +872,151 @@ class ProposalSession:
             result['proposal_id'] = proposal_id
         result['total_request_seconds'] = time.perf_counter() - started
         return result
+
+    def save_checkpoint(self, proposal_id, project_root, output):
+        """Explicit local snapshot, not a signature or an execution approval."""
+        if not isinstance(proposal_id, str) or proposal_id not in self.proposals:
+            raise ValueError('unknown or expired proposal ID')
+        proposal = self.proposals[proposal_id]
+        root = Path(project_root).expanduser().resolve(strict=True)
+        path = Path(proposal['file']).resolve(strict=True)
+        relative = path.relative_to(root).as_posix()
+        if any(char in relative for char in '\\:') or any(ord(char) < 32 or ord(char) == 127 for char in relative):
+            raise ValueError('source path is not portable for checkpoints')
+        with path.open('rb') as stream:
+            raw = stream.read(1048577)
+        if len(raw) > 1048576 or hashlib.sha256(raw).hexdigest() != proposal['source_sha256']:
+            raise ValueError('source changed since proposal; checkpoint refused')
+        packet = {key: proposal[key] for key in ('symbol', 'symbols', 'context_symbols',
+                                               'format', 'source_sha256', 'text')}
+        packet.update(schema='anvil-proposal-checkpoint-v1', file=relative,
+                      replacement_sha256=hashlib.sha256(proposal['text'].encode('utf-8')).hexdigest())
+        data = json.dumps(packet, ensure_ascii=False, sort_keys=True, indent=2).encode('utf-8')
+        if len(data) > 8388608:
+            raise ValueError('checkpoint exceeds 8 MiB')
+        destination = Path(output).expanduser().absolute()
+        if destination.is_symlink() or destination.exists():
+            raise FileExistsError('checkpoint destination already exists')
+        fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(data)
+        return {'saved': True, 'proposal_id': proposal_id, 'output': str(destination),
+                'checkpoint_sha256': hashlib.sha256(data).hexdigest(), 'bytes': len(data),
+                'model_requests': 0, 'applied': False}
+
+    def load_checkpoint(self, checkpoint, project_root):
+        """Revalidate saved source/scope locally. Never trust a saved approval."""
+        started = time.perf_counter()
+        def unique_keys(pairs):
+            value = {}
+            for key, item in pairs:
+                if key in value:
+                    raise ValueError('duplicate checkpoint key')
+                value[key] = item
+            return value
+        checkpoint_path = Path(checkpoint).expanduser()
+        if not checkpoint_path.is_file():
+            raise ValueError('checkpoint must be a regular file')
+        with checkpoint_path.open('rb') as stream:
+            raw = stream.read(8388609)
+        if len(raw) > 8388608:
+            raise ValueError('checkpoint exceeds 8 MiB')
+        packet = json.loads(raw, object_pairs_hook=unique_keys)
+        keys = {'schema', 'file', 'symbol', 'symbols', 'context_symbols', 'format',
+                'source_sha256', 'replacement_sha256', 'text'}
+        if (not isinstance(packet, dict) or set(packet) != keys
+                or packet['schema'] != 'anvil-proposal-checkpoint-v1'):
+            raise ValueError('unknown checkpoint schema or fields')
+        relative = packet['file']
+        if (not isinstance(relative, str) or not relative or relative.startswith('/')
+                or any(char in relative for char in '\\:')
+                or any(ord(char) < 32 or ord(char) == 127 for char in relative)
+                or any(part in ('', '.', '..') for part in relative.split('/'))):
+            raise ValueError('checkpoint file must be a relative project path')
+        root = Path(project_root).expanduser().resolve(strict=True)
+        if not root.is_dir():
+            raise ValueError('project_root must be a directory')
+        path = (root / relative).resolve(strict=True)
+        path.relative_to(root)
+        if not path.is_file():
+            raise ValueError('checkpoint source must be a regular file')
+        with path.open('rb') as stream:
+            original = stream.read(1048577)
+        if len(original) > 1048576 or hashlib.sha256(original).hexdigest() != packet['source_sha256']:
+            raise ValueError('checkpoint source changed; request a fresh proposal')
+        source, text = original.decode('utf-8'), packet['text']
+        symbol, names, helpers, mode = (packet[key] for key in ('symbol', 'symbols', 'context_symbols', 'format'))
+        if (not isinstance(text, str) or len(text.encode('utf-8')) > 1048576
+                or hashlib.sha256(text.encode('utf-8')).hexdigest() != packet['replacement_sha256']):
+            raise ValueError('invalid checkpoint replacement or checksum')
+        if (not isinstance(helpers, list) or len(helpers) > 4
+                or any(not isinstance(name, str) or not name.isidentifier() for name in helpers)
+                or len(set(helpers)) != len(helpers)):
+            raise ValueError('invalid checkpoint helper scope')
+        if names is not None:
+            if (symbol is not None or helpers or mode != 'function_edits'
+                    or not isinstance(names, list) or not 2 <= len(names) <= 4
+                    or any(not isinstance(name, str) or not name.isidentifier() for name in names)
+                    or len(set(names)) != len(names)):
+                raise ValueError('invalid checkpoint bundle scope')
+            selected = names
+        elif symbol is not None:
+            if not isinstance(symbol, str) or not symbol.isidentifier() or mode not in ('replacement', 'edit', 'edits') or symbol in helpers:
+                raise ValueError('invalid checkpoint function scope')
+            selected = [symbol]
+        else:
+            if helpers or mode != 'replacement' or len(text.encode('utf-8')) > 32768 or len(original) > 32768:
+                raise ValueError('invalid checkpoint whole-file scope')
+            selected = []
+
+        def function_text(value, name):
+            import re
+            nodes = [node for node in ast.parse(value).body
+                     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name]
+            if len(nodes) != 1:
+                raise ValueError('checkpoint function must be unique and present')
+            node = nodes[0]
+            first = min([node.lineno] + [d.lineno for d in node.decorator_list])
+            lines = re.findall(r'[^\r\n]*(?:\r\n|\r|\n|$)', value)
+            return ''.join(lines[first - 1:node.end_lineno])
+
+        class Replay:
+            def complete(self, *args, **kwargs):
+                return {'complete': True, 'text': self.text}
+        replay = Replay()
+        current = source
+        # Reuse the normal function-boundary/compilation checks, with no model.
+        for name in selected:
+            replacement = function_text(text, name)
+            if replacement == function_text(current, name):
+                continue
+            replay.text = replacement
+            result = propose(replay, {'file': str(path), 'symbol': name, 'context_symbols': helpers,
+                'instruction': 'Restore the saved candidate for review only.'},
+                base_source=current, expected_sha256=packet['source_sha256'])
+            if not result['reviewable']:
+                raise ValueError('checkpoint proposal failed scope or syntax validation')
+            current = result['replacement_text']
+        if selected and current != text:
+            raise ValueError('checkpoint changes bytes outside its declared function scope')
+        if source == text:
+            raise ValueError('checkpoint contains no change')
+        with path.open('rb') as stream:
+            if stream.read(1048577) != original:
+                raise ValueError('source changed during checkpoint validation')
+        self.sequence += 1
+        proposal_id = 'p' + str(self.sequence)
+        self.proposals[proposal_id] = {'file': str(path), 'symbol': symbol, 'symbols': names,
+            'text': text, 'source_sha256': packet['source_sha256'], 'format': mode,
+            'context_symbols': list(helpers)}
+        if len(self.proposals) > 8:
+            self.proposals.popitem(last=False)
+        return {'restored': True, 'proposal_id': proposal_id, 'reviewable': True,
+            'source_changed': False, 'rejection': None, 'source_sha256': packet['source_sha256'],
+            'checkpoint_sha256': hashlib.sha256(raw).hexdigest(), 'symbols': names, 'symbol': symbol,
+            'model_requests': 0, 'applied': False, 'total_request_seconds': time.perf_counter() - started,
+            'diff_preview': ''.join(difflib.unified_diff(source.splitlines(keepends=True),
+                text.splitlines(keepends=True), fromfile='original', tofile='proposal'))}
 
     def export_patch(self, proposal_id, project_root, output):
         """Export a retained proposal against current disk bytes; never apply it."""
@@ -947,13 +1099,70 @@ def run_interactive(session, project_root, max_tokens=1024):
             raise ValueError('interactive answer exceeds 16 KiB')
         return answer.rstrip('\r\n') if answer else None
 
+    def review_loop(result):
+        while True:
+            print(f"Reviewable: {result['reviewable']} | source changed: {result['source_changed']}"
+                  f" | proposal: {result['proposal_id'] or '-'}")
+            print(f"Output tokens: {result.get('output_tokens', 'unknown')}"
+                  f" | request seconds: {result['total_request_seconds']:.3f}"
+                  f" | rejection: {result['rejection'] or '-'}")
+            if result['reviewable']:
+                print(result['diff_preview'])
+            action = ask('[r]evise, [e]xport reviewed patch, [s]ave checkpoint, [n]ew file, [q]uit: ')
+            if action in (None, 'q'):
+                return None
+            if action == 'n':
+                return 'new'
+            if action not in ('r', 'e', 's') or not result['proposal_id']:
+                print('That action requires a reviewable proposal.')
+                continue
+            if action == 'r':
+                instruction = ask('Revision request: ')
+                if instruction is None:
+                    return None
+                result = session.propose({'revise': result['proposal_id'],
+                                          'instruction': instruction, 'max_tokens': max_tokens})
+            elif action == 'e':
+                output = ask('New patch path relative to project root: ')
+                if output is None:
+                    return None
+                destination = (root / output).absolute()
+                destination.parent.resolve(strict=True).relative_to(root)
+                receipt = session.export_patch(result['proposal_id'], root, destination)
+                print(f"Exported {receipt['output']} ({receipt['patch_bytes']} bytes)."
+                      ' Nothing was applied or executed.')
+            else:
+                output = ask('New checkpoint path relative to project root: ')
+                if output is None:
+                    return None
+                destination = (root / output).absolute()
+                destination.parent.resolve(strict=True).relative_to(root)
+                receipt = session.save_checkpoint(result['proposal_id'], root, destination)
+                print(f"Saved checkpoint {receipt['output']} ({receipt['bytes']} bytes)."
+                      ' Checkpoints contain code and should remain private.')
+
     print('ANVIL review workbench. Proposal only: no code is applied or executed.')
     print('Enter a file relative to the project root; blank input exits.')
+    print('Use :load RELATIVE_CHECKPOINT_PATH to load a saved checkpoint.')
     while True:
         filename = ask('File: ')
         if not filename:
             return
         try:
+            if filename.startswith(':load '):
+                checkpoint_path = filename[6:].strip()
+                if not checkpoint_path:
+                    raise ValueError('checkpoint path is required after :load')
+                path = (root / checkpoint_path).resolve(strict=True)
+                path.relative_to(root)
+                if not path.is_file():
+                    raise ValueError('choose an existing checkpoint file inside the project root')
+                result = session.load_checkpoint(path, root)
+                print('Restored editable scope:', result['symbols'] or result['symbol'] or 'entire file')
+                action = review_loop(result)
+                if action is None:
+                    return
+                continue
             path = (root / filename).resolve(strict=True)
             path.relative_to(root)
             if not path.is_file() or path.suffix != '.py':
@@ -996,38 +1205,13 @@ def run_interactive(session, project_root, max_tokens=1024):
             if bundle_names:
                 request.update(symbols=bundle_names, format='function_edits')
             result = session.propose(request)
-            while True:
-                print(f"Reviewable: {result['reviewable']} | source changed: {result['source_changed']}"
-                      f" | proposal: {result['proposal_id'] or '-'}")
-                print(f"Output tokens: {result.get('output_tokens', 'unknown')}"
-                      f" | request seconds: {result['total_request_seconds']:.3f}"
-                      f" | rejection: {result['rejection'] or '-'}")
-                if result['reviewable']:
-                    print(result['diff_preview'])
-                action = ask('[r]evise, [e]xport reviewed patch, [n]ew file, [q]uit: ')
-                if action in (None, 'q'):
-                    return
-                if action == 'n':
-                    break
-                if action not in ('r', 'e') or not result['proposal_id']:
-                    print('That action requires a reviewable proposal.')
-                    continue
-                if action == 'r':
-                    instruction = ask('Revision request: ')
-                    if instruction is None:
-                        return
-                    result = session.propose({'revise': result['proposal_id'],
-                                              'instruction': instruction, 'max_tokens': max_tokens})
-                else:
-                    output = ask('New patch path relative to project root: ')
-                    if output is None:
-                        return
-                    destination = (root / output).absolute()
-                    destination.parent.resolve(strict=True).relative_to(root)
-                    receipt = session.export_patch(result['proposal_id'], root, destination)
-                    print(f"Exported {receipt['output']} ({receipt['patch_bytes']} bytes)."
-                          ' Nothing was applied or executed.')
+            action = review_loop(result)
+            if action is None:
+                return
         except RuntimeError:
+            if isinstance(session.completion, OfflineCompletion):
+                print('Offline mode cannot generate or revise; restart with a model backend.')
+                continue
             print('Model request failed. For Splash, check that your local server is running, '
                   'the URL is correct, and authentication matches. For MLX, check the local model. '
                   'No automatic retry was made. Enter a file to try again, or leave it blank to exit.')
@@ -1037,7 +1221,7 @@ def run_interactive(session, project_root, max_tokens=1024):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--backend', choices=('mlx', 'splash', 'tensorfold'), default='mlx')
+    parser.add_argument('--backend', choices=('mlx', 'splash', 'tensorfold', 'offline'), default='mlx')
     parser.add_argument('--model', help='local MLX directory, or optional served HTTP model ID')
     parser.add_argument('--splash-url', default='http://127.0.0.1:8000')
     parser.add_argument('--tensorfold-url', default='http://127.0.0.1:18420')
@@ -1069,7 +1253,12 @@ def main():
     if args.backend != 'tensorfold' and any(value is not None for value in
             (args.temperature, args.top_p, args.top_k, args.seed, args.thinking)):
         parser.error('sampling and --thinking options require --backend tensorfold')
-    if args.backend == 'tensorfold':
+    if args.backend == 'offline':
+        if args.ordinary or args.source_draft or args.reasoning_effort != 'none':
+            parser.error('model generation options are unavailable for offline')
+        completion = OfflineCompletion()
+        load_seconds = None
+    elif args.backend == 'tensorfold':
         if args.source_draft or args.reasoning_effort != 'none':
             parser.error('TensorFold uses --thinking and server-managed drafts')
         try:
@@ -1123,6 +1312,14 @@ def main():
                 if set(request) != {'export', 'project_root', 'output'}:
                     raise ValueError('export requires exactly export, project_root and output')
                 result = proposals.export_patch(request['export'], request['project_root'], request['output'])
+            elif 'load' in request:
+                if set(request) != {'load', 'project_root'}:
+                    raise ValueError('load requires exactly load and project_root')
+                result = proposals.load_checkpoint(request['load'], request['project_root'])
+            elif 'save' in request:
+                if set(request) != {'save', 'project_root', 'output'}:
+                    raise ValueError('save requires exactly save, project_root and output')
+                result = proposals.save_checkpoint(request['save'], request['project_root'], request['output'])
             else:
                 result = proposals.propose(request)
             print(json.dumps(result), flush=True)

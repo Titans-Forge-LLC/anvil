@@ -1,5 +1,10 @@
 # Changelog
 
+- Workbench: explicit source-bound proposal checkpoints, restart-safe review and
+  patch export, and a no-model offline backend. Revalidate source and named-function
+  scope on restore; preserve raw review boundaries. Checkpoints contain private
+  source, not approval or authenticated provenance.
+
 - Workbench: source-bound transactions spanning 2..4 explicitly selected functions
   in one file. Validate and reconstruct all edits together; retain one revision
   and patch-export flow. Support explicit unchanged members and report exact

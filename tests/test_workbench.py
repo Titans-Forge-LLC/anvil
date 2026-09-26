@@ -54,6 +54,104 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def checkpoint_fixture(self, root):
+        class Complete:
+            def complete(self, *args, **kwargs):
+                return dict(complete=True, text=json.dumps({'functions': [
+                    dict(symbol='f', edits=[dict(old='return 1', new='return 2')]),
+                    dict(symbol='g', edits=[])]}))
+        source = root / 'source.py'
+        source.write_bytes(b'# original\r\ndef f():\r\n    return 1\r\n\r\ndef g():\r\n    return 3\r\n')
+        session = W.ProposalSession(Complete())
+        result = session.propose(dict(file=str(source), symbols=['f', 'g'], instruction='Fix f'))
+        checkpoint = root / 'saved.anvil-checkpoint.json'
+        session.save_checkpoint(result['proposal_id'], root, checkpoint)
+        return source, session, result, checkpoint
+
+    def test_checkpoint_restart_preserves_transaction_and_patch_without_model(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, session, first, checkpoint = self.checkpoint_fixture(root)
+            old_bytes = source.read_bytes()
+            restarted = W.ProposalSession(W.OfflineCompletion())
+            restored = restarted.load_checkpoint(checkpoint, root)
+            self.assertTrue(restored['restored'])
+            self.assertEqual(restored['model_requests'], 0)
+            self.assertEqual(restored['symbols'], ['f', 'g'])
+            self.assertEqual(restored['diff_preview'], first['diff_preview'])
+            session.export_patch(first['proposal_id'], root, root / 'before.patch')
+            restarted.export_patch(restored['proposal_id'], root, root / 'after.patch')
+            self.assertEqual((root / 'before.patch').read_bytes(), (root / 'after.patch').read_bytes())
+            self.assertEqual(source.read_bytes(), old_bytes)
+            with self.assertRaises(FileExistsError):
+                session.save_checkpoint(first['proposal_id'], root, checkpoint)
+            restarted.completion = session.completion
+            with self.assertRaises(ValueError):
+                restarted.propose(dict(revise=restored['proposal_id'], symbols=['f','other'], instruction='Expand'))
+
+    def test_checkpoint_rejects_stale_source_tampering_and_path_escape(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, session, first, checkpoint = self.checkpoint_fixture(root)
+            saved = json.loads(checkpoint.read_text())
+            client = W.ProposalSession(W.OfflineCompletion())
+            cases = []
+            for name in ('../outside.py', '/tmp/outside.py', 'C:\\outside.py'):
+                cases.append(dict(saved, file=name))
+            cases.extend([dict(saved, schema='unknown'), dict(saved, approved=True),
+                          dict(saved, text=saved['text']+'# injected'), dict(saved, symbols=['f','f'])])
+            edited = saved['text'].replace('# original', '# tampered outside selected scope')
+            cases.append(dict(saved, text=edited, replacement_sha256=hashlib.sha256(edited.encode()).hexdigest()))
+            for item in cases:
+                checkpoint.write_text(json.dumps(item))
+                with self.assertRaises(ValueError):
+                    client.load_checkpoint(checkpoint, root)
+                self.assertEqual(client.proposals, {})
+            checkpoint.write_text(json.dumps(saved))
+            source.write_bytes(source.read_bytes()+b'# change\n')
+            with self.assertRaises(ValueError): client.load_checkpoint(checkpoint, root)
+            with self.assertRaises(ValueError): session.save_checkpoint(first['proposal_id'], root, root/'stale.json')
+
+    def test_checkpoint_interactive_resume_and_offline_json_commands(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, session, first, checkpoint = self.checkpoint_fixture(root)
+            with patch('sys.stdin', io.StringIO(':load saved.anvil-checkpoint.json\ne\nresumed.patch\ns\nresaved.anvil-checkpoint.json\nq\n')), \
+                 patch('sys.stdout', new_callable=io.StringIO) as output:
+                W.run_interactive(W.ProposalSession(W.OfflineCompletion()), root)
+            self.assertTrue((root / 'resumed.patch').is_file(), output.getvalue())
+            self.assertTrue((root / 'resaved.anvil-checkpoint.json').is_file())
+            data = '\n'.join(json.dumps(x) for x in [
+                dict(load=str(checkpoint), project_root=str(root)),
+                dict(save='p1', project_root=str(root), output=str(root/'json.anvil-checkpoint.json'))]) + '\n'
+            import sys
+            with patch('sys.argv', ['workbench', '--backend', 'offline']), \
+                 patch('sys.stdin', io.StringIO(data)), patch('sys.stdout', new_callable=io.StringIO) as output:
+                W.main()
+            replies = [json.loads(line) for line in output.getvalue().splitlines()]
+            self.assertTrue(replies[1]['restored'])
+            self.assertTrue(replies[2]['saved'])
+
+    def test_checkpoint_single_function_and_whole_file_profiles(self):
+        class Complete:
+            def complete(self, *args, **kwargs):
+                return dict(complete=True, text='def f():\n    return 2\n')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source.py'
+            source.write_text('def f():\n    return 1\n')
+            for scope in (dict(symbol='f'), {}):
+                session = W.ProposalSession(Complete())
+                result = session.propose(dict(file=str(source), instruction='Update', **scope))
+                checkpoint = root / ('function.json' if scope else 'whole.json')
+                session.save_checkpoint(result['proposal_id'], root, checkpoint)
+                restored = W.ProposalSession(W.OfflineCompletion()).load_checkpoint(checkpoint, root)
+                self.assertEqual(restored['diff_preview'], result['diff_preview'])
+                import os
+                if os.name != 'nt':
+                    self.assertEqual(checkpoint.stat().st_mode & 0o777, 0o600)
+
     def test_function_bundle_atomic_revision_export_and_untouched_bytes(self):
         class Complete:
             value = '2'
