@@ -1,40 +1,41 @@
 # ANVIL Limited Public Beta
 
-**ANVIL** is the **Adaptive Neural Vector Instruction Language**: a research
-architecture for compact, context-bound agent instructions whose meaning and
-authority must survive decoding exactly.
+**ANVIL** (Adaptive Neural Vector Instruction Language) is an experimental local
+agent project. Its current workbench helps you propose a Python change, inspect
+its scope and diff, save it, and resume review without asking the model again.
 
 Status: `LIMITED PUBLIC BETA`
 
-Latest: [Try the persistent coding workbench preview](experiments/WORKBENCH.md).
-An opt-in TensorFold backend now connects an existing local server to the same
-review-only workflow, with sampling controls and engine-reported timing/cache/
-draft metrics. ANVIL does not install, start, or modify that server.
-Reviewed proposals can now be exported as source-checked patch files for your
-normal Git review workflow, without another model call or automatic application.
-Splash revisions can now opt into reasoning without losing the parent proposal.
-[One replay](experiments/REPAIR_LOOP_SCREEN.md) repaired a bug that both
-no-reasoning attempts missed; it cost more and is not a general reliability claim.
-Opt-in atomic `"format":"edits"` can change several spans without regenerating
-the whole function. [An adaptive replay and a fresh fixed-format task](experiments/ATOMIC_EDIT_SCREEN.md)
-passed with lower request/check time, after two failed initial development attempts. It is
-not a general speedup or competitor benchmark; a larger follow-up required manual
-repair in both formats. Whole-function output stays default.
-New opt-in `"format":"edit"` requests one exact source-bound change rather than
-a whole function. [A small live screen](experiments/EDIT_SPAN_SCREEN.md) used
-51.4% fewer output tokens and 29.6% less request/check time; one task was slower.
-It keeps a local model resident, verifies reused drafts, and returns reviewable
-single-file edit proposals. Optional Apple Silicon dependencies; no automatic
-code execution or file changes. This experimental track is separate from AVP1.
-The workbench also has a loopback Splash API adapter: engine-owned generation
-with ANVIL proposals/revisions. A [live 27B smoke](experiments/SPLASH_LIVE_SMOKE.md)
-completed 12 requests with six identical direct/ANVIL output pairs. The API
-adapter does not enable ANVIL token-level drafting inside Splash.
-An [isolated source-draft engine experiment](experiments/SPLASH_SOURCE_ENGINE_SCREEN.md)
-preserved baseline outputs but showed no meaningful aggregate cost advantage;
-it remains experimental and is not enabled in this package.
+**[Start with one small edit](experiments/START_HERE.md)**, or read the
+[workbench reference](experiments/WORKBENCH.md).
 
-Research detail: [What our local-agent experiments have demonstrated](INTERNAL_AGENT_EXPERIMENTS.md).
+- Use an existing local Splash or TensorFold server, or the in-process MLX backend.
+- Select one function or 2–4 related functions in the same file. A multi-function
+  proposal is retained as a unit; invalid members reject the whole transaction.
+- Save a source-bound checkpoint, close the session, and resume review offline.
+  Changed source blocks reuse. Checkpoints contain code; keep them private.
+- Explicitly export a new patch for your normal Git workflow. ANVIL does not
+  apply changes or execute generated code. Reviewable does not mean correct.
+
+The TensorFold, multi-function and checkpoint features are currently in the
+[integration candidate, PR #31](https://github.com/Titans-Forge-LLC/anvil/pull/31),
+stacked on PRs #29 and #30. The start guide explains how to try that revision;
+these features are not yet merged into `main` or a tagged release.
+
+The practical goal is less repeated model work per useful job. We have not
+established a general end-to-end speedup or autonomous coding reliability.
+HTTP backends own their generation, caches and speculative decoding; those
+engine gains are not ANVIL inventions. ANVIL adds the source-bound review workflow.
+
+AVP1, the original reversible mission codec, remains available below as a
+separate research reference. It does not enforce permissions or run agents.
+
+Research and negative results: [local-agent evidence](INTERNAL_AGENT_EXPERIMENTS.md),
+[repair loop](experiments/REPAIR_LOOP_SCREEN.md),
+[atomic edits](experiments/ATOMIC_EDIT_SCREEN.md),
+[single-span edits](experiments/EDIT_SPAN_SCREEN.md),
+[Splash smoke](experiments/SPLASH_LIVE_SMOKE.md), and
+[source-draft experiment](experiments/SPLASH_SOURCE_ENGINE_SCREEN.md).
 
 The beta remains open. The earlier September 11 target was not a full-release
 promotion. We are shipping incremental previews while keeping measured results

@@ -23,11 +23,14 @@ they do not ask a model to solve a new task. If the terminal cannot find
 `py -3` instead of `python3` if that is their installed Python launcher.
 
 **Want a new answer on your code?** Follow the small exercise below. You need
-Python 3.10+, Git to obtain this repository, and a working local Splash model
-server. The demo ZIP is not the full live workbench installation. ANVIL does
+Python 3.10+, Git to obtain this repository, and a working local Splash or
+TensorFold model server. The demo ZIP is not the full live workbench installation. ANVIL does
 not install or start a server. If you have no local model yet, use the replay
 first, then follow [Splash's setup instructions](https://github.com/incoai/splash#quick-start).
 Hardware requirements depend on the model you select.
+
+**Already have a saved proposal?** Use the offline restart instructions below;
+you do not need to install or start a model to review and export it.
 
 ## Try one small repair
 
@@ -36,8 +39,15 @@ From a terminal, obtain the project and enter its directory:
 ```sh
 git clone https://github.com/Titans-Forge-LLC/anvil.git
 cd anvil
+git fetch origin pull/31/head
+git switch --detach FETCH_HEAD
 python3 experiments/workbench.py --help
 ```
+
+The fetch/switch lines select the **unmerged integration candidate** in PR #31
+(including PRs #29 and #30), not a release. They are intended for a fresh clone;
+do not switch an existing checkout with unfinished work. The older demo ZIP
+does not include multi-function transactions or saved checkpoints.
 
 With your local Splash server already running, start the review session.
 Change the port below if your server uses a different one:
@@ -46,7 +56,15 @@ Change the port below if your server uses a different one:
 python3 experiments/workbench.py --backend splash --splash-url http://127.0.0.1:8000 --interactive --project-root .
 ```
 
-Interactive mode checks the model catalog before asking for a file. A reachable
+Or, with your existing TensorFold server running, use this command instead:
+
+```sh
+python3 experiments/workbench.py --backend tensorfold --tensorfold-url http://127.0.0.1:18420 --interactive --project-root .
+```
+
+Neither command installs or starts a server. Keep your model and code local.
+Interactive mode validates the project folder before starting a backend, then
+checks the HTTP model catalog before asking for a file. A reachable
 catalog does not prove model loading or generation will succeed. At the prompts:
 
 | Prompt | Enter |
@@ -73,17 +91,58 @@ A successful check normally prints nothing. It does not apply the patch or test
 the code. If you decide to apply it yourself, verify these behaviors afterward:
 `average([]) == 0`, `average([2, 4]) == 3`, and `average([-2, 2]) == 0`.
 
+## Stop now, review later — no model needed
+
+Before applying anything to the source, choose `s` at the review prompt, enter
+`first-edit.anvil-checkpoint.json`, then choose `q` to exit. A checkpoint contains
+the proposed code, original source hash and editable scope. It is not encrypted,
+authenticated, tested or approved just because it was saved. Keep it private.
+
+You may now stop your model server using its normal shutdown procedure. From the
+same repository directory, start a new session:
+
+```sh
+python3 experiments/workbench.py --backend offline --interactive --project-root .
+```
+
+At `File:`, enter `:load first-edit.anvil-checkpoint.json`. Inspect the restored
+scope and diff. Choose `e` and enter a **new** filename, `resumed-edit.patch`.
+The source stays unchanged; offline restore/export makes no model request.
+You can check the exported patch with:
+
+```sh
+git -c core.autocrlf=false apply --check resumed-edit.patch
+```
+
+If the source changed since saving (including applying the earlier patch),
+loading is refused. Request a fresh proposal instead. To revise an unchanged
+source, restart with a model backend and load the same checkpoint there.
+
+## Next: one change across related functions
+
+On a small file of your own, select 2–4 displayed function numbers separated by
+commas, for example `1,2`. Describe the related change once. ANVIL requests one
+transaction, validates every selected member and preserves all surrounding
+source bytes. Review, save and export use the same commands as above.
+
+You choose the related functions; ANVIL does not discover dependencies or prove
+that the code behaves correctly. Test the patch yourself before adopting it.
+Fewer requests do not guarantee less elapsed time: longer answers and corrections
+still count.
+
 ## If something goes wrong
 
 - **Connection failure:** confirm your server is running and the local port is
-  correct. If authentication is enabled, set matching `SPLASH_API_KEY` values
-  for the server and client. Do not share the key in a bug report.
+  correct. If authentication is enabled, configure the client key for your backend
+  (`SPLASH_API_KEY` or `TENSORFOLD_API_KEY`) to match the server. Do not share it in a bug report.
 - **Markdown-wrapped answer:** choose `n` for a new request and add “Return only raw Python code, without Markdown fences or explanation.”
 - **Incomplete or rejected answer:** start with this tiny example; use
   `--max-tokens 2048` if the replacement does not fit. Inspect every new result.
 - **Source changed:** request a fresh proposal using the current file.
 - **Patch already exists:** choose a new filename; export does not overwrite it.
 - **No model yet:** the recorded replay above works without one.
+- **Offline revision refused:** offline mode only reviews saved proposals.
+  Restart with a model backend to generate a new answer.
 
 The in-process Apple Silicon MLX alternative and detailed limits are documented
 in [WORKBENCH.md](WORKBENCH.md). Keep that as a reference after your first run.

@@ -1212,7 +1212,7 @@ def run_interactive(session, project_root, max_tokens=1024):
             if isinstance(session.completion, OfflineCompletion):
                 print('Offline mode cannot generate or revise; restart with a model backend.')
                 continue
-            print('Model request failed. For Splash, check that your local server is running, '
+            print('Model request failed. For Splash or TensorFold, check that your local server is running, '
                   'the URL is correct, and authentication matches. For MLX, check the local model. '
                   'No automatic retry was made. Enter a file to try again, or leave it blank to exit.')
         except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
@@ -1248,6 +1248,14 @@ def main():
         parser.error('--max-tokens must be in [1, 4096]')
     if not 1 <= args.memory_gib <= 128:
         parser.error('--memory-gib must be in [1, 128]')
+    if args.interactive:
+        try:
+            project_root = Path(args.project_root).expanduser().resolve(strict=True)
+            if not project_root.is_dir():
+                parser.error('--project-root must be an existing directory')
+            args.project_root = str(project_root)
+        except (OSError, RuntimeError) as exc:
+            parser.error(f'Invalid --project-root: {exc}')
     if args.ordinary and args.source_draft:
         parser.error('--ordinary and --source-draft are mutually exclusive')
     if args.backend != 'tensorfold' and any(value is not None for value in

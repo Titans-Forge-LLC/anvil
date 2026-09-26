@@ -89,6 +89,23 @@ class WorkbenchTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 restarted.propose(dict(revise=restored['proposal_id'], symbols=['f','other'], instruction='Expand'))
 
+    def test_checkpoint_offline_cli_restart_exports_same_patch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, session, first, checkpoint = self.checkpoint_fixture(root)
+            original = source.read_bytes()
+            session.export_patch(first['proposal_id'], root, root / 'before.patch')
+            restarted = subprocess.run(
+                [W.sys.executable, str(Path(W.__file__).resolve()), '--backend', 'offline',
+                 '--interactive', '--project-root', str(root)],
+                input=f':load {checkpoint.name}\ne\nresumed.patch\nq\n',
+                text=True, capture_output=True, cwd=root, timeout=15)
+            self.assertEqual(restarted.returncode, 0, restarted.stderr)
+            self.assertIn('Restored editable scope:', restarted.stdout)
+            self.assertIn('Nothing was applied or executed', restarted.stdout)
+            self.assertEqual((root / 'before.patch').read_bytes(), (root / 'resumed.patch').read_bytes())
+            self.assertEqual(source.read_bytes(), original)
+
     def test_checkpoint_rejects_stale_source_tampering_and_path_escape(self):
         import hashlib
         with tempfile.TemporaryDirectory() as directory:
@@ -313,6 +330,28 @@ class WorkbenchTests(unittest.TestCase):
                 self.assertIsNone(request.data)
                 self.assertEqual(opened.call_args.kwargs['timeout'], 3)
                 response.__enter__.return_value.read.assert_called_once_with(65537)
+
+    def test_invalid_project_root_fails_before_backend_creation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ordinary_file = root / 'file.py'
+            ordinary_file.write_text('pass')
+            for path in (root / 'missing', ordinary_file):
+                for backend in ('splash', 'mlx', 'tensorfold', 'offline'):
+                    with self.subTest(path=path.name, backend=backend), \
+                         patch.object(W.sys, 'argv', ['workbench', '--backend', backend,
+                             '--interactive', '--project-root', str(path), '--model', 'unused']), \
+                         patch.object(W.sys, 'stderr', io.StringIO()) as errors, \
+                         patch.object(W, 'SplashCompletion') as splash, \
+                         patch.object(W, 'TensorFoldCompletion') as tensorfold, \
+                         patch.object(W, 'OfflineCompletion') as offline, \
+                         patch.object(W, 'MLXBackend') as mlx:
+                        with self.assertRaises(SystemExit) as caught:
+                            W.main()
+                        self.assertEqual(caught.exception.code, 2)
+                        for constructor in (splash, tensorfold, offline, mlx):
+                            constructor.assert_not_called()
+                        self.assertIn('--project-root', errors.getvalue())
 
     def test_interactive_preflight_failure_does_not_prompt_or_read_source(self):
         from unittest.mock import MagicMock
