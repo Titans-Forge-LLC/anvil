@@ -168,6 +168,36 @@ class SplashCompletion:
         self.reasoning_effort = reasoning_effort
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
+    def check_server(self):
+        """Check the model catalog, not generation readiness; send no source."""
+        url = self.endpoint.rsplit('/', 2)[0] + '/models'
+        headers = {}
+        key = os.environ.get('SPLASH_API_KEY')
+        if key:
+            if not key.isascii() or any(ord(c) < 32 or ord(c) == 127 for c in key):
+                raise ValueError('invalid SPLASH_API_KEY header characters')
+            headers['Authorization'] = 'Bearer ' + key
+        request = urllib.request.Request(url, headers=headers, method='GET')
+        try:
+            with self.opener.open(request, timeout=min(self.timeout, 3)) as response:
+                raw = response.read(65537)
+            if len(raw) > 65536:
+                raise ValueError('model catalog exceeds 64 KiB')
+            data = json.loads(raw)['data']
+            if not isinstance(data, list) or not data or any(
+                    not isinstance(item, dict) or not isinstance(item.get('id'), str)
+                    or not item['id'] for item in data):
+                raise ValueError('invalid model catalog')
+            if self.model and self.model not in [item['id'] for item in data]:
+                raise ValueError('requested model is not advertised by the server')
+        except urllib.error.HTTPError as exc:
+            exc.close()
+            raise ValueError('Server check failed: verify the local URL and authentication.') from None
+        except (urllib.error.URLError, TimeoutError, OSError):
+            raise ValueError('Server unavailable: start your local server and verify --splash-url.') from None
+        except (KeyError, TypeError, json.JSONDecodeError, UnicodeError):
+            raise ValueError('Server returned an invalid model catalog.') from None
+
     def complete(self, messages, max_tokens=512, *, reasoning_effort=None):
         started = time.perf_counter()
         effort = self.reasoning_effort if reasoning_effort is None else reasoning_effort
@@ -810,6 +840,12 @@ def main():
         load_seconds = backend.load_seconds
     proposals = ProposalSession(completion)
     if args.interactive:
+        if args.backend == 'splash':
+            try:
+                completion.check_server()
+            except ValueError as exc:
+                parser.exit(2, f'{exc} No source was sent. No automatic retry was made.\n')
+            print('Model catalog reachable. Generation and model loading are not yet verified.')
         run_interactive(proposals, args.project_root, args.max_tokens)
         return
     print(json.dumps({'ready': True, 'backend': args.backend, 'load_seconds': load_seconds,

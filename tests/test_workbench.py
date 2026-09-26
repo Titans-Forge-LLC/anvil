@@ -54,6 +54,44 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_server_catalog_preflight_is_bounded_and_sends_no_source(self):
+        from unittest.mock import MagicMock
+        client = W.SplashCompletion('http://127.0.0.1:8000/v1', model='local')
+        for body, accepted in [(b'{"data":[{"id":"local"}]}', True),
+                               (b'{"data":[]}', False),
+                               (b'{"data":[{"id":"other"}]}', False),
+                               (b'not json', False), (b'x' * 65537, False)]:
+            response = MagicMock()
+            response.__enter__.return_value.read.return_value = body
+            with patch.object(client.opener, 'open', return_value=response) as opened:
+                if accepted:
+                    client.check_server()
+                else:
+                    with self.assertRaises(ValueError):
+                        client.check_server()
+                request = opened.call_args.args[0]
+                self.assertEqual(request.full_url, 'http://127.0.0.1:8000/v1/models')
+                self.assertEqual(request.get_method(), 'GET')
+                self.assertIsNone(request.data)
+                self.assertEqual(opened.call_args.kwargs['timeout'], 3)
+                response.__enter__.return_value.read.assert_called_once_with(65537)
+
+    def test_interactive_preflight_failure_does_not_prompt_or_read_source(self):
+        from unittest.mock import MagicMock
+        client = MagicMock()
+        client.check_server.side_effect = ValueError('Server unavailable')
+        with tempfile.TemporaryDirectory() as directory, \
+             patch.object(W.sys, 'argv', ['workbench', '--backend', 'splash', '--interactive', '--project-root', directory]), \
+             patch.object(W, 'SplashCompletion', return_value=client), \
+             patch.object(W, 'run_interactive') as interactive, \
+             patch.object(W.sys, 'stderr', io.StringIO()) as errors:
+            with self.assertRaises(SystemExit) as caught:
+                W.main()
+            self.assertEqual(caught.exception.code, 2)
+            interactive.assert_not_called()
+            client.complete.assert_not_called()
+            self.assertIn('No source was sent', errors.getvalue())
+
     def test_interactive_selects_function_and_exports_only_on_request(self):
         class Complete:
             calls = 0

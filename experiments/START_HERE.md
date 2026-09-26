@@ -46,7 +46,8 @@ Change the port below if your server uses a different one:
 python3 experiments/workbench.py --backend splash --splash-url http://127.0.0.1:8000 --interactive --project-root .
 ```
 
-The ANVIL prompt alone does not prove the model server is ready. At the prompts:
+Interactive mode checks the model catalog before asking for a file. A reachable
+catalog does not prove model loading or generation will succeed. At the prompts:
 
 | Prompt | Enter |
 |---|---|

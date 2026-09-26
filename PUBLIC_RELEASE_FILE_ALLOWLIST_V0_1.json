@@ -1,6 +1,7 @@
 {
-  "schema": "anvil-public-release-file-allowlist-v0.1",
-  "status": "active",
+  "excluded_generated_files": [
+    "RELEASE_MANIFEST.json"
+  ],
   "files": [
     ".gitattributes",
     ".github/ISSUE_TEMPLATE/bug.yml",
@@ -36,6 +37,7 @@
     "experiments/REPAIR_LOOP_SCREEN.md",
     "experiments/SPLASH_LIVE_SMOKE.md",
     "experiments/SPLASH_SOURCE_ENGINE_SCREEN.md",
+    "experiments/START_HERE.md",
     "experiments/WORKBENCH.md",
     "experiments/compare_edit_proposals.py",
     "experiments/compare_source_drafts.py",
@@ -79,8 +81,7 @@
     "tests/test_test_receipt.py",
     "tests/test_workbench.py"
   ],
-  "excluded_generated_files": [
-    "RELEASE_MANIFEST.json"
-  ],
-  "note": "Only these source-controlled release files may enter the first limited public beta. Adding or removing a file requires an explicit allowlist revision and regenerated manifest."
+  "note": "Only these source-controlled release files may enter the first limited public beta. Adding or removing a file requires an explicit allowlist revision and regenerated manifest.",
+  "schema": "anvil-public-release-file-allowlist-v0.1",
+  "status": "active"
 }
