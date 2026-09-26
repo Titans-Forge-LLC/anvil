@@ -54,6 +54,127 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_function_bundle_atomic_revision_export_and_untouched_bytes(self):
+        class Complete:
+            value = '2'
+            def complete(self, messages, *args, **kwargs):
+                self.messages = messages
+                return dict(complete=True, text=json.dumps({'functions': [
+                    {'symbol': 'f', 'edits': [{'old': 'return ' + ('2' if self.value == '3' else '1'),
+                                             'new': 'return ' + self.value}]},
+                    {'symbol': 'g', 'edits': [{'old': 'f() + ' + ('2' if self.value == '3' else '1'),
+                                             'new': 'f() + ' + self.value}]}]}))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / 'source.py'
+            raw = b'# untouched\r\ndef f():\r\n    return 1\r\n\r\nSECRET = 9\r\n\r\ndef g():\r\n    return f() + 1\r\n'
+            path.write_bytes(raw)
+            client = Complete()
+            session = W.ProposalSession(client)
+            first = session.propose(dict(file=str(path), symbols=['f', 'g'], instruction='Update both'))
+            self.assertTrue(first['reviewable'], first['rejection'])
+            self.assertNotIn('SECRET', client.messages[1]['content'])
+            self.assertEqual(first['replacement_text'].encode(), raw.replace(b'return 1', b'return 2').replace(b'f() + 1', b'f() + 2'))
+            client.value = '3'
+            second = session.propose(dict(revise=first['proposal_id'], instruction='Now use three'))
+            self.assertTrue(second['reviewable'], second['rejection'])
+            self.assertIn('return 2', client.messages[1]['content'])
+            self.assertEqual(path.read_bytes(), raw)
+            receipt = session.export_patch(second['proposal_id'], root, root / 'change.patch')
+            self.assertFalse(receipt['applied'])
+            with self.assertRaises(ValueError):
+                session.propose(dict(revise=first['proposal_id'], symbols=['f', 'other'], instruction='Expand'))
+            path.write_bytes(raw + b'# changed\n')
+            with self.assertRaises(ValueError):
+                session.propose(dict(revise=first['proposal_id'], instruction='Again'))
+
+    def test_function_bundle_rejects_partial_invalid_and_escaped_edits(self):
+        class Complete:
+            def complete(self, *args, **kwargs):
+                return dict(complete=self.complete_flag, text=self.text)
+        good = [dict(symbol='f', edits=[dict(old='return 1', new='return 2')]),
+                dict(symbol='g', edits=[dict(old='return 1', new='return 2')])]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'source.py'
+            raw = b'def f():\n    return 1\n\ndef g():\n    return 1\n'
+            path.write_bytes(raw)
+            client = Complete()
+            cases = [({'functions': good[:1]}, True), ({'functions': good}, False),
+                     ({'functions': [good[0], good[0]]}, True),
+                     ({'functions': [good[0], dict(symbol='h', edits=good[1]['edits'])]}, True),
+                     ({'functions': [good[0], dict(symbol='g', edits=[dict(old='missing', new='x')])]}, True),
+                     ({'functions': [good[0], dict(symbol='g', edits=[dict(old='return 1', new='return 2\n\ndef h(): pass')])]}, True),
+                     ({'functions': [good[0], dict(symbol='g', edits=[dict(old='return 1', new='break')])]}, True)]
+            for packet, complete_flag in cases:
+                client.text, client.complete_flag = json.dumps(packet), complete_flag
+                session = W.ProposalSession(client)
+                result = session.propose(dict(file=str(path), symbols=['f', 'g'], instruction='Edit'))
+                self.assertFalse(result['reviewable'], packet)
+                self.assertIsNone(result['replacement_text'])
+                self.assertIsNone(result['proposal_id'])
+                self.assertEqual(session.proposals, {})
+                self.assertEqual(path.read_bytes(), raw)
+            client.text, client.complete_flag = '{"functions":[],"functions":[]}', True
+            result = W.propose(client, dict(file=str(path), symbols=['f', 'g'], instruction='Edit'))
+            self.assertIn('duplicate JSON key', result['rejection'])
+
+    def test_function_bundle_stale_source_and_invalid_scope_before_generation(self):
+        class Complete:
+            calls = 0
+            def complete(self, *args, **kwargs):
+                self.calls += 1
+                path.write_text('def f(): return 4\ndef g(): return 4\n')
+                return dict(complete=True, text='{}')
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'source.py'
+            path.write_text('def f(): return 1\ndef g(): return 1\n')
+            client = Complete()
+            for names in (['f'], ['f', 'f'], ['f', 'missing'], ['f', 3]):
+                with self.assertRaises(ValueError):
+                    W.propose(client, dict(file=str(path), symbols=names, instruction='Edit'))
+            self.assertEqual(client.calls, 0)
+            result = W.propose(client, dict(file=str(path), symbols=['f', 'g'], instruction='Edit'))
+            self.assertTrue(result['source_changed'])
+            self.assertFalse(result['reviewable'])
+
+    def test_bundle_normalizes_only_one_explicit_json_fence(self):
+        class Complete:
+            def complete(self, *args, **kwargs):
+                return dict(text=self.text, complete=True)
+        envelope = json.dumps({'functions': [dict(symbol=name, edits=[dict(old='return 1', new='return 2')])
+                                             for name in ('f', 'g')]})
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'source.py'
+            path.write_text('def f(): return 1\ndef g(): return 1\n')
+            client = Complete()
+            for text, accepted in [('```json\n' + envelope + '\n```', True),
+                                   ('Here is code:\n```json\n' + envelope + '\n```', False),
+                                   ('```json\n' + envelope + '\n```\nExplanation', False),
+                                   ('```python\n' + envelope + '\n```', False)]:
+                client.text = text
+                result = W.propose(client, dict(file=str(path), symbols=['f', 'g'], instruction='Update'))
+                self.assertEqual(result['reviewable'], accepted)
+                self.assertEqual(result['text'], text)
+                if accepted:
+                    self.assertEqual(result['envelope_normalization'], 'single_json_fence')
+
+    def test_interactive_bundle_and_explicit_unchanged_member(self):
+        class Complete:
+            def complete(self, *args, **kwargs):
+                return dict(complete=True, text=json.dumps({'functions': [
+                    dict(symbol='f', edits=[dict(old='return 1', new='return 2')]),
+                    dict(symbol='g', edits=[])]}))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'source.py'
+            path.write_text('def f(): return 1\ndef g(): return 1\n')
+            session = W.ProposalSession(Complete())
+            with patch('sys.stdin', io.StringIO('source.py\n1,2\nUpdate f; g unchanged\nq\n')), \
+                 patch('sys.stdout', new_callable=io.StringIO) as output:
+                W.run_interactive(session, directory)
+            self.assertIn('Reviewable: True', output.getvalue())
+            self.assertEqual(session.proposals['p1']['symbols'], ['f', 'g'])
+            self.assertIn('def g(): return 1', session.proposals['p1']['text'])
+
     def test_unreviewable_format_and_incomplete_output_explain_next_step(self):
         class Complete:
             def complete(self, *args, **kwargs):
