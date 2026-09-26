@@ -77,6 +77,35 @@ class WorkbenchTests(unittest.TestCase):
             self.assertIn('Nothing was applied or executed', output.getvalue())
             self.assertIn('proposal: p1', output.getvalue())
 
+    def test_interactive_backend_failure_recovers_without_automatic_retry(self):
+        class Complete:
+            calls = 0
+            def complete(self, *args, **kwargs):
+                self.calls += 1
+                if self.calls == 1:
+                    raise RuntimeError('private server detail must not be printed')
+                return dict(text='def f():\n    return 2\n', complete=True)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'sample.py'
+            original = b'def f():\n    return 1\n'
+            source.write_bytes(original)
+            for answers, expected_calls in [
+                ('sample.py\n0\nUse two\n\n', 1),
+                ('sample.py\n0\nUse two\nsample.py\n0\nUse two\nq\n', 2),
+            ]:
+                client = Complete()
+                with patch.object(W.sys, 'stdin', io.StringIO(answers)), \
+                     patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                    W.run_interactive(W.ProposalSession(client), root)
+                self.assertEqual(client.calls, expected_calls)
+                self.assertEqual(source.read_bytes(), original)
+                self.assertEqual(list(root.iterdir()), [source])
+                self.assertIn('Model request failed', output.getvalue())
+                self.assertNotIn('private server detail', output.getvalue())
+                if expected_calls == 2:
+                    self.assertIn('Reviewable: True', output.getvalue())
+
     def test_interactive_rejects_path_escape_before_model(self):
         class Complete:
             calls = 0

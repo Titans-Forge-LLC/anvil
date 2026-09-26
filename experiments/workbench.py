@@ -762,6 +762,10 @@ def run_interactive(session, project_root, max_tokens=1024):
                     receipt = session.export_patch(result['proposal_id'], root, destination)
                     print(f"Exported {receipt['output']} ({receipt['patch_bytes']} bytes)."
                           ' Nothing was applied or executed.')
+        except RuntimeError:
+            print('Model request failed. For Splash, check that your local server is running, '
+                  'the URL is correct, and authentication matches. For MLX, check the local model. '
+                  'No automatic retry was made. Enter a file to try again, or leave it blank to exit.')
         except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
             print(f'{type(exc).__name__}: {exc}')
 

@@ -1,5 +1,7 @@
 # Persistent coding workbench — experimental preview
 
+**New here? [Follow the first-edit guide](START_HERE.md)** for prerequisites, a small exercise, expected results, and troubleshooting.
+
 Keep a local model resident while requesting related edits. ANVIL retains an
 exact-response cache, token-identical causal KV prefixes, and the last complete
 answer as a candidate draft. The target verifies draft tokens in blocks; on the
