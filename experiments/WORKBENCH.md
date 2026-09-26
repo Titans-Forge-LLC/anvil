@@ -1,5 +1,7 @@
 # Persistent coding workbench — experimental preview
 
+**New here? [Follow the first-edit guide](START_HERE.md)** for prerequisites, a small exercise, expected results, and troubleshooting.
+
 Keep a local model resident while requesting related edits. ANVIL retains an
 exact-response cache, token-identical causal KV prefixes, and the last complete
 answer as a candidate draft. The target verifies draft tokens in blocks; on the
@@ -66,7 +68,11 @@ and redirects are disabled. The server is a trusted local dependency: ANVIL
 does not attest its identity or sandbox its internals. Truncated outputs are
 incomplete; tool-call/refusal/malformed responses are rejected. There are no
 automatic retries, server installs, downloads, server restarts or source writes.
-The startup `ready` event means the client is accepting requests, not that the
+Interactive mode checks the model catalog with a bounded authenticated GET
+and a three-second timeout before reading source. It rejects an empty or invalid
+catalog or an unadvertised requested model without retrying. This checks API
+availability, not model loading or generation.
+The JSON-lines startup `ready` event means the client is accepting requests, not that the
 server has passed a readiness check.
 
 Status: fixture tests include proposal revision and failure boundaries. A

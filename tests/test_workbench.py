@@ -54,6 +54,63 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_unreviewable_format_and_incomplete_output_explain_next_step(self):
+        class Complete:
+            def complete(self, *args, **kwargs):
+                return self.result
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / 'sample.py'
+            source.write_text('def f():\n    return 1\n')
+            for text, complete, expected in [
+                ('```python\ndef f(): return 2\n```', True, 'Markdown-wrapped'),
+                ('def f():', False, 'incomplete'),
+            ]:
+                client = Complete()
+                client.result = dict(text=text, complete=complete)
+                result = W.ProposalSession(client).propose({'file': str(source), 'instruction': 'Use two'})
+                self.assertFalse(result['reviewable'])
+                self.assertIsNone(result['proposal_id'])
+                self.assertIn(expected, result['rejection'])
+                self.assertEqual(source.read_text(), 'def f():\n    return 1\n')
+
+    def test_server_catalog_preflight_is_bounded_and_sends_no_source(self):
+        from unittest.mock import MagicMock
+        client = W.SplashCompletion('http://127.0.0.1:8000/v1', model='local')
+        for body, accepted in [(b'{"data":[{"id":"local"}]}', True),
+                               (b'{"data":[]}', False),
+                               (b'{"data":[{"id":"other"}]}', False),
+                               (b'not json', False), (b'x' * 65537, False)]:
+            response = MagicMock()
+            response.__enter__.return_value.read.return_value = body
+            with patch.object(client.opener, 'open', return_value=response) as opened:
+                if accepted:
+                    client.check_server()
+                else:
+                    with self.assertRaises(ValueError):
+                        client.check_server()
+                request = opened.call_args.args[0]
+                self.assertEqual(request.full_url, 'http://127.0.0.1:8000/v1/models')
+                self.assertEqual(request.get_method(), 'GET')
+                self.assertIsNone(request.data)
+                self.assertEqual(opened.call_args.kwargs['timeout'], 3)
+                response.__enter__.return_value.read.assert_called_once_with(65537)
+
+    def test_interactive_preflight_failure_does_not_prompt_or_read_source(self):
+        from unittest.mock import MagicMock
+        client = MagicMock()
+        client.check_server.side_effect = ValueError('Server unavailable')
+        with tempfile.TemporaryDirectory() as directory, \
+             patch.object(W.sys, 'argv', ['workbench', '--backend', 'splash', '--interactive', '--project-root', directory]), \
+             patch.object(W, 'SplashCompletion', return_value=client), \
+             patch.object(W, 'run_interactive') as interactive, \
+             patch.object(W.sys, 'stderr', io.StringIO()) as errors:
+            with self.assertRaises(SystemExit) as caught:
+                W.main()
+            self.assertEqual(caught.exception.code, 2)
+            interactive.assert_not_called()
+            client.complete.assert_not_called()
+            self.assertIn('No source was sent', errors.getvalue())
+
     def test_interactive_selects_function_and_exports_only_on_request(self):
         class Complete:
             calls = 0
@@ -76,6 +133,35 @@ class WorkbenchTests(unittest.TestCase):
             self.assertTrue((root / 'review.patch').exists())
             self.assertIn('Nothing was applied or executed', output.getvalue())
             self.assertIn('proposal: p1', output.getvalue())
+
+    def test_interactive_backend_failure_recovers_without_automatic_retry(self):
+        class Complete:
+            calls = 0
+            def complete(self, *args, **kwargs):
+                self.calls += 1
+                if self.calls == 1:
+                    raise RuntimeError('private server detail must not be printed')
+                return dict(text='def f():\n    return 2\n', complete=True)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'sample.py'
+            original = b'def f():\n    return 1\n'
+            source.write_bytes(original)
+            for answers, expected_calls in [
+                ('sample.py\n0\nUse two\n\n', 1),
+                ('sample.py\n0\nUse two\nsample.py\n0\nUse two\nq\n', 2),
+            ]:
+                client = Complete()
+                with patch.object(W.sys, 'stdin', io.StringIO(answers)), \
+                     patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                    W.run_interactive(W.ProposalSession(client), root)
+                self.assertEqual(client.calls, expected_calls)
+                self.assertEqual(source.read_bytes(), original)
+                self.assertEqual(list(root.iterdir()), [source])
+                self.assertIn('Model request failed', output.getvalue())
+                self.assertNotIn('private server detail', output.getvalue())
+                if expected_calls == 2:
+                    self.assertIn('Reviewable: True', output.getvalue())
 
     def test_interactive_rejects_path_escape_before_model(self):
         class Complete:
