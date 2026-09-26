@@ -11,6 +11,7 @@ from collections import Counter, OrderedDict
 import difflib
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import sys
@@ -152,6 +153,10 @@ class SplashCompletion:
 
     source_drafts = False
     supports_reasoning = True
+    label = 'Splash'
+    backend_name = 'splash_http'
+    api_key_env = 'SPLASH_API_KEY'
+    url_option = '--splash-url'
 
     def __init__(self, base_url='http://127.0.0.1:8000', model=None, timeout=120, *, reasoning_effort='none'):
         if reasoning_effort not in ('none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'):
@@ -160,7 +165,7 @@ class SplashCompletion:
         if (url.scheme != 'http' or url.hostname not in ('127.0.0.1', '::1')
                 or url.username is not None or url.password is not None
                 or url.query or url.fragment or url.path.rstrip('/') not in ('', '/v1')):
-            raise ValueError('Splash URL must be literal loopback HTTP, optionally ending in /v1')
+            raise ValueError(f'{self.label} URL must be literal loopback HTTP, optionally ending in /v1')
         if url.port is not None and not 1 <= url.port <= 65535:
             raise ValueError('invalid port')
         self.endpoint = urllib.parse.urlunsplit(('http', url.netloc, '/v1/chat/completions', '', ''))
@@ -172,10 +177,10 @@ class SplashCompletion:
         """Check the model catalog, not generation readiness; send no source."""
         url = self.endpoint.rsplit('/', 2)[0] + '/models'
         headers = {}
-        key = os.environ.get('SPLASH_API_KEY')
+        key = os.environ.get(self.api_key_env)
         if key:
             if not key.isascii() or any(ord(c) < 32 or ord(c) == 127 for c in key):
-                raise ValueError('invalid SPLASH_API_KEY header characters')
+                raise ValueError(f'invalid {self.api_key_env} header characters')
             headers['Authorization'] = 'Bearer ' + key
         request = urllib.request.Request(url, headers=headers, method='GET')
         try:
@@ -194,9 +199,16 @@ class SplashCompletion:
             exc.close()
             raise ValueError('Server check failed: verify the local URL and authentication.') from None
         except (urllib.error.URLError, TimeoutError, OSError):
-            raise ValueError('Server unavailable: start your local server and verify --splash-url.') from None
+            raise ValueError(f'Server unavailable: start your local server and verify {self.url_option}.') from None
         except (KeyError, TypeError, json.JSONDecodeError, UnicodeError):
             raise ValueError('Server returned an invalid model catalog.') from None
+
+    def _payload(self, messages, max_tokens, effort):
+        return {'messages': messages, 'max_tokens': max_tokens, 'temperature': 0,
+                'stream': False, 'reasoning_effort': effort}
+
+    def _metadata(self, data, usage):
+        return {}
 
     def complete(self, messages, max_tokens=512, *, reasoning_effort=None):
         started = time.perf_counter()
@@ -205,18 +217,19 @@ class SplashCompletion:
             raise ValueError('invalid reasoning effort')
         if type(max_tokens) is not int or not 1 <= max_tokens <= 4096:
             raise ValueError('max_tokens must be an integer in [1, 4096]')
-        payload = {'messages': messages, 'max_tokens': max_tokens, 'temperature': 0,
-                   'stream': False, 'reasoning_effort': effort}
+        if not self.supports_reasoning and reasoning_effort is not None:
+            raise ValueError('use the backend thinking option instead of reasoning_effort')
+        payload = self._payload(messages, max_tokens, effort)
         if self.model:
             payload['model'] = self.model
         body = json.dumps(payload).encode('utf-8')
         if len(body) > 262144:
             raise ValueError('HTTP request exceeds 256 KiB preview limit')
         headers = {'Content-Type': 'application/json'}
-        key = os.environ.get('SPLASH_API_KEY')
+        key = os.environ.get(self.api_key_env)
         if key:
             if not key.isascii() or any(ord(char) < 32 or ord(char) == 127 for char in key):
-                raise ValueError('invalid SPLASH_API_KEY header characters')
+                raise ValueError(f'invalid {self.api_key_env} header characters')
             headers['Authorization'] = 'Bearer ' + key
         request = urllib.request.Request(self.endpoint, data=body, headers=headers, method='POST')
         try:
@@ -225,11 +238,11 @@ class SplashCompletion:
         except urllib.error.HTTPError as exc:
             code = exc.code
             exc.close()
-            raise RuntimeError(f'Splash HTTP {code}; no retry or redirect performed') from None
+            raise RuntimeError(f'{self.label} HTTP {code}; no retry or redirect performed') from None
         except (urllib.error.URLError, TimeoutError, OSError):
-            raise RuntimeError('Splash connection failed or timed out; no automatic retry') from None
+            raise RuntimeError(f'{self.label} connection failed or timed out; no automatic retry') from None
         if len(raw) > 1048576:
-            raise ValueError('Splash response exceeds 1 MiB preview limit')
+            raise ValueError(f'{self.label} response exceeds 1 MiB preview limit')
         try:
             data = json.loads(raw)
             choices = data['choices']
@@ -252,15 +265,78 @@ class SplashCompletion:
             if prompt_tokens is not None and (type(prompt_tokens) is not int or prompt_tokens < 0):
                 raise ValueError('invalid token count')
         except (ValueError, TypeError, KeyError, AttributeError, IndexError):
-            raise ValueError('invalid Splash text-completion response') from None
+            raise ValueError(f'invalid {self.label} text-completion response') from None
         return {
             'text': content, 'complete': reason == 'stop', 'output_tokens': tokens, 'input_tokens': prompt_tokens,
-            'finish_reason': reason, 'backend': 'splash_http',
-            'reasoning_effort': effort,
+            'finish_reason': reason, 'backend': self.backend_name,
+            'reasoning_effort': effort if self.supports_reasoning else None,
             'http_requests': 1, 'model_calls': None, 'exact_hit': False,
             'prefix_tokens_reused': None, 'draft_tokens_verified': None,
             'draft_tokens_scored': None, 'draft_origin': 'server_managed',
             'completion_seconds': time.perf_counter() - started,
+            **self._metadata(data, usage),
+        }
+
+
+class TensorFoldCompletion(SplashCompletion):
+    """TensorFold owns model state and verification; ANVIL retains proposals."""
+
+    supports_reasoning = False
+    label = 'TensorFold'
+    backend_name = 'tensorfold_http'
+    api_key_env = 'TENSORFOLD_API_KEY'
+    url_option = '--tensorfold-url'
+
+    def __init__(self, base_url='http://127.0.0.1:18420', model=None, timeout=120, *,
+                 temperature=None, top_p=None, top_k=None, seed=None, thinking=False, draft=True):
+        super().__init__(base_url, model, timeout)
+        for name, value in (('temperature', temperature), ('top_p', top_p)):
+            if value is not None and (type(value) not in (int, float) or not math.isfinite(value)
+                                      or value < 0 or (name == 'top_p' and not 0 < value <= 1)):
+                raise ValueError(f'invalid {name}')
+        if top_k is not None and (type(top_k) is not int or top_k < 0):
+            raise ValueError('invalid top_k')
+        if seed is not None and (type(seed) is not int or not 0 <= seed < 2**63):
+            raise ValueError('invalid seed')
+        if type(thinking) is not bool or type(draft) is not bool:
+            raise ValueError('thinking and draft must be booleans')
+        self.sampling = {key: value for key, value in
+                         (('temperature', temperature), ('top_p', top_p), ('top_k', top_k), ('seed', seed))
+                         if value is not None}
+        self.thinking, self.draft = thinking, draft
+
+    def _payload(self, messages, max_tokens, effort):
+        return {'messages': messages, 'max_tokens': max_tokens, 'stream': False,
+                'chat_template_kwargs': {'enable_thinking': self.thinking},
+                'draft': self.draft, **self.sampling}
+
+    def _metadata(self, data, usage):
+        runtime = data.get('tensorfold') or {}
+        speculation = data.get('speculative') or {}
+        prompt_details = usage.get('prompt_tokens_details') or {}
+        if any(not isinstance(obj, dict) for obj in (runtime, speculation, prompt_details)):
+            raise ValueError('invalid TensorFold metrics')
+
+        def number(obj, key, integer=False):
+            value = obj.get(key)
+            types = (int,) if integer else (int, float)
+            if value is not None and (type(value) not in types or not math.isfinite(value) or value < 0):
+                raise ValueError(f'invalid TensorFold metric {key}')
+            return value
+
+        return {
+            'sampling_requested': dict(self.sampling), 'thinking_requested': self.thinking,
+            'draft_requested': self.draft,
+            'prefix_tokens_reused': number(prompt_details, 'cached_tokens', True),
+            'server_metrics': {
+                'seconds': number(runtime, 'seconds'),
+                'prefill_seconds': number(runtime, 'prefill_seconds'),
+                'time_to_first_token': number(runtime, 'time_to_first_token'),
+                'tokens_per_second': number(runtime, 'tokens_per_second'),
+                'rounds': number(speculation, 'rounds', True),
+                'drafted_tokens': number(speculation, 'drafted', True),
+                'accepted_tokens': number(speculation, 'accepted', True),
+            },
         }
 
 
@@ -808,13 +884,19 @@ def run_interactive(session, project_root, max_tokens=1024):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--backend', choices=('mlx', 'splash'), default='mlx')
-    parser.add_argument('--model', help='local MLX directory, or optional served Splash model ID')
+    parser.add_argument('--backend', choices=('mlx', 'splash', 'tensorfold'), default='mlx')
+    parser.add_argument('--model', help='local MLX directory, or optional served HTTP model ID')
     parser.add_argument('--splash-url', default='http://127.0.0.1:8000')
+    parser.add_argument('--tensorfold-url', default='http://127.0.0.1:18420')
+    parser.add_argument('--temperature', type=float, help='TensorFold sampling; omitted uses server default')
+    parser.add_argument('--top-p', type=float, help='TensorFold nucleus sampling; omitted uses server default')
+    parser.add_argument('--top-k', type=int, help='TensorFold top-k sampling; omitted uses server default')
+    parser.add_argument('--seed', type=int, help='TensorFold sampling seed; omitted uses server default')
+    parser.add_argument('--thinking', choices=('on', 'off'), help='TensorFold thinking (default off)')
     parser.add_argument('--reasoning-effort', default='none',
                         choices=('none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'),
                         help='Splash-only reasoning mode; default none')
-    parser.add_argument('--ordinary', action='store_true', help='disable draft reuse, retain exact/prefix caches')
+    parser.add_argument('--ordinary', action='store_true', help='disable MLX or TensorFold drafts, retain prefix caches')
     parser.add_argument('--source-draft', action='store_true', help='experimental: verify source instead of previous answer as draft')
     parser.add_argument('--memory-gib', type=int, default=20)
     parser.add_argument('--interactive', action='store_true',
@@ -831,9 +913,22 @@ def main():
         parser.error('--memory-gib must be in [1, 128]')
     if args.ordinary and args.source_draft:
         parser.error('--ordinary and --source-draft are mutually exclusive')
-    if args.backend == 'splash':
+    if args.backend != 'tensorfold' and any(value is not None for value in
+            (args.temperature, args.top_p, args.top_k, args.seed, args.thinking)):
+        parser.error('sampling and --thinking options require --backend tensorfold')
+    if args.backend == 'tensorfold':
+        if args.source_draft or args.reasoning_effort != 'none':
+            parser.error('TensorFold uses --thinking and server-managed drafts')
+        try:
+            completion = TensorFoldCompletion(args.tensorfold_url, args.model,
+                temperature=args.temperature, top_p=args.top_p, top_k=args.top_k,
+                seed=args.seed, thinking=args.thinking == 'on', draft=not args.ordinary)
+        except ValueError as exc:
+            parser.error(str(exc))
+        load_seconds = None
+    elif args.backend == 'splash':
         if args.ordinary or args.source_draft:
-            parser.error('Splash owns decoding: --ordinary and --source-draft are MLX-only')
+            parser.error('Splash owns decoding: --ordinary and --source-draft are unavailable for Splash')
         completion = SplashCompletion(args.splash_url, args.model, reasoning_effort=args.reasoning_effort)
         load_seconds = None
     else:
@@ -846,7 +941,7 @@ def main():
         load_seconds = backend.load_seconds
     proposals = ProposalSession(completion)
     if args.interactive:
-        if args.backend == 'splash':
+        if args.backend in ('splash', 'tensorfold'):
             try:
                 completion.check_server()
             except ValueError as exc:
@@ -855,7 +950,7 @@ def main():
         run_interactive(proposals, args.project_root, args.max_tokens)
         return
     print(json.dumps({'ready': True, 'backend': args.backend, 'load_seconds': load_seconds,
-                      'server_readiness': 'not_checked' if args.backend == 'splash' else 'not_applicable',
+                      'server_readiness': 'not_checked' if args.backend in ('splash', 'tensorfold') else 'not_applicable',
                       'proposal_only': True}), flush=True)
     while True:
         line = sys.stdin.readline(16385)

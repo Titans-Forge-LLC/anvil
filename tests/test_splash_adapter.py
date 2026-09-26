@@ -155,6 +155,63 @@ class SplashAdapterTests(unittest.TestCase):
             self.client.complete([])
         self.assertEqual(len(self.requests), 1)
 
+    def tensorfold(self, **options):
+        return W.TensorFoldCompletion('http://127.0.0.1:' + str(self.server.server_port),
+                                      'fixture-model', **options)
+
+    def test_tensorfold_preserves_server_sampling_defaults_and_metrics(self):
+        self.reply.update(tensorfold={'seconds': 1.25, 'prefill_seconds': 0.2,
+                                     'time_to_first_token': 0.3, 'tokens_per_second': 20},
+                          speculative={'rounds': 3, 'drafted': 12, 'accepted': 7})
+        self.reply['usage']['prompt_tokens_details'] = {'cached_tokens': 120}
+        result = self.tensorfold().complete([])
+        payload = self.requests[-1][2]
+        self.assertNotIn('temperature', payload)
+        self.assertNotIn('reasoning_effort', payload)
+        self.assertEqual(payload['chat_template_kwargs'], {'enable_thinking': False})
+        self.assertTrue(payload['draft'])
+        self.assertEqual(result['backend'], 'tensorfold_http')
+        self.assertEqual(result['prefix_tokens_reused'], 120)
+        self.assertEqual(result['server_metrics']['accepted_tokens'], 7)
+        self.assertEqual(result['server_metrics']['prefill_seconds'], 0.2)
+        self.assertIsNone(result['model_calls'])
+        self.assertIsNone(result['draft_tokens_verified'])
+
+    def test_tensorfold_sampling_and_ordinary_mode_are_explicit(self):
+        client = self.tensorfold(temperature=0.8, top_p=0.9, top_k=40, seed=1234,
+                                 thinking=True, draft=False)
+        result = client.complete([])
+        payload = self.requests[-1][2]
+        self.assertEqual(result['sampling_requested'],
+                         dict(temperature=0.8, top_p=0.9, top_k=40, seed=1234))
+        self.assertEqual(payload['seed'], 1234)
+        self.assertFalse(payload['draft'])
+        self.assertTrue(payload['chat_template_kwargs']['enable_thinking'])
+        self.assertTrue(all(value is None for value in result['server_metrics'].values()))
+        with self.assertRaises(ValueError):
+            client.complete([], reasoning_effort='low')
+        self.assertEqual(len(self.requests), 1)
+
+    def test_tensorfold_invalid_controls_rejected_before_http(self):
+        for option in (dict(temperature=float('nan')), dict(temperature=-1),
+                       dict(top_p=0), dict(top_p=1.1), dict(top_k=True),
+                       dict(seed=-1), dict(seed=2**63), dict(thinking='off'), dict(draft=1)):
+            with self.subTest(option=option), self.assertRaises(ValueError):
+                self.tensorfold(**option)
+        self.assertEqual(self.requests, [])
+
+    def test_tensorfold_malformed_metrics_and_key_isolation(self):
+        client = self.tensorfold()
+        with patch.dict('os.environ', {'SPLASH_API_KEY': 'unrelated', 'TENSORFOLD_API_KEY': 'tf-fixture'}):
+            client.complete([])
+        self.assertEqual(self.requests[-1][1]['Authorization'], 'Bearer tf-fixture')
+        self.reply['speculative'] = {'accepted': -1}
+        with self.assertRaisesRegex(ValueError, 'invalid TensorFold metric'):
+            client.complete([])
+        self.status = 500
+        with self.assertRaisesRegex(RuntimeError, '^TensorFold HTTP 500;'):
+            client.complete([])
+
 
 if __name__ == '__main__':
     unittest.main()

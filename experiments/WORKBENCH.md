@@ -84,6 +84,33 @@ to start a server before using the adapter. Then compare the same editing reques
 directly and through ANVIL, counting review, retries, startup and total request
 cost. Do not multiply independent speedup headlines.
 
+### Use an existing local TensorFold server
+
+```sh
+python experiments/workbench.py --backend tensorfold --tensorfold-url http://127.0.0.1:18420 --model SERVED_MODEL --interactive --project-root /path/to/project
+```
+
+The same proposal, revision and explicit patch-export flow works with TensorFold.
+Install and start the engine separately using [TensorFold's instructions](https://github.com/ashhart/TensorFold).
+The client never downloads or loads a model. Thinking is off by default for bounded
+code proposals; `--thinking on` enables it. Omitted sampling options use the
+server's defaults. Set `--temperature`, `--top-p`, `--top-k` and `--seed` explicitly
+when comparing runs. `--ordinary` sends `draft: false` for TensorFold's serial
+comparison while retaining its prefix cache. `--source-draft` is unsupported.
+
+Example reproducible sampling options: `--temperature 1 --top-p 0.95 --top-k 20
+--seed 1234`. Reasoning effort is a separate Splash option; TensorFold uses the
+thinking switch. If an authenticated local proxy fronts TensorFold, its key can
+be supplied through `TENSORFOLD_API_KEY`; the client does not use `SPLASH_API_KEY`.
+
+Receipts preserve server-reported cached tokens, prefill/first-token/total timing,
+decode rate, and drafted/accepted token counts under `server_metrics`. Missing
+counters remain null. `completion_seconds` measures local HTTP elapsed time,
+including queueing and transport; model loading and human review are outside it.
+The bounded loopback transport and proposal-only behavior are shared with the
+Splash adapter. TensorFold owns speculation; adding this backend alone does not
+establish an ANVIL speedup or add repository-aware drafting.
+
 ### Use the in-process MLX adapter
 
 Requires an Apple Silicon Mac, Python 3.10+, MLX and mlx-lm, and an existing
