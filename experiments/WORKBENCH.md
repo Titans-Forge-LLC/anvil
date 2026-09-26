@@ -15,6 +15,34 @@ or telemetry is started. Treat output as untrusted code requiring review.
 
 ## Run
 
+### Coherent changes across several functions
+
+Select 2..4 comma-separated function numbers in interactive mode, or send:
+
+```json
+{"file":"/path/to/benchmark.py","symbols":["stream","main"],"instruction":"Handle missing stream timings and update their caller consistently.","max_tokens":2048}
+```
+
+ANVIL sends only those functions in one request. The model returns literal edit
+lists, grouped by function. ANVIL reconstructs the complete file and compiles it
+without executing it. Unknown/missing functions, ambiguous or overlapping edits,
+escaped function scope, incomplete output, or changed disk source reject the
+entire transaction. No partial proposal is retained. Text outside the selected
+functions is preserved. Every selected function must be acknowledged; an empty
+edit list explicitly leaves it unchanged. A wholly unchanged bundle is rejected.
+
+The same revision ID and explicit patch export flow works for the bundle.
+Revisions cannot expand its editable scope. An exact outer `json` Markdown fence
+may be removed without another model call; the original response is retained and
+`envelope_normalization` records that presentation repair. Prose-wrapped responses
+are not extracted. All ordinary syntax/source/scope checks still apply.
+
+This is a same-file transaction, not automatic dependency discovery or a proof
+that the changes are correct. The user selects the related functions. Tests and
+review must still check their behavior. Raw source drafting is unsupported here;
+no source is applied or generated code executed. One transaction saves a request
+boundary, but larger responses or corrections can erase its time advantage.
+
 ### Review a local edit without writing JSON
 
 With a local Splash server already running, start the human-facing mode:
