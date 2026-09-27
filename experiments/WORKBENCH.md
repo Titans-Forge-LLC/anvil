@@ -492,6 +492,51 @@ tokenizers 0.22.2. Hosted CI checks the model-independent logic, not GPU inferen
 
 ## Evidence and remaining work
 
+### Candidate-specific external test reports
+
+`Reviewable` means the proposal met structural checks, not that its behavior is
+correct. At review, `Tests: not_reported` is the default. After running your own
+tests in an isolated copy, choose `t` to attach a report from inside the project
+root. This action does not execute tests, apply a patch, or send anything to a model.
+JSON-lines clients can send:
+
+```json
+{"test_report":"p1","report_path":"/absolute/path/to/report.json"}
+```
+
+A report is a UTF-8 JSON object with exactly these fields:
+
+- `schema`: `anvil-proposal-test-report-v1`.
+- `source_sha256`: SHA-256 of the unchanged original source file bytes.
+- `candidate_sha256`: SHA-256 of the complete candidate file bytes, not the patch.
+- `test_suite_sha256`: SHA-256 identifying the test artifact used. For multi-file
+  suites, use a manifest covering the suite and dependencies.
+- `returncode`: the integer exit status reported by the external test runner;
+  zero is displayed as `reported_pass`, nonzero as `reported_fail`.
+- `summary`: a single-line description, at most 2,000 characters. Keep it free of
+  private payloads and credentials. It is retained in memory but not printed or
+  automatically sent to the model.
+
+Use the actual test exit status, not the exit status of a later shell command.
+Reports are limited to 16 KiB. Duplicate/extra keys, invalid types and mismatched
+source/candidate hashes are refused. A reported failure does not block patch
+export: exporting remains a review operation, not installation or approval.
+
+**Reports are user-supplied and unauthenticated.** Anyone can manufacture a
+matching report; this feature cannot prove tests ran or were adequate. A matching
+test-suite digest is recorded, not independently checked against current tests,
+dependencies or environment. ANVIL never labels this evidence “approved”.
+
+The latest explicitly attached report is shown. Changed source makes it stale;
+an unreadable source makes it unavailable. Every revision starts without a report.
+Checkpoint v1 deliberately remains unchanged: after restoring one, reattach the
+separate report explicitly. This prevents saved code from silently inheriting a
+test claim. Keep both code checkpoints and reports private unless audited.
+
+This feature records evidence only. When a report fails, inspect the failing test
+and explicitly request a revision or correct the patch yourself. No automatic
+repair loop or execution capability has been added.
+
 The preceding prototype's four authored requests (three related changes and one
 exact repeat), run twice in reversed mode order on a local 14B model, took
 **22.548 s ordinary versus 15.846 s with draft reuse**: 29.7% less completion

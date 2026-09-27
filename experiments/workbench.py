@@ -873,6 +873,67 @@ class ProposalSession:
         result['total_request_seconds'] = time.perf_counter() - started
         return result
 
+    def attach_test_report(self, proposal_id, report_path):
+        """Attach user-supplied evidence, never execute tests or certify a result."""
+        if not isinstance(proposal_id, str) or proposal_id not in self.proposals:
+            raise ValueError('unknown or expired proposal ID')
+        proposal = self.proposals[proposal_id]
+        with Path(report_path).open('rb') as stream:
+            raw = stream.read(16385)
+        if len(raw) > 16384:
+            raise ValueError('test report exceeds 16 KiB')
+        def unique_keys(pairs):
+            value = {}
+            for key, item in pairs:
+                if key in value:
+                    raise ValueError('duplicate test report key')
+                value[key] = item
+            return value
+        try:
+            report = json.loads(raw.decode('utf-8'), object_pairs_hook=unique_keys)
+        except (ValueError, RecursionError):
+            raise ValueError('invalid test report JSON') from None
+        keys = {'schema', 'source_sha256', 'candidate_sha256', 'test_suite_sha256', 'returncode', 'summary'}
+        if not isinstance(report, dict) or set(report) != keys or report['schema'] != 'anvil-proposal-test-report-v1':
+            raise ValueError('invalid test report schema')
+        for key in ('source_sha256', 'candidate_sha256', 'test_suite_sha256'):
+            value = report[key]
+            if not isinstance(value, str) or len(value) != 64 or any(c not in '0123456789abcdef' for c in value):
+                raise ValueError('invalid test report digest')
+        if type(report['returncode']) is not int or not -255 <= report['returncode'] <= 255:
+            raise ValueError('invalid test report returncode')
+        summary = report['summary']
+        if not isinstance(summary, str) or len(summary) > 2000 or any(ord(c) < 32 or ord(c) == 127 for c in summary):
+            raise ValueError('invalid test report summary')
+        if (report['source_sha256'] != proposal['source_sha256'] or
+                report['candidate_sha256'] != hashlib.sha256(proposal['text'].encode('utf-8')).hexdigest()):
+            raise ValueError('test report does not match this source and candidate')
+        with Path(proposal['file']).open('rb') as stream:
+            original = stream.read(1048577)
+        if len(original) > 1048576 or hashlib.sha256(original).hexdigest() != proposal['source_sha256']:
+            raise ValueError('source changed; test report refused')
+        proposal['test_report'] = dict(report, report_sha256=hashlib.sha256(raw).hexdigest())
+        return self.test_report_status(proposal_id)
+
+    def test_report_status(self, proposal_id):
+        """Hash matching is not authentication, test execution, or approval."""
+        proposal = self.proposals.get(proposal_id)
+        base = {'tests': 'not_reported', 'authenticated': False, 'approved': False, 'tests_executed': False}
+        if proposal is None or 'test_report' not in proposal:
+            return base
+        report = proposal['test_report']
+        try:
+            with Path(proposal['file']).open('rb') as stream:
+                original = stream.read(1048577)
+        except OSError:
+            return dict(base, tests='unavailable')
+        if (len(original) > 1048576 or hashlib.sha256(original).hexdigest() != report['source_sha256'] or
+                hashlib.sha256(proposal['text'].encode('utf-8')).hexdigest() != report['candidate_sha256']):
+            return dict(base, tests='stale')
+        return dict(base, tests='reported_pass' if report['returncode'] == 0 else 'reported_fail',
+                    returncode=report['returncode'], test_suite_sha256=report['test_suite_sha256'],
+                    report_sha256=report['report_sha256'])
+
     def save_checkpoint(self, proposal_id, project_root, output):
         """Explicit local snapshot, not a signature or an execution approval."""
         if not isinstance(proposal_id, str) or proposal_id not in self.proposals:
@@ -1108,8 +1169,10 @@ def run_interactive(session, project_root, max_tokens=1024):
                   f" | rejection: {result['rejection'] or '-'}")
             if result['reviewable']:
                 print(result['diff_preview'])
+                evidence = session.test_report_status(result['proposal_id'])
+                print(f"Tests: {evidence['tests']} (user-supplied report; not authenticated or approval).")
             try:
-                action = ask('[r]evise, [e]xport reviewed patch, [s]ave checkpoint, [n]ew file, [q]uit: ')
+                action = ask('[r]evise, [e]xport reviewed patch, [s]ave checkpoint, [t]est report, [n]ew file, [q]uit: ')
             except ValueError as exc:
                 print(f'{type(exc).__name__}: {exc}')
                 continue
@@ -1117,7 +1180,7 @@ def run_interactive(session, project_root, max_tokens=1024):
                 return None
             if action == 'n':
                 return 'new'
-            if action not in ('r', 'e', 's') or not result['proposal_id']:
+            if action not in ('r', 'e', 's', 't') or not result['proposal_id']:
                 print('That action requires a reviewable proposal.')
                 continue
             try:
@@ -1140,6 +1203,14 @@ def run_interactive(session, project_root, max_tokens=1024):
                     receipt = session.export_patch(result['proposal_id'], root, destination)
                     print(f"Exported {receipt['output']} ({receipt['patch_bytes']} bytes)."
                           ' Nothing was applied or executed.')
+                elif action == 't':
+                    report_path = ask('Test report path relative to project root: ')
+                    if report_path is None:
+                        return None
+                    report_path = (root / report_path).resolve(strict=True)
+                    report_path.relative_to(root)
+                    receipt = session.attach_test_report(result['proposal_id'], report_path)
+                    print(f"Attached {receipt['tests']}; no tests executed. Reattach after checkpoint restore.")
                 else:
                     output = ask('New checkpoint path relative to project root: ')
                     if output is None:
@@ -1176,6 +1247,7 @@ def run_interactive(session, project_root, max_tokens=1024):
             print('- Select a relative Python file (.py) inside the project root.')
             print('- Choose a displayed function number, 2-4 comma-separated function numbers, or entire file (0).')
             print('- Review actions: [r]evise, [e]xport patch, [s]ave checkpoint, [n]ew file, [q]uit.')
+            print('- [t] attaches an external test report to the exact candidate; it does not run tests or approve code.')
             print('- Use :load PATH to restore a saved checkpoint.')
             print('- Offline mode allows review and export, but new proposals/revisions require a model.')
             print('- Checkpoints contain source code and should remain private.')
@@ -1357,6 +1429,10 @@ def main():
                 if set(request) != {'load', 'project_root'}:
                     raise ValueError('load requires exactly load and project_root')
                 result = proposals.load_checkpoint(request['load'], request['project_root'])
+            elif 'test_report' in request:
+                if set(request) != {'test_report', 'report_path'}:
+                    raise ValueError('test_report requires exactly test_report and report_path')
+                result = proposals.attach_test_report(request['test_report'], request['report_path'])
             elif 'save' in request:
                 if set(request) != {'save', 'project_root', 'output'}:
                     raise ValueError('save requires exactly save, project_root and output')

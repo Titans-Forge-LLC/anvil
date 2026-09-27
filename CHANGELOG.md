@@ -1,5 +1,10 @@
 # Changelog
 
+- Workbench: attach a bounded external test report to exact original-source and
+  candidate hashes. Display reported pass/fail separately from reviewability;
+  changed source makes evidence stale and revisions start without a report.
+  Reports are unauthenticated claims, not test execution or approval.
+
 - Workbench: local `:help` at the file prompt explains scope selection, saved
   checkpoints, offline review and explicit export without invoking a model.
 

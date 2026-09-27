@@ -1226,5 +1226,103 @@ class HelpTests(unittest.TestCase):
             self.assertNotIn('FileNotFoundError', output.getvalue())
 
 
+class ProposalEvidenceTests(unittest.TestCase):
+    def fixture(self, root, returncode=1):
+        import hashlib
+        source, session, result, checkpoint = WorkbenchTests().checkpoint_fixture(root)
+        proposal = session.proposals[result['proposal_id']]
+        packet = dict(schema='anvil-proposal-test-report-v1', source_sha256=proposal['source_sha256'],
+                      candidate_sha256=hashlib.sha256(proposal['text'].encode()).hexdigest(),
+                      test_suite_sha256='a'*64, returncode=returncode, summary='one failing check')
+        report = root/'test-report.json'
+        report.write_text(json.dumps(packet))
+        return source, session, result, checkpoint, packet, report
+
+    def test_bound_report_and_stale_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, session, result, _, packet, report = self.fixture(root)
+            pid = result['proposal_id']
+            self.assertEqual(session.test_report_status(pid)['tests'], 'not_reported')
+            status = session.attach_test_report(pid, report)
+            self.assertEqual(status['tests'], 'reported_fail')
+            self.assertFalse(status['authenticated'])
+            self.assertFalse(status['approved'])
+            self.assertFalse(status['tests_executed'])
+            packet['returncode'] = 0
+            report.write_text(json.dumps(packet))
+            self.assertEqual(session.attach_test_report(pid, report)['tests'], 'reported_pass')
+            source.write_bytes(source.read_bytes()+b'\n# change\n')
+            self.assertEqual(session.test_report_status(pid)['tests'], 'stale')
+            with self.assertRaises(ValueError): session.attach_test_report(pid, report)
+
+    def test_report_rejects_wrong_binding_and_malformed_fields(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, session, result, _, packet, report = self.fixture(root)
+            for changes in ({'source_sha256':'b'*64}, {'candidate_sha256':'b'*64}, {'returncode':True},
+                            {'returncode':256}, {'test_suite_sha256':'bad'}, {'summary':'\x1bsecret'},
+                            {'schema':'other'}, {'extra':True}, {'summary':'x'*2001}):
+                with self.subTest(changes=changes):
+                    report.write_text(json.dumps(dict(packet, **changes)))
+                    with self.assertRaises(ValueError): session.attach_test_report(result['proposal_id'], report)
+            for raw in (b'null', b'\xff', b' '*16385, b'{"schema":1,"schema":2}', b'['*1500+b']'*1500):
+                report.write_bytes(raw)
+                with self.assertRaises(ValueError): session.attach_test_report(result['proposal_id'], report)
+            self.assertEqual(session.test_report_status(result['proposal_id'])['tests'], 'not_reported')
+
+    def test_restore_requires_explicit_report_reattachment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, session, result, _, _, report = self.fixture(root, returncode=0)
+            session.attach_test_report(result['proposal_id'], report)
+            checkpoint = root/'with-report.json'
+            session.save_checkpoint(result['proposal_id'], root, checkpoint)
+            self.assertNotIn('test_report', json.loads(checkpoint.read_text()))
+            restored = W.ProposalSession(W.OfflineCompletion())
+            second = restored.load_checkpoint(checkpoint, root)
+            self.assertEqual(restored.test_report_status(second['proposal_id'])['tests'], 'not_reported')
+            self.assertEqual(restored.attach_test_report(second['proposal_id'], report)['tests'], 'reported_pass')
+
+    def test_revision_does_not_inherit_a_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, session, result, _, _, report = self.fixture(root, returncode=0)
+            session.attach_test_report(result['proposal_id'], report)
+            class Revision:
+                def complete(self, *args, **kwargs):
+                    return dict(complete=True, text=json.dumps({'functions':[
+                        {'symbol':'f','edits':[{'old':'return 2','new':'return 4'}]},
+                        {'symbol':'g','edits':[]}]}))
+            session.completion = Revision()
+            next_result = session.propose({'revise':result['proposal_id'], 'instruction':'Use four'})
+            self.assertTrue(next_result['reviewable'])
+            self.assertEqual(session.test_report_status(next_result['proposal_id'])['tests'], 'not_reported')
+            with self.assertRaises(ValueError): session.attach_test_report(next_result['proposal_id'], report)
+
+    def test_interactive_report_is_visible_without_running_tests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, _, _, checkpoint, _, _ = self.fixture(root)
+            answers = ':load '+checkpoint.name+'\nt\ntest-report.json\nq\n'
+            with patch.object(W.sys, 'stdin', io.StringIO(answers)), patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(W.ProposalSession(W.OfflineCompletion()), root)
+            self.assertIn('Tests: reported_fail', output.getvalue())
+            self.assertIn('not authenticated or approval', output.getvalue())
+
+    def test_offline_json_report_command(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, _, _, checkpoint, _, report = self.fixture(root)
+            data = '\n'.join(json.dumps(x) for x in [dict(load=str(checkpoint),project_root=str(root)),
+                dict(test_report='p1',report_path=str(report))])+'\n'
+            with patch.object(W.sys, 'argv', ['workbench','--backend','offline']), \
+                 patch.object(W.sys, 'stdin', io.StringIO(data)), patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.main()
+            rows = [json.loads(line) for line in output.getvalue().splitlines()]
+            self.assertEqual(rows[-1]['tests'],'reported_fail')
+            self.assertFalse(rows[-1]['tests_executed'])
+
+
 if __name__ == '__main__':
     unittest.main()
