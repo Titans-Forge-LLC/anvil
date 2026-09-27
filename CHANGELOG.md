@@ -1,5 +1,8 @@
 # Changelog
 
+- Workbench: local `:help` at the file prompt explains scope selection, saved
+  checkpoints, offline review and explicit export without invoking a model.
+
 - Workbench: recover from oversized input at the file and review-action prompts
   without exiting or losing the current proposal. Keep the 16 KiB input limit,
   line draining, source checks, and explicit export requirement unchanged.

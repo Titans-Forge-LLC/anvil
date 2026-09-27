@@ -1162,6 +1162,7 @@ def run_interactive(session, project_root, max_tokens=1024):
     print('ANVIL review workbench. Proposal only: no code is applied or executed.')
     print('Enter a file relative to the project root; blank input exits.')
     print('Use :load RELATIVE_CHECKPOINT_PATH to load a saved checkpoint.')
+    print('Use :help for command guidance.')
     while True:
         try:
             filename = ask('File: ')
@@ -1170,6 +1171,16 @@ def run_interactive(session, project_root, max_tokens=1024):
             continue
         if not filename:
             return
+        if filename == ':help':
+            print('Guidance:')
+            print('- Select a relative Python file (.py) inside the project root.')
+            print('- Choose a displayed function number, 2-4 comma-separated function numbers, or entire file (0).')
+            print('- Review actions: [r]evise, [e]xport patch, [s]ave checkpoint, [n]ew file, [q]uit.')
+            print('- Use :load PATH to restore a saved checkpoint.')
+            print('- Offline mode allows review and export, but new proposals/revisions require a model.')
+            print('- Checkpoints contain source code and should remain private.')
+            print('- Patches are not automatically applied or executed.')
+            continue
         try:
             if filename.startswith(':load '):
                 checkpoint_path = filename[6:].strip()

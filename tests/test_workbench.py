@@ -1184,5 +1184,47 @@ class InputRecoveryTests(unittest.TestCase):
 
 
 
+class HelpTests(unittest.TestCase):
+    def test_help_is_local_and_returns_to_file_prompt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(W.sys, 'stdin', io.StringIO(':help\n:help\n\n')), \
+                 patch.object(W.sys, 'stdout', io.StringIO()) as output, \
+                 patch.object(W, 'interactive_symbols', side_effect=AssertionError('must not select a file')):
+                W.run_interactive(W.ProposalSession(W.OfflineCompletion()), directory)
+            text = output.getvalue().lower()
+            for word in ('checkpoint', 'offline', 'export', 'model', ':load'):
+                self.assertIn(word, text)
+            self.assertIn('2-4 comma-separated function numbers', text)
+            self.assertNotIn('by number (1-4)', text)
+            self.assertNotIn('filenotfounderror', text)
+            self.assertEqual(text.count('file: '), 3)
+
+    def test_help_preserves_following_proposal_save_and_export(self):
+        class Client:
+            calls = 0
+            def complete(self, *args, **kwargs):
+                self.calls += 1
+                return dict(complete=True, text='def f():\n    return 2\n')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root/'sample.py'
+            original = b'def f():\n    return 1\n'
+            source.write_bytes(original)
+            client = Client()
+            answers = ':help\nsample.py\n1\n\nReturn two\n\ns\nsaved.json\ne\nedit.patch\nq\n'
+            with patch.object(W.sys, 'stdin', io.StringIO(answers)), patch.object(W.sys, 'stdout', io.StringIO()):
+                W.run_interactive(W.ProposalSession(client), root)
+            self.assertEqual(client.calls, 1)
+            self.assertEqual(source.read_bytes(), original)
+            self.assertTrue((root/'saved.json').is_file())
+            self.assertTrue((root/'edit.patch').is_file())
+
+    def test_help_then_eof_exits(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(W.sys, 'stdin', io.StringIO(':help\n')), patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(W.ProposalSession(W.OfflineCompletion()), directory)
+            self.assertNotIn('FileNotFoundError', output.getvalue())
+
+
 if __name__ == '__main__':
     unittest.main()
