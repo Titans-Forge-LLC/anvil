@@ -144,6 +144,12 @@ still count.
 - **Offline revision refused:** offline mode only reviews saved proposals.
   Restart with a model backend to generate a new answer.
 
+A failed save/export or a failed, rejected or incomplete revision keeps your
+last good proposal at the review prompt. Choose a different output filename,
+save the retained proposal, or quit. No model request is retried automatically.
+Keeping a proposal does not bypass the source-change check: if the source has
+changed, start a fresh request before exporting.
+
 The in-process Apple Silicon MLX alternative and detailed limits are documented
 in [WORKBENCH.md](WORKBENCH.md). Keep that as a reference after your first run.
 

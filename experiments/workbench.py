@@ -1116,30 +1116,44 @@ def run_interactive(session, project_root, max_tokens=1024):
             if action not in ('r', 'e', 's') or not result['proposal_id']:
                 print('That action requires a reviewable proposal.')
                 continue
-            if action == 'r':
-                instruction = ask('Revision request: ')
-                if instruction is None:
-                    return None
-                result = session.propose({'revise': result['proposal_id'],
-                                          'instruction': instruction, 'max_tokens': max_tokens})
-            elif action == 'e':
-                output = ask('New patch path relative to project root: ')
-                if output is None:
-                    return None
-                destination = (root / output).absolute()
-                destination.parent.resolve(strict=True).relative_to(root)
-                receipt = session.export_patch(result['proposal_id'], root, destination)
-                print(f"Exported {receipt['output']} ({receipt['patch_bytes']} bytes)."
-                      ' Nothing was applied or executed.')
-            else:
-                output = ask('New checkpoint path relative to project root: ')
-                if output is None:
-                    return None
-                destination = (root / output).absolute()
-                destination.parent.resolve(strict=True).relative_to(root)
-                receipt = session.save_checkpoint(result['proposal_id'], root, destination)
-                print(f"Saved checkpoint {receipt['output']} ({receipt['bytes']} bytes)."
-                      ' Checkpoints contain code and should remain private.')
+            try:
+                if action == 'r':
+                    instruction = ask('Revision request: ')
+                    if instruction is None:
+                        return None
+                    new_result = session.propose({'revise': result['proposal_id'],
+                                                  'instruction': instruction, 'max_tokens': max_tokens})
+                    if new_result['reviewable']:
+                        result = new_result
+                    else:
+                        print(f"Revision rejected or incomplete: {new_result['rejection'] or 'unknown'}")
+                elif action == 'e':
+                    output = ask('New patch path relative to project root: ')
+                    if output is None:
+                        return None
+                    destination = (root / output).absolute()
+                    destination.parent.resolve(strict=True).relative_to(root)
+                    receipt = session.export_patch(result['proposal_id'], root, destination)
+                    print(f"Exported {receipt['output']} ({receipt['patch_bytes']} bytes)."
+                          ' Nothing was applied or executed.')
+                else:
+                    output = ask('New checkpoint path relative to project root: ')
+                    if output is None:
+                        return None
+                    destination = (root / output).absolute()
+                    destination.parent.resolve(strict=True).relative_to(root)
+                    receipt = session.save_checkpoint(result['proposal_id'], root, destination)
+                    print(f"Saved checkpoint {receipt['output']} ({receipt['bytes']} bytes)."
+                          ' Checkpoints contain code and should remain private.')
+            except RuntimeError:
+                if isinstance(session.completion, OfflineCompletion):
+                    print('Offline mode cannot generate or revise; restart with a model backend.')
+                else:
+                    print('Model request failed. For Splash or TensorFold, check that your local server is running, '
+                          'the URL is correct, and authentication matches. For MLX, check the local model. '
+                          'No automatic retry was made.')
+            except (OSError, UnicodeError, SyntaxError, ValueError) as exc:
+                print(f'{type(exc).__name__}: {exc}')
 
     print('ANVIL review workbench. Proposal only: no code is applied or executed.')
     print('Enter a file relative to the project root; blank input exits.')

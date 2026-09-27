@@ -150,6 +150,65 @@ class WorkbenchTests(unittest.TestCase):
             self.assertTrue(replies[1]['restored'])
             self.assertTrue(replies[2]['saved'])
 
+    def test_review_action_failures_keep_last_good_proposal(self):
+        from unittest.mock import Mock
+        cases = (
+            ('export_collision', 'e\nexisting.patch\n', None),
+            ('checkpoint_collision', 's\nsaved.anvil-checkpoint.json\n', None),
+            ('offline_revision', 'r\nTry again\n', None),
+            ('backend_failure', 'r\nTry again\n', RuntimeError('PRIVATE_FAILURE_DETAIL')),
+            ('incomplete_revision', 'r\nTry again\n', dict(complete=False, text='incomplete')),
+        )
+        for name, actions, outcome in cases:
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source, original_session, first, checkpoint = self.checkpoint_fixture(root)
+                original = source.read_bytes()
+                saved = checkpoint.read_bytes()
+                (root / 'existing.patch').write_bytes(b'keep this')
+                original_session.export_patch(first['proposal_id'], root, root / 'expected.patch')
+                client = W.OfflineCompletion()
+                if outcome is not None:
+                    client = Mock(spec=['complete'])
+                    if isinstance(outcome, Exception):
+                        client.complete.side_effect = outcome
+                    else:
+                        client.complete.return_value = outcome
+                answers = ':load saved.anvil-checkpoint.json\n' + actions + 'e\nretained.patch\nq\n'
+                with patch.object(W.sys, 'stdin', io.StringIO(answers)), \
+                     patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                    W.run_interactive(W.ProposalSession(client), root)
+                self.assertTrue((root / 'retained.patch').is_file(), output.getvalue())
+                self.assertEqual((root / 'retained.patch').read_bytes(), (root / 'expected.patch').read_bytes())
+                self.assertEqual(source.read_bytes(), original)
+                self.assertEqual(checkpoint.read_bytes(), saved)
+                self.assertEqual((root / 'existing.patch').read_bytes(), b'keep this')
+                self.assertNotIn('PRIVATE_FAILURE_DETAIL', output.getvalue())
+                if outcome is not None:
+                    client.complete.assert_called_once()
+
+    def test_retained_review_still_refuses_export_after_source_change(self):
+        from unittest.mock import Mock
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, _, _, _ = self.checkpoint_fixture(root)
+            changed = source.read_bytes() + b'# external change\n'
+
+            def fail_after_change(*args, **kwargs):
+                source.write_bytes(changed)
+                raise RuntimeError('private failure')
+
+            client = Mock(spec=['complete'])
+            client.complete.side_effect = fail_after_change
+            with patch.object(W.sys, 'stdin', io.StringIO(
+                    ':load saved.anvil-checkpoint.json\nr\nRevise\ne\nstale.patch\nq\n')), \
+                 patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(W.ProposalSession(client), root)
+            self.assertFalse((root / 'stale.patch').exists())
+            self.assertEqual(source.read_bytes(), changed)
+            self.assertIn('source changed', output.getvalue())
+            client.complete.assert_called_once()
+
     def test_checkpoint_single_function_and_whole_file_profiles(self):
         class Complete:
             def complete(self, *args, **kwargs):
