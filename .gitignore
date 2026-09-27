@@ -6,3 +6,4 @@ __pycache__/
 build/
 dist/
 anvil-test-receipt*.json
+*.anvil-checkpoint.json

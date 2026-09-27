@@ -54,6 +54,180 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def checkpoint_fixture(self, root):
+        class Complete:
+            def complete(self, *args, **kwargs):
+                return dict(complete=True, text=json.dumps({'functions': [
+                    dict(symbol='f', edits=[dict(old='return 1', new='return 2')]),
+                    dict(symbol='g', edits=[])]}))
+        source = root / 'source.py'
+        source.write_bytes(b'# original\r\ndef f():\r\n    return 1\r\n\r\ndef g():\r\n    return 3\r\n')
+        session = W.ProposalSession(Complete())
+        result = session.propose(dict(file=str(source), symbols=['f', 'g'], instruction='Fix f'))
+        checkpoint = root / 'saved.anvil-checkpoint.json'
+        session.save_checkpoint(result['proposal_id'], root, checkpoint)
+        return source, session, result, checkpoint
+
+    def test_checkpoint_restart_preserves_transaction_and_patch_without_model(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, session, first, checkpoint = self.checkpoint_fixture(root)
+            old_bytes = source.read_bytes()
+            restarted = W.ProposalSession(W.OfflineCompletion())
+            restored = restarted.load_checkpoint(checkpoint, root)
+            self.assertTrue(restored['restored'])
+            self.assertEqual(restored['model_requests'], 0)
+            self.assertEqual(restored['symbols'], ['f', 'g'])
+            self.assertEqual(restored['diff_preview'], first['diff_preview'])
+            session.export_patch(first['proposal_id'], root, root / 'before.patch')
+            restarted.export_patch(restored['proposal_id'], root, root / 'after.patch')
+            self.assertEqual((root / 'before.patch').read_bytes(), (root / 'after.patch').read_bytes())
+            self.assertEqual(source.read_bytes(), old_bytes)
+            with self.assertRaises(FileExistsError):
+                session.save_checkpoint(first['proposal_id'], root, checkpoint)
+            restarted.completion = session.completion
+            with self.assertRaises(ValueError):
+                restarted.propose(dict(revise=restored['proposal_id'], symbols=['f','other'], instruction='Expand'))
+
+    def test_checkpoint_offline_cli_restart_exports_same_patch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, session, first, checkpoint = self.checkpoint_fixture(root)
+            original = source.read_bytes()
+            session.export_patch(first['proposal_id'], root, root / 'before.patch')
+            restarted = subprocess.run(
+                [W.sys.executable, str(Path(W.__file__).resolve()), '--backend', 'offline',
+                 '--interactive', '--project-root', str(root)],
+                input=f':load {checkpoint.name}\ne\nresumed.patch\nq\n',
+                text=True, capture_output=True, cwd=root, timeout=15)
+            self.assertEqual(restarted.returncode, 0, restarted.stderr)
+            self.assertIn('Restored editable scope:', restarted.stdout)
+            self.assertIn('Nothing was applied or executed', restarted.stdout)
+            self.assertEqual((root / 'before.patch').read_bytes(), (root / 'resumed.patch').read_bytes())
+            self.assertEqual(source.read_bytes(), original)
+
+    def test_checkpoint_rejects_stale_source_tampering_and_path_escape(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, session, first, checkpoint = self.checkpoint_fixture(root)
+            saved = json.loads(checkpoint.read_text())
+            client = W.ProposalSession(W.OfflineCompletion())
+            cases = []
+            for name in ('../outside.py', '/tmp/outside.py', 'C:\\outside.py'):
+                cases.append(dict(saved, file=name))
+            cases.extend([dict(saved, schema='unknown'), dict(saved, approved=True),
+                          dict(saved, text=saved['text']+'# injected'), dict(saved, symbols=['f','f'])])
+            edited = saved['text'].replace('# original', '# tampered outside selected scope')
+            cases.append(dict(saved, text=edited, replacement_sha256=hashlib.sha256(edited.encode()).hexdigest()))
+            for item in cases:
+                checkpoint.write_text(json.dumps(item))
+                with self.assertRaises(ValueError):
+                    client.load_checkpoint(checkpoint, root)
+                self.assertEqual(client.proposals, {})
+            checkpoint.write_text(json.dumps(saved))
+            source.write_bytes(source.read_bytes()+b'# change\n')
+            with self.assertRaises(ValueError): client.load_checkpoint(checkpoint, root)
+            with self.assertRaises(ValueError): session.save_checkpoint(first['proposal_id'], root, root/'stale.json')
+
+    def test_checkpoint_interactive_resume_and_offline_json_commands(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, session, first, checkpoint = self.checkpoint_fixture(root)
+            with patch('sys.stdin', io.StringIO(':load saved.anvil-checkpoint.json\ne\nresumed.patch\ns\nresaved.anvil-checkpoint.json\nq\n')), \
+                 patch('sys.stdout', new_callable=io.StringIO) as output:
+                W.run_interactive(W.ProposalSession(W.OfflineCompletion()), root)
+            self.assertTrue((root / 'resumed.patch').is_file(), output.getvalue())
+            self.assertTrue((root / 'resaved.anvil-checkpoint.json').is_file())
+            data = '\n'.join(json.dumps(x) for x in [
+                dict(load=str(checkpoint), project_root=str(root)),
+                dict(save='p1', project_root=str(root), output=str(root/'json.anvil-checkpoint.json'))]) + '\n'
+            import sys
+            with patch('sys.argv', ['workbench', '--backend', 'offline']), \
+                 patch('sys.stdin', io.StringIO(data)), patch('sys.stdout', new_callable=io.StringIO) as output:
+                W.main()
+            replies = [json.loads(line) for line in output.getvalue().splitlines()]
+            self.assertTrue(replies[1]['restored'])
+            self.assertTrue(replies[2]['saved'])
+
+    def test_review_action_failures_keep_last_good_proposal(self):
+        from unittest.mock import Mock
+        cases = (
+            ('export_collision', 'e\nexisting.patch\n', None),
+            ('checkpoint_collision', 's\nsaved.anvil-checkpoint.json\n', None),
+            ('offline_revision', 'r\nTry again\n', None),
+            ('backend_failure', 'r\nTry again\n', RuntimeError('PRIVATE_FAILURE_DETAIL')),
+            ('incomplete_revision', 'r\nTry again\n', dict(complete=False, text='incomplete')),
+        )
+        for name, actions, outcome in cases:
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source, original_session, first, checkpoint = self.checkpoint_fixture(root)
+                original = source.read_bytes()
+                saved = checkpoint.read_bytes()
+                (root / 'existing.patch').write_bytes(b'keep this')
+                original_session.export_patch(first['proposal_id'], root, root / 'expected.patch')
+                client = W.OfflineCompletion()
+                if outcome is not None:
+                    client = Mock(spec=['complete'])
+                    if isinstance(outcome, Exception):
+                        client.complete.side_effect = outcome
+                    else:
+                        client.complete.return_value = outcome
+                answers = ':load saved.anvil-checkpoint.json\n' + actions + 'e\nretained.patch\nq\n'
+                with patch.object(W.sys, 'stdin', io.StringIO(answers)), \
+                     patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                    W.run_interactive(W.ProposalSession(client), root)
+                self.assertTrue((root / 'retained.patch').is_file(), output.getvalue())
+                self.assertEqual((root / 'retained.patch').read_bytes(), (root / 'expected.patch').read_bytes())
+                self.assertEqual(source.read_bytes(), original)
+                self.assertEqual(checkpoint.read_bytes(), saved)
+                self.assertEqual((root / 'existing.patch').read_bytes(), b'keep this')
+                self.assertNotIn('PRIVATE_FAILURE_DETAIL', output.getvalue())
+                if outcome is not None:
+                    client.complete.assert_called_once()
+
+    def test_retained_review_still_refuses_export_after_source_change(self):
+        from unittest.mock import Mock
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, _, _, _ = self.checkpoint_fixture(root)
+            changed = source.read_bytes() + b'# external change\n'
+
+            def fail_after_change(*args, **kwargs):
+                source.write_bytes(changed)
+                raise RuntimeError('private failure')
+
+            client = Mock(spec=['complete'])
+            client.complete.side_effect = fail_after_change
+            with patch.object(W.sys, 'stdin', io.StringIO(
+                    ':load saved.anvil-checkpoint.json\nr\nRevise\ne\nstale.patch\nq\n')), \
+                 patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(W.ProposalSession(client), root)
+            self.assertFalse((root / 'stale.patch').exists())
+            self.assertEqual(source.read_bytes(), changed)
+            self.assertIn('source changed', output.getvalue())
+            client.complete.assert_called_once()
+
+    def test_checkpoint_single_function_and_whole_file_profiles(self):
+        class Complete:
+            def complete(self, *args, **kwargs):
+                return dict(complete=True, text='def f():\n    return 2\n')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source.py'
+            source.write_text('def f():\n    return 1\n')
+            for scope in (dict(symbol='f'), {}):
+                session = W.ProposalSession(Complete())
+                result = session.propose(dict(file=str(source), instruction='Update', **scope))
+                checkpoint = root / ('function.json' if scope else 'whole.json')
+                session.save_checkpoint(result['proposal_id'], root, checkpoint)
+                restored = W.ProposalSession(W.OfflineCompletion()).load_checkpoint(checkpoint, root)
+                self.assertEqual(restored['diff_preview'], result['diff_preview'])
+                import os
+                if os.name != 'nt':
+                    self.assertEqual(checkpoint.stat().st_mode & 0o777, 0o600)
+
     def test_function_bundle_atomic_revision_export_and_untouched_bytes(self):
         class Complete:
             value = '2'
@@ -215,6 +389,28 @@ class WorkbenchTests(unittest.TestCase):
                 self.assertIsNone(request.data)
                 self.assertEqual(opened.call_args.kwargs['timeout'], 3)
                 response.__enter__.return_value.read.assert_called_once_with(65537)
+
+    def test_invalid_project_root_fails_before_backend_creation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ordinary_file = root / 'file.py'
+            ordinary_file.write_text('pass')
+            for path in (root / 'missing', ordinary_file):
+                for backend in ('splash', 'mlx', 'tensorfold', 'offline'):
+                    with self.subTest(path=path.name, backend=backend), \
+                         patch.object(W.sys, 'argv', ['workbench', '--backend', backend,
+                             '--interactive', '--project-root', str(path), '--model', 'unused']), \
+                         patch.object(W.sys, 'stderr', io.StringIO()) as errors, \
+                         patch.object(W, 'SplashCompletion') as splash, \
+                         patch.object(W, 'TensorFoldCompletion') as tensorfold, \
+                         patch.object(W, 'OfflineCompletion') as offline, \
+                         patch.object(W, 'MLXBackend') as mlx:
+                        with self.assertRaises(SystemExit) as caught:
+                            W.main()
+                        self.assertEqual(caught.exception.code, 2)
+                        for constructor in (splash, tensorfold, offline, mlx):
+                            constructor.assert_not_called()
+                        self.assertIn('--project-root', errors.getvalue())
 
     def test_interactive_preflight_failure_does_not_prompt_or_read_source(self):
         from unittest.mock import MagicMock
