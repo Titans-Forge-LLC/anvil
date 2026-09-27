@@ -1,5 +1,10 @@
 # Changelog
 
+- Workbench: source-bound transactions spanning 2..4 explicitly selected functions
+  in one file. Validate and reconstruct all edits together; retain one revision
+  and patch-export flow. Support explicit unchanged members and report exact
+  JSON-fence normalization. No automatic application or semantic-correctness claim.
+
 - Workbench: add a loopback TensorFold adapter with explicit sampling, thinking,
   and draft-on/off controls. Keep generation and KV state engine-owned; preserve
   source-bound, review-only proposals. Carry through server-reported timing,
