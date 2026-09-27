@@ -56,7 +56,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "9c03e6a7067767e0bc46ab9a41a68ba31f74aaa89d5d8f4701698ad4083e419a"
+      "sha256": "887a0780a5e2f8c85de93ea56ab0f142eed543e43ec566b075ba7bb0d2e5969e"
     },
     {
       "path": "CITATION.cff",
@@ -196,7 +196,7 @@
     },
     {
       "path": "experiments/workbench.py",
-      "sha256": "87dd31291301487dce9be2f66e8efaeb2eb3ef183b1647ad26123c41565f5cf1"
+      "sha256": "34f6f8afb944c1175b929f1c34593b7d0ded23a85bf8b85192af29cbe7db3595"
     },
     {
       "path": "licenses/MIT.txt",
@@ -324,7 +324,7 @@
     },
     {
       "path": "tests/test_workbench.py",
-      "sha256": "5a907eae62d666289cad432ad88d5e602fb529716efa241ec2935d66a84e4e6c"
+      "sha256": "81980c4ad2f28b8c55216a664c447c63976567916763d21397500fd62c2d4a7f"
     }
   ],
   "profile": "AVP1/governed-mission-v1",

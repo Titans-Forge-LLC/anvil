@@ -1,5 +1,9 @@
 # Changelog
 
+- Workbench: recover from oversized input at the file and review-action prompts
+  without exiting or losing the current proposal. Keep the 16 KiB input limit,
+  line draining, source checks, and explicit export requirement unchanged.
+
 - Workbench: explicit source-bound proposal checkpoints, restart-safe review and
   patch export, and a no-model offline backend. Revalidate source and named-function
   scope on restore; preserve raw review boundaries. Checkpoints contain private

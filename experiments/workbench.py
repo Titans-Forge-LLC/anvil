@@ -1108,7 +1108,11 @@ def run_interactive(session, project_root, max_tokens=1024):
                   f" | rejection: {result['rejection'] or '-'}")
             if result['reviewable']:
                 print(result['diff_preview'])
-            action = ask('[r]evise, [e]xport reviewed patch, [s]ave checkpoint, [n]ew file, [q]uit: ')
+            try:
+                action = ask('[r]evise, [e]xport reviewed patch, [s]ave checkpoint, [n]ew file, [q]uit: ')
+            except ValueError as exc:
+                print(f'{type(exc).__name__}: {exc}')
+                continue
             if action in (None, 'q'):
                 return None
             if action == 'n':
@@ -1159,7 +1163,11 @@ def run_interactive(session, project_root, max_tokens=1024):
     print('Enter a file relative to the project root; blank input exits.')
     print('Use :load RELATIVE_CHECKPOINT_PATH to load a saved checkpoint.')
     while True:
-        filename = ask('File: ')
+        try:
+            filename = ask('File: ')
+        except ValueError as exc:
+            print(f'{type(exc).__name__}: {exc}')
+            continue
         if not filename:
             return
         try:
