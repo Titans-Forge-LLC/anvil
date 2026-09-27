@@ -1141,5 +1141,48 @@ class WorkbenchTests(unittest.TestCase):
             self.assertIsNone(result['diff_preview'])
 
 
+class InputRecoveryTests(unittest.TestCase):
+    def test_oversize_file_prompt_recovers_without_consuming_next_line(self):
+        for oversized in ('x'*16385+'\n', 'x'*16384+'\n'):
+            with self.subTest(length=len(oversized)), tempfile.TemporaryDirectory() as directory:
+                with patch.object(W.sys, 'stdin', io.StringIO(oversized+'\n')), \
+                     patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                    W.run_interactive(W.ProposalSession(W.OfflineCompletion()), directory)
+                self.assertIn('16 KiB', output.getvalue())
+                self.assertEqual(output.getvalue().count('File: '), 2)
+
+    def test_oversize_review_action_retains_proposal_for_export(self):
+        class Complete:
+            calls = 0
+            def complete(self, *args, **kwargs):
+                self.calls += 1
+                return dict(text='def f():\n    return 2\n', complete=True)
+        for oversized in ('x'*16385+'\n', 'x'*16384+'\n'):
+            with self.subTest(length=len(oversized)), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source = root/'source.py'
+                original = b'def f():\n    return 1\n'
+                source.write_bytes(original)
+                client = Complete()
+                session = W.ProposalSession(client)
+                answers = 'source.py\n1\n\nUse two\n\n'+oversized+'e\nreview.patch\nq\n'
+                with patch.object(W.sys, 'stdin', io.StringIO(answers)), \
+                     patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                    W.run_interactive(session, root)
+                self.assertEqual(client.calls, 1)
+                self.assertEqual(source.read_bytes(), original)
+                self.assertTrue((root/'review.patch').is_file(), output.getvalue())
+                self.assertEqual(output.getvalue().count('File: '), 1)
+                self.assertIn('16 KiB', output.getvalue())
+
+    def test_oversize_at_eof_terminates_without_looping(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(W.sys, 'stdin', io.StringIO('x'*16385)), \
+                 patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(W.ProposalSession(W.OfflineCompletion()), directory)
+            self.assertIn('16 KiB', output.getvalue())
+
+
+
 if __name__ == '__main__':
     unittest.main()
