@@ -17,10 +17,10 @@ Status: `LIMITED PUBLIC BETA`
 - Explicitly export a new patch for your normal Git workflow. ANVIL does not
   apply changes or execute generated code. Reviewable does not mean correct.
 
-The TensorFold, multi-function and checkpoint features are currently in the
-[integration candidate, PR #31](https://github.com/Titans-Forge-LLC/anvil/pull/31),
-stacked on PRs #29 and #30. The start guide explains how to try that revision;
-these features are not yet merged into `main` or a tagged release.
+The TensorFold, multi-function and checkpoint workflow is available from
+`main`. These features remain an experimental preview, not a new tagged release.
+See [PR #31](https://github.com/Titans-Forge-LLC/anvil/pull/31) for the integration
+history and checks.
 
 The practical goal is less repeated model work per useful job. We have not
 established a general end-to-end speedup or autonomous coding reliability.

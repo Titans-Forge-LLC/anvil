@@ -104,7 +104,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "4a71aa502c4240d2334b7df75c1c502a4efc81ee545d2d8ca44a95f99a220073"
+      "sha256": "7288cfe2f294cabb5571a5e455a9b5d92bc2e1435d5a6674a34715b10d588d13"
     },
     {
       "path": "RELEASE_EVIDENCE_PACKET.md",
@@ -156,7 +156,7 @@
     },
     {
       "path": "experiments/START_HERE.md",
-      "sha256": "5f9cb85fff9b9a0dd3f9c042e900e39362f4ac0ab8e42de7eac4425a5124c7cc"
+      "sha256": "76e00cbe8a4bfee73f14286f9b560ffc884622e532279361ff8f45b8ceb0b6f0"
     },
     {
       "path": "experiments/WORKBENCH.md",

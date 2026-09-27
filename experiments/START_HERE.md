@@ -39,15 +39,13 @@ From a terminal, obtain the project and enter its directory:
 ```sh
 git clone https://github.com/Titans-Forge-LLC/anvil.git
 cd anvil
-git fetch origin pull/31/head
-git switch --detach FETCH_HEAD
 python3 experiments/workbench.py --help
 ```
 
-The fetch/switch lines select the **unmerged integration candidate** in PR #31
-(including PRs #29 and #30), not a release. They are intended for a fresh clone;
-do not switch an existing checkout with unfinished work. The older demo ZIP
-does not include multi-function transactions or saved checkpoints.
+These commands use the current `main` branch in a fresh clone. The workbench is
+still an experimental preview, not a newly tagged release. The older demo ZIP
+does not include multi-function transactions or saved checkpoints. Preserve any
+unfinished work before updating an existing checkout.
 
 With your local Splash server already running, start the review session.
 Change the port below if your server uses a different one:
