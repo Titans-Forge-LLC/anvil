@@ -1,5 +1,10 @@
 # Changelog
 
+- Workbench: add a loopback TensorFold adapter with explicit sampling, thinking,
+  and draft-on/off controls. Keep generation and KV state engine-owned; preserve
+  source-bound, review-only proposals. Carry through server-reported timing,
+  cache, and draft counters without claiming independently verified model calls.
+
 - Add an opt-in offline migration command for exact wires emitted by the earlier
   browser encoder. It verifies old or current canonicality, preserves decoded
   data and emits the corrected wire. Normal decoding remains strict. The command

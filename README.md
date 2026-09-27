@@ -7,6 +7,9 @@ authority must survive decoding exactly.
 Status: `LIMITED PUBLIC BETA`
 
 Latest: [Try the persistent coding workbench preview](experiments/WORKBENCH.md).
+An opt-in TensorFold backend now connects an existing local server to the same
+review-only workflow, with sampling controls and engine-reported timing/cache/
+draft metrics. ANVIL does not install, start, or modify that server.
 Reviewed proposals can now be exported as source-checked patch files for your
 normal Git review workflow, without another model call or automatic application.
 Splash revisions can now opt into reasoning without losing the parent proposal.

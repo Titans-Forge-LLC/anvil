@@ -494,6 +494,26 @@ class WorkbenchTests(unittest.TestCase):
             self.assertEqual(error.exception.code, 2)
             backend.assert_not_called()
 
+    def test_tensorfold_cli_controls_and_no_source_draft(self):
+        args = ['workbench', '--backend', 'tensorfold', '--ordinary', '--seed', '1234',
+                '--temperature', '1', '--top-p', '0.95', '--top-k', '20', '--thinking', 'off']
+        with patch.object(W.sys, 'argv', args), patch.object(W.sys, 'stdin', io.StringIO('')), \
+             patch.object(W.sys, 'stdout', io.StringIO()), \
+             patch.object(W, 'TensorFoldCompletion', return_value=object()) as completion:
+            W.main()
+        self.assertFalse(completion.call_args.kwargs['draft'])
+        self.assertEqual(completion.call_args.kwargs['seed'], 1234)
+        self.assertFalse(completion.call_args.kwargs['thinking'])
+        for bad in (['--backend', 'splash', '--temperature', '1'],
+                    ['--backend', 'tensorfold', '--source-draft'],
+                    ['--backend', 'tensorfold', '--reasoning-effort', 'low']):
+            with patch.object(W.sys, 'argv', ['workbench'] + bad), \
+                 patch.object(W.sys, 'stderr', io.StringIO()), \
+                 patch.object(W, 'TensorFoldCompletion') as completion:
+                with self.assertRaises(SystemExit):
+                    W.main()
+                completion.assert_not_called()
+
     def test_cli_reads_bounded_lines_and_recovers_after_oversize(self):
         class BoundedInput(io.StringIO):
             def __iter__(self):
