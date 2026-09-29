@@ -1,5 +1,19 @@
 # Changelog
 
+- Workbench: opt-in macOS sandboxed Python checks on a disposable snapshot of
+  declared inputs, with candidate/test/plan binding, bounded output and timeout,
+  and no network or live-source writes. One explicit correction can consume the
+  local failure and recheck; no automatic retries or patch application. Offline
+  checkpoints can be checked without inference. Unsupported hosts fail closed.
+
+- Workbench: attach a bounded external test report to exact original-source and
+  candidate hashes. Display reported pass/fail separately from reviewability;
+  changed source makes evidence stale and revisions start without a report.
+  Reports are unauthenticated claims, not test execution or approval.
+
+- Workbench: local `:help` at the file prompt explains scope selection, saved
+  checkpoints, offline review and explicit export without invoking a model.
+
 - Workbench: recover from oversized input at the file and review-action prompts
   without exiting or losing the current proposal. Keep the 16 KiB input limit,
   line draining, source checks, and explicit export requirement unchanged.

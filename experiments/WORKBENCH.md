@@ -9,11 +9,75 @@ first mismatch it rolls back rejected KV rows and continues normally.
 
 This is a single-file proposal loop, not an autonomous coding agent.
 It reads only the file you select, returns replacement text and a review diff,
-and never applies changes, executes generated code, or calls tools. Explicit patch
+and never applies changes. By default it does not execute generated code or call tools.
+The optional check runner below executes a candidate only when explicitly requested.
+Explicit patch
 export can create a new file at a destination you choose. No server
 or telemetry is started. Treat output as untrusted code requiring review.
 
 ## Run
+
+### Run declared checks and correct once (macOS)
+
+The optional runner closes the proposal/check/correction loop without modifying
+the live project. It needs macOS with `/usr/bin/sandbox-exec`; other platforms
+retain the existing workbench and external-report workflow. There is no
+unrestricted execution fallback, model installation, or background service.
+
+From the repository root, enable the small public exercise's existing checks:
+
+```sh
+python experiments/workbench.py --backend offline --interactive --project-root . \
+  --test-root . --test-plan examples/workbench_checks.json
+```
+
+Load a saved checkpoint, then select `v`. With a model backend, propose the
+sample edit first (return zero for empty input, preserve other cases), then `v`.
+If checks fail, `c` asks for the original intent and must-preserve behavior,
+makes one corrective model request, and runs the same frozen checks on the new
+candidate. A second correction on that in-memory lineage is refused. Failure
+retains reviewable work for handoff; nothing is applied. Manual `r` revisions
+remain available. Restarting restores code, not the correction counter or evidence.
+
+JSON-lines clients enable the same flags and explicitly send:
+
+```json
+{"run_checks":"p1"}
+{"repair_once":"p1","instruction":"Return zero for empty input; preserve positive and negative averages.","max_tokens":1024}
+```
+
+The plan has exactly four fields: `schema` (`anvil-python-check-plan-v1`),
+`files` (1..64 project-relative regular files), `test_file` (a declared Python
+entry point), and `timeout_seconds` (1..120). Include the candidate source,
+tests, and their local imports/fixtures. No directory crawling occurs. Inputs
+are limited to 1 MiB each and 8 MiB total; symlinks and path traversal are refused.
+The plan and every input are frozen when the session starts. Changes require
+an explicit restart/reload, not silent acceptance. The model cannot choose the
+plan, environment, test command, or timeout.
+
+Checks run under the current Python interpreter in a separate process with a
+minimal environment. The snapshot is read-only; only temporary scratch is
+writable. Network and subprocess creation are denied. The interpreter runtime,
+system libraries, and parent-directory metadata are readable; this is not a VM
+or protection against interpreter/kernel vulnerabilities. Use reviewed test
+entry points. Scratch has no aggregate storage quota. The runner supports
+in-process Python tests, not arbitrary shell commands or subprocess-based suites.
+`ANVIL_JOB_CANDIDATE` names the substituted snapshot file for test scripts that
+need it. A timeout kills the process group; stdout/stderr have 1 MiB limits each.
+
+Outcomes are `executed_zero_exit`, `executed_nonzero_exit`, `timed_out`,
+`runner_error`, or `stale`. Zero exit is **not** an assertion that all intended
+tests ran, that coverage is adequate, or that the candidate satisfies user intent.
+Candidate code can interfere with in-process tests. No outcome grants approval.
+Evidence records source, candidate, input, plan, interpreter and sandbox-profile
+hashes, exit status, a bounded output tail, and total check elapsed time including
+snapshot construction and validation. It is local evidence, not remote attestation.
+Outputs can contain private data: keep receipts private. Only an explicit `c` /
+`repair_once` sends a bounded failure tail to the configured model.
+
+Saved checkpoints still contain code only. Revisions and restored checkpoints
+do not inherit a locally executed result. External reports remain separately
+labelled, unauthenticated reports and cannot authorize a correction by themselves.
 
 ### Save a transaction and resume without a model
 
@@ -491,6 +555,52 @@ The local smoke used MLX 0.31.2, mlx-lm 0.31.3, transformers 5.5.4 and
 tokenizers 0.22.2. Hosted CI checks the model-independent logic, not GPU inference.
 
 ## Evidence and remaining work
+
+### Candidate-specific external test reports
+
+`Reviewable` means the proposal met structural checks, not that its behavior is
+correct. At review, `Tests: not_reported` is the default. After running your own
+tests in an isolated copy, choose `t` to attach a report from inside the project
+root. This action does not execute tests, apply a patch, or send anything to a model.
+JSON-lines clients can send:
+
+```json
+{"test_report":"p1","report_path":"/absolute/path/to/report.json"}
+```
+
+A report is a UTF-8 JSON object with exactly these fields:
+
+- `schema`: `anvil-proposal-test-report-v1`.
+- `source_sha256`: SHA-256 of the unchanged original source file bytes.
+- `candidate_sha256`: SHA-256 of the complete candidate file bytes, not the patch.
+- `test_suite_sha256`: SHA-256 identifying the test artifact used. For multi-file
+  suites, use a manifest covering the suite and dependencies.
+- `returncode`: the integer exit status reported by the external test runner;
+  zero is displayed as `reported_pass`, nonzero as `reported_fail`.
+- `summary`: a single-line description, at most 2,000 characters. Keep it free of
+  private payloads and credentials. It is retained in memory but not printed or
+  automatically sent to the model.
+
+Use the actual test exit status, not the exit status of a later shell command.
+Reports are limited to 16 KiB. Duplicate/extra keys, invalid types and mismatched
+source/candidate hashes are refused. A reported failure does not block patch
+export: exporting remains a review operation, not installation or approval.
+
+**Reports are user-supplied and unauthenticated.** Anyone can manufacture a
+matching report; this feature cannot prove tests ran or were adequate. A matching
+test-suite digest is recorded, not independently checked against current tests,
+dependencies or environment. ANVIL never labels this evidence “approved”.
+
+The latest explicitly attached report is shown. Changed source makes it stale;
+an unreadable source makes it unavailable. Every revision starts without a report.
+Checkpoint v1 deliberately remains unchanged: after restoring one, reattach the
+separate report explicitly. This prevents saved code from silently inheriting a
+test claim. Keep both code checkpoints and reports private unless audited.
+
+This feature records evidence only. When a report fails, inspect the failing test
+and explicitly request a revision or correct the patch yourself. Attaching a
+report never triggers execution; the separately opted-in local runner above
+is required to execute checks or request its bounded correction.
 
 The preceding prototype's four authored requests (three related changes and one
 exact repeat), run twice in reversed mode order on a local 14B model, took
