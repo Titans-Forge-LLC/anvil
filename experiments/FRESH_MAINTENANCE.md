@@ -118,3 +118,33 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_codec.py'
 ```
 
 This reproduces the added regression tests, not the timed model comparison.
+
+## September 29: a fresh task exercised the correction branch
+
+A separate operator integration task exposed opt-in checked proposals through
+the existing local-model launcher. Requirements included validating the declared
+test plan before model contact, forwarding it to online and offline review,
+preserving default non-execution, and retaining cleanup and exit behavior.
+
+The first model proposal passed eight of nine test methods but failed four
+invalid-plan subcases: the check runner's `ValueError` escaped instead of becoming
+an operator-facing argument error. The retained session supplied the real test
+failure to one correction request. That correction passed all nine methods on
+the same frozen suite. No test was edited, no failure was injected, and no second
+correction was attempted. Two model requests in total; recorded machine campaign
+time was 31.161 seconds, including 0.645 seconds of model-access setup. Human
+authoring/review and later installation checks are not included.
+
+An actual offline launcher-to-workbench run then restored the prior JSON-root
+repair checkpoint, ran its sandbox checks and exported an exact patch without
+inference. This was a replay for integration verification, not another fresh
+repair. Its first smoke-test assertion wrongly expected a relative export path;
+the harness was corrected to match the actual absolute-path output, preserving
+the first transcript. The underlying launcher needed no additional code repair.
+
+The reviewed operator launcher was updated locally with a rollback copy. No
+running agent, model service or policy was changed. Launcher-specific code,
+addresses and raw receipts remain private. There was no direct control in this
+integration task, so **successful bounded recovery is demonstrated, not a speed
+or quality advantage over another tool**. Independent operator usability remains
+unmeasured.
