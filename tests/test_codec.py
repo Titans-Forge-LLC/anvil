@@ -11,12 +11,61 @@ from pathlib import Path
 from anvil_alpha import AVP1Codec, CodecError, ContextMismatchError, canonical_json
 from anvil_alpha.cli import _write
 from anvil_alpha import cli
+from anvil_alpha.codec import semantic_sha256
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class AVP1CodecTests(unittest.TestCase):
+    def _verify_pair(self, source, decoded, mode='files'):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_path, wire_path = root / 'source.json', root / 'wire.avp1'
+            payload = json.dumps(source)
+            wire = self.codec.encode(decoded)
+            source_path.write_text(payload, encoding='utf-8')
+            wire_path.write_text(wire, encoding='utf-8')
+            args = ['verify', str(source_path), str(wire_path)]
+            stdin = ''
+            if mode == 'source_stdin':
+                args[1], stdin = '-', payload
+            elif mode == 'wire_stdin':
+                args[2], stdin = '-', wire
+            with patch.object(cli.sys, 'stdin', io.StringIO(stdin)), redirect_stdout(io.StringIO()) as out:
+                code = cli.main(args)
+            report = json.loads(out.getvalue())
+            self.assertEqual(set(report), {'semantic_exact', 'authority_exact',
+                                          'semantic_sha256', 'authority_sha256'})
+            self.assertEqual(report['semantic_sha256'], semantic_sha256(decoded))
+            authority = decoded.get('authority') if isinstance(decoded, dict) else None
+            self.assertEqual(report['authority_sha256'], semantic_sha256(authority))
+            return code, report
+
+    def test_cli_verify_all_json_roots(self):
+        for value in ([], [1, {'authority': 'nested'}], '', 'café', 42, 1.5, True, False, None):
+            for mode in ('files', 'source_stdin', 'wire_stdin'):
+                with self.subTest(value=value, mode=mode):
+                    code, report = self._verify_pair(value, value, mode)
+                    self.assertEqual(code, 0)
+                    self.assertTrue(report['semantic_exact'])
+                    self.assertTrue(report['authority_exact'])
+
+    def test_cli_verify_mismatches_and_authority(self):
+        cases = [
+            ([1], [2], True), ([], {}, True), ({}, [], True),
+            (1, True, True), (None, {'authority': {'allow': ['read']}}, False),
+            ({'authority': {'allow': ['read']}}, None, False),
+            ({'authority': {'allow': ['read']}}, {'authority': {'allow': ['write']}}, False),
+            ({}, {'authority': None}, True),
+        ]
+        for source, decoded, authority_exact in cases:
+            with self.subTest(source=source, decoded=decoded):
+                code, report = self._verify_pair(source, decoded)
+                self.assertEqual(code, 1)
+                self.assertFalse(report['semantic_exact'])
+                self.assertEqual(report['authority_exact'], authority_exact)
+
     def test_cli_pipeline_and_file_operands(self):
         source = {'authority': {'allow': ['read']}, 'text': 'café', 'value': 3}
         payload = json.dumps(source)

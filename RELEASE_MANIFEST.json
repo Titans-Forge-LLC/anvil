@@ -56,7 +56,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "efdcb7817c8a0f3925e8e223870a0a8468d5c7d037a338b7dbadc2452c40f081"
+      "sha256": "84d132d621235c7092c28cd77b4c48394d01b9b8412ef2ca0c32c0e0d63745ba"
     },
     {
       "path": "CITATION.cff",
@@ -148,7 +148,7 @@
     },
     {
       "path": "experiments/FRESH_MAINTENANCE.md",
-      "sha256": "3b7f1c06569d644ebb219ab452d356f59beda703f0d682de7f7944171c217baa"
+      "sha256": "7fa65cd973e70c918b64bb0c0594e4c2c8899f22c613570342086f67d942439f"
     },
     {
       "path": "experiments/REPAIR_LOOP_SCREEN.md",
@@ -164,11 +164,11 @@
     },
     {
       "path": "experiments/START_HERE.md",
-      "sha256": "4d8ea8cada1a80977c5bf10baedf87d4fc7d7389c25c2c9ddbe306d7d74942ea"
+      "sha256": "0def39d122ee6f9be97df4c8e3bba9672279a571c7eaf4f500ec90d12f2d3384"
     },
     {
       "path": "experiments/WORKBENCH.md",
-      "sha256": "6f9b496a29fd943e0fb4af0d68db4716c5469ba5785101a5e4a214ad63fb6841"
+      "sha256": "30b181784f7f4cc49c0f823e0ab260f1f7e362f621c2f65c30beaef9613524cc"
     },
     {
       "path": "experiments/compare_edit_proposals.py",
@@ -208,7 +208,7 @@
     },
     {
       "path": "experiments/workbench.py",
-      "sha256": "82361413f83b1e609574bf17182facc4ffa85df9d95eda776fdb5256105f0b46"
+      "sha256": "f4cc2318eeec437434530205aa98c0819b9913251b3bd6af76a8f73f5b39f42e"
     },
     {
       "path": "licenses/MIT.txt",
@@ -292,7 +292,7 @@
     },
     {
       "path": "src/anvil_alpha/cli.py",
-      "sha256": "03fea749d5dcd460707f338bad7c061eab3151997015f6eafc438cb41f449035"
+      "sha256": "ec2545d2033cf241886504281ce50f4a39a3641917aea0166033204ac24d8210"
     },
     {
       "path": "src/anvil_alpha/codec.py",
@@ -304,7 +304,7 @@
     },
     {
       "path": "tests/test_codec.py",
-      "sha256": "108113dbf3ee365e4579353afa2d1fdb96144917253a1215c3d0e14c1cade36b"
+      "sha256": "5c912211aebc6bb844e6c9de55dba83cc7f319a794649ea106db4e4f2a758a34"
     },
     {
       "path": "tests/test_edit_proposals.py",
@@ -340,7 +340,7 @@
     },
     {
       "path": "tests/test_workbench.py",
-      "sha256": "b533f172ef4c36ec13b57092f97409a44ccccf1418542227e43077fdc7c4a2d1"
+      "sha256": "447c9aad87ee832594d6ca53818a3a2982aed906595cf19c299e1f7c2b811bee"
     }
   ],
   "profile": "AVP1/governed-mission-v1",

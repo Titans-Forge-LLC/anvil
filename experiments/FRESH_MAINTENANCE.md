@@ -73,3 +73,78 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_edit_proposals.py'
 ```
 
 These reproduce the shipped regression checks, not the exact timed model trial.
+
+## September 29: fresh JSON-root verifier repair
+
+A new, existing public CLI defect: `verify` assumed both JSON roots were objects
+and crashed on arrays and scalars, despite the codec supporting those roots.
+Frozen checks reproduced the failure before inference. Both arms received the
+same targeted-edit prompt, source, parser, sandbox checks and one-correction cap.
+The direct arm used ordinary explicit checkpoint handling; ANVIL used its
+retained proposal session, checked candidate, checkpoint restore and export.
+
+| Result | Direct control | ANVIL session |
+| --- | ---: | ---: |
+| Model requests | 1 | 1 |
+| Corrections needed | 0 | 0 |
+| Frozen check methods passing | 5/5 | 5/5 |
+| Recorded arm elapsed | 6.742 s | 5.615 s |
+| Later offline delivery correction | 0.010 s | 0.008 s |
+
+Both produced identical candidate bytes. The model was the resident
+`qwen3.8-flash-next`, temperature zero and reasoning disabled. Shared model-access
+setup took 0.615 s; the original campaign took 13.140 s. These are machine
+intervals, not human task costs. Direct ran first; engine cache state was not
+controlled. **No speedup or coding-quality advantage is established.**
+
+The trial harness appended a newline to both convenience candidate files and
+initially exported a generic-header control diff. Exact candidate bytes remained
+intact in the checked proposals and checkpoint JSON. A subsequent offline export
+correction preserved the original receipts, generated project-relative patches
+for both arms and verified that each applied to the exact checked candidate.
+No model retry was used. This later work and human test authoring/review are not
+included in the original arm timings.
+
+The reviewed candidate is included in this development change, with permanent
+CLI regressions. Verification now treats non-object authority as absent on each
+side independently and preserves semantic mismatch failures and object checks.
+The workbench itself did not apply the patch or alter live source. The trial
+exercises fresh proposal/check/restore/export, **not** the correction branch or
+independent customer acceptance. It supports workflow usability on one task,
+not an economic advantage over ordinary competent tooling.
+
+```sh
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_codec.py'
+```
+
+This reproduces the added regression tests, not the timed model comparison.
+
+## September 29: a fresh task exercised the correction branch
+
+A separate operator integration task exposed opt-in checked proposals through
+the existing local-model launcher. Requirements included validating the declared
+test plan before model contact, forwarding it to online and offline review,
+preserving default non-execution, and retaining cleanup and exit behavior.
+
+The first model proposal passed eight of nine test methods but failed four
+invalid-plan subcases: the check runner's `ValueError` escaped instead of becoming
+an operator-facing argument error. The retained session supplied the real test
+failure to one correction request. That correction passed all nine methods on
+the same frozen suite. No test was edited, no failure was injected, and no second
+correction was attempted. Two model requests in total; recorded machine campaign
+time was 31.161 seconds, including 0.645 seconds of model-access setup. Human
+authoring/review and later installation checks are not included.
+
+An actual offline launcher-to-workbench run then restored the prior JSON-root
+repair checkpoint, ran its sandbox checks and exported an exact patch without
+inference. This was a replay for integration verification, not another fresh
+repair. Its first smoke-test assertion wrongly expected a relative export path;
+the harness was corrected to match the actual absolute-path output, preserving
+the first transcript. The underlying launcher needed no additional code repair.
+
+The reviewed operator launcher was updated locally with a rollback copy. No
+running agent, model service or policy was changed. Launcher-specific code,
+addresses and raw receipts remain private. There was no direct control in this
+integration task, so **successful bounded recovery is demonstrated, not a speed
+or quality advantage over another tool**. Independent operator usability remains
+unmeasured.

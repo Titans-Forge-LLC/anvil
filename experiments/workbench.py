@@ -868,6 +868,9 @@ class ProposalSession:
                 'format': result['format'],
                 'symbols': result.get('symbols'),
                 'context_symbols': list(result['context_symbols']),
+                # Only an initial request is unambiguous. Manual revisions may
+                # change intent; checkpoint imports deliberately carry no intent.
+                'original_instruction': request['instruction'] if parent_id is None else None,
             }
             if parent_id in self.repair_attempted:
                 self.repair_attempted.add(proposal_id)
@@ -903,7 +906,7 @@ class ProposalSession:
             receipt['tests'] = 'stale'
         return receipt
 
-    def repair_once(self, proposal_id, instruction, max_tokens=1024):
+    def repair_once(self, proposal_id, instruction=None, max_tokens=1024):
         """One explicit correction per in-memory lineage; no unattended retry loop."""
         if not isinstance(proposal_id, str) or proposal_id not in self.proposals:
             raise ValueError('unknown or expired proposal ID')
@@ -912,6 +915,12 @@ class ProposalSession:
         receipt = self.check_status(proposal_id)
         if receipt['tests'] != 'executed_nonzero_exit':
             raise ValueError('correction requires a current locally executed failing check')
+        instruction_source = 'explicit'
+        if instruction is None:
+            instruction = self.proposals[proposal_id].get('original_instruction')
+            if instruction is None:
+                raise ValueError('no retained initial request; supply current intent after revision or restore')
+            instruction_source = 'retained_initial_request'
         if not isinstance(instruction, str) or not instruction.strip() or len(instruction) > 4000:
             raise ValueError('supply 1..4000 characters of original intent and must-preserve behavior')
         if isinstance(self.completion, OfflineCompletion):
@@ -929,7 +938,8 @@ class ProposalSession:
         else:
             checks = {'tests': 'not_run', 'approved': False}
         return {'proposal': result, 'check': checks, 'automatic_retries': 0,
-                'handoff_required': checks['tests'] != 'executed_zero_exit', 'applied': False}
+                'handoff_required': checks['tests'] != 'executed_zero_exit', 'applied': False,
+                'instruction_source': instruction_source}
 
     def attach_test_report(self, proposal_id, report_path):
         """Attach user-supplied evidence, never execute tests or certify a result."""
@@ -1250,13 +1260,15 @@ def run_interactive(session, project_root, max_tokens=1024):
                     print(f"Local checks: {checked['tests']} | seconds: {checked['elapsed_seconds']:.3f}")
                     print(checked['output_tail'])
                 elif action == 'c':
-                    instruction = ask('Original intent and must-preserve behavior: ')
+                    instruction = ask('Current intent and must-preserve behavior '
+                                      '(Enter reuses the initial request for an unrevised proposal): ')
                     if instruction is None:
                         return None
-                    corrected = session.repair_once(result['proposal_id'], instruction, max_tokens)
+                    corrected = session.repair_once(result['proposal_id'], instruction or None, max_tokens)
                     if corrected['proposal']['reviewable']:
                         result = corrected['proposal']
-                    print(f"Correction checks: {corrected['check']['tests']}. No automatic retry or application.")
+                    print(f"Correction intent: {corrected['instruction_source']}. "
+                          f"Correction checks: {corrected['check']['tests']}. No automatic retry or application.")
                 elif action == 'r':
                     instruction = ask('Revision request: ')
                     if instruction is None:
@@ -1519,10 +1531,9 @@ def main():
                     raise ValueError('run_checks accepts only a retained proposal ID')
                 result = proposals.run_checks(request['run_checks'])
             elif 'repair_once' in request:
-                if (not {'repair_once', 'instruction'} <= set(request)
-                        or set(request) - {'repair_once', 'instruction', 'max_tokens'}):
-                    raise ValueError('repair_once requires proposal ID, instruction, optional max_tokens')
-                result = proposals.repair_once(request['repair_once'], request['instruction'], request.get('max_tokens', 1024))
+                if set(request) - {'repair_once', 'instruction', 'max_tokens'}:
+                    raise ValueError('repair_once requires proposal ID, optional instruction and max_tokens')
+                result = proposals.repair_once(request['repair_once'], request.get('instruction'), request.get('max_tokens', 1024))
             elif 'export' in request:
                 if set(request) != {'export', 'project_root', 'output'}:
                     raise ValueError('export requires exactly export, project_root and output')

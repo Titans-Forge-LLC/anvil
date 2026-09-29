@@ -83,6 +83,9 @@ review commands. Help is local and does not inspect source or ask the model.
 On macOS, you can also start with `--test-root . --test-plan examples/workbench_checks.json`
 to enable the exercise's three behavior checks. At review, `v` tests a disposable
 copy; `c` requests one correction after a locally observed failure and rechecks.
+For a new, unrevised proposal, press Enter at the correction-intent prompt to
+reuse your original request. After manual revision or checkpoint restore, enter
+the full current intent; ANVIL will not guess whether the old requirements apply.
 These actions never apply a patch. Without those startup flags, execution stays
 disabled. See [the runner's bounds and evidence meanings](WORKBENCH.md#run-declared-checks-and-correct-once-macos).
 

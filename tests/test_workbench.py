@@ -1324,6 +1324,140 @@ class ProposalEvidenceTests(unittest.TestCase):
             self.assertFalse(rows[-1]['tests_executed'])
 
 
+class RetainedIntentTests(unittest.TestCase):
+    """Portable control-flow tests; fake runner results are not execution evidence."""
+
+    def fixture(self, root, instruction='Return four; preserve g and its callers.', values=(2, 4)):
+        source = root/'source.py'
+        source.write_text('def f():\n    return 1\n\ndef g():\n    return 3\n')
+
+        class Client:
+            def __init__(self):
+                self.messages = []
+                self.values = iter(values)
+
+            def complete(self, messages, *args, **kwargs):
+                self.messages.append(messages)
+                return dict(complete=True, text='def f():\n    return %s\n' % next(self.values))
+
+        class Runner:
+            stale = False
+
+            def fresh_inputs(self):
+                if self.stale:
+                    raise ValueError('changed test input')
+
+            def run(self, proposal):
+                self.fresh_inputs()
+                return dict(tests='executed_zero_exit' if 'return 4' in proposal['text'] else 'executed_nonzero_exit',
+                            candidate_sha256=W.hashlib.sha256(proposal['text'].encode()).hexdigest(),
+                            output_tail='AssertionError: f must return four', elapsed_seconds=0.0)
+
+        client = Client()
+        session = W.ProposalSession(client, Runner())
+        result = session.propose(dict(file=str(source), symbol='f', instruction=instruction))
+        return source, session, result
+
+    def test_default_retains_initial_intent_without_extra_model_call(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source, session, result = self.fixture(Path(directory))
+            before = source.read_bytes()
+            pid = result['proposal_id']
+            with self.assertRaisesRegex(ValueError, 'locally executed'):
+                session.repair_once(pid)
+            self.assertEqual(len(session.completion.messages), 1)
+            session.run_checks(pid)
+            fixed = session.repair_once(pid)
+            prompt = session.completion.messages[-1][-1]['content']
+            self.assertIn('REQUIREMENTS:\nReturn four; preserve g and its callers.', prompt)
+            self.assertIn('UNTRUSTED CHECK OUTPUT', prompt)
+            self.assertEqual(fixed['instruction_source'], 'retained_initial_request')
+            self.assertFalse(fixed['handoff_required'])
+            self.assertEqual(len(session.completion.messages), 2)
+            self.assertEqual(source.read_bytes(), before)
+            for exhausted in (pid, fixed['proposal']['proposal_id']):
+                with self.assertRaisesRegex(ValueError, 'budget used'):
+                    session.repair_once(exhausted)
+
+    def test_explicit_intent_overrides_default(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, session, result = self.fixture(Path(directory), instruction='INITIAL_INTENT')
+            session.run_checks(result['proposal_id'])
+            fixed = session.repair_once(result['proposal_id'], 'CURRENT_INTENT')
+            prompt = session.completion.messages[-1][-1]['content']
+            self.assertIn('REQUIREMENTS:\nCURRENT_INTENT', prompt)
+            self.assertNotIn('INITIAL_INTENT', prompt)
+            self.assertEqual(fixed['instruction_source'], 'explicit')
+
+    def test_revision_and_restore_require_current_intent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, session, result = self.fixture(root, values=(2, 3, 4))
+            checkpoint = root/'saved.json'
+            session.save_checkpoint(result['proposal_id'], root, checkpoint)
+            self.assertNotIn('original_instruction', json.loads(checkpoint.read_text()))
+            restored = W.ProposalSession(session.completion, session.test_runner)
+            loaded = restored.load_checkpoint(checkpoint, root)
+            restored.run_checks(loaded['proposal_id'])
+            with self.assertRaisesRegex(ValueError, 'no retained initial request'):
+                restored.repair_once(loaded['proposal_id'])
+            revision = session.propose(dict(revise=result['proposal_id'], instruction='Return three instead'))
+            session.run_checks(revision['proposal_id'])
+            with self.assertRaisesRegex(ValueError, 'no retained initial request'):
+                session.repair_once(revision['proposal_id'])
+            self.assertEqual(len(session.completion.messages), 2)
+            self.assertFalse(session.repair_attempted)
+            self.assertFalse(restored.repair_attempted)
+            self.assertEqual(session.repair_once(revision['proposal_id'], 'Return four instead')['instruction_source'], 'explicit')
+
+    def test_no_silent_truncation_or_budget_consumption(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, session, result = self.fixture(Path(directory), instruction='x'*4001)
+            pid = result['proposal_id']
+            session.run_checks(pid)
+            for instruction in (None, '', ' ', False):
+                with self.subTest(instruction=instruction), self.assertRaisesRegex(ValueError, '1..4000'):
+                    session.repair_once(pid, instruction)
+            self.assertEqual(len(session.completion.messages), 1)
+            self.assertFalse(session.repair_attempted)
+            self.assertEqual(session.repair_once(pid, 'Return four')['instruction_source'], 'explicit')
+
+    def test_stale_checks_still_block_default(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, session, result = self.fixture(Path(directory))
+            session.run_checks(result['proposal_id'])
+            session.test_runner.stale = True
+            with self.assertRaisesRegex(ValueError, 'locally executed'):
+                session.repair_once(result['proposal_id'])
+            self.assertEqual(len(session.completion.messages), 1)
+            self.assertFalse(session.repair_attempted)
+
+    def test_interactive_enter_uses_retained_initial_intent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, session, _ = self.fixture(root, values=(2, 2, 4))
+            answers = 'source.py\n1\n\nReturn four; preserve g.\n\nv\nc\n\nq\n'
+            with patch.object(W.sys, 'stdin', io.StringIO(answers)), patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(session, root)
+            self.assertIn('Correction intent: retained_initial_request', output.getvalue())
+            self.assertIn('Correction checks: executed_zero_exit', output.getvalue())
+            self.assertEqual(len(session.completion.messages), 3)
+
+    def test_json_client_can_omit_instruction(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, session, result = self.fixture(root)
+            session.run_checks(result['proposal_id'])
+            requests = json.dumps({'repair_once':result['proposal_id']})+'\n'
+            with patch.object(W.sys, 'argv', ['workbench','--backend','offline']), \
+                 patch.object(W, 'ProposalSession', return_value=session), \
+                 patch.object(W.sys, 'stdin', io.StringIO(requests)), patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.main()
+            rows = [json.loads(line) for line in output.getvalue().splitlines()]
+            self.assertEqual(rows[-1]['instruction_source'], 'retained_initial_request')
+            self.assertFalse(rows[-1]['handoff_required'])
+
+
 class ExecutedCheckWorkflowTests(unittest.TestCase):
     def runner(self, root):
         from test_proposal_checks import C
