@@ -15,7 +15,11 @@ Status: `LIMITED PUBLIC BETA`
 - Save a source-bound checkpoint, close the session, and resume review offline.
   Changed source blocks reuse. Checkpoints contain code; keep them private.
 - Explicitly export a new patch for your normal Git workflow. ANVIL does not
-  apply changes or execute generated code. Reviewable does not mean correct.
+  apply changes. Reviewable does not mean correct.
+- Optionally run declared Python checks against a disposable candidate snapshot
+  on macOS, then request one correction and recheck. Execution is disabled unless
+  started with a test plan; network access and live-source writes are denied.
+  [Run checks and correct once](experiments/WORKBENCH.md#run-declared-checks-and-correct-once-macos).
 
 The TensorFold, multi-function and checkpoint workflow is available from
 `main`. These features remain an experimental preview, not a new tagged release.

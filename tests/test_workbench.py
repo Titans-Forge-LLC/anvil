@@ -1324,5 +1324,99 @@ class ProposalEvidenceTests(unittest.TestCase):
             self.assertFalse(rows[-1]['tests_executed'])
 
 
+class ExecutedCheckWorkflowTests(unittest.TestCase):
+    def runner(self, root):
+        from test_proposal_checks import C
+        (root/'check.py').write_text('from source import f, g\nassert f() == 4\nassert g() == 3\n')
+        plan = root/'plan.json'
+        plan.write_text(json.dumps(dict(schema='anvil-python-check-plan-v1',
+            files=['source.py','check.py'], test_file='check.py', timeout_seconds=5)))
+        return C.TestRunner(root, plan)
+
+    def test_execution_requires_startup_opt_in(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, session, result, _ = WorkbenchTests().checkpoint_fixture(Path(directory))
+            with self.assertRaisesRegex(ValueError, 'checks disabled'):
+                session.run_checks(result['proposal_id'])
+
+    def test_correction_budget_and_fresh_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, session, result, _ = WorkbenchTests().checkpoint_fixture(root)
+            runner = self.runner(root)
+            if not runner.available(): self.skipTest('macOS execution only')
+            session.test_runner = runner
+            pid = result['proposal_id']
+            failed = session.run_checks(pid)
+            self.assertEqual(failed['tests'], 'executed_nonzero_exit', failed['output_tail'])
+            class Revision:
+                calls = 0
+                def complete(self, messages, *args, **kwargs):
+                    self.calls += 1
+                    assert 'UNTRUSTED CHECK OUTPUT' in messages[-1]['content']
+                    return dict(complete=True, text=json.dumps({'functions':[
+                        {'symbol':'f','edits':[{'old':'return 2','new':'return 4'}]},
+                        {'symbol':'g','edits':[]}]}))
+            session.completion = Revision()
+            fixed = session.repair_once(pid, 'f returns four; g must continue returning three')
+            self.assertFalse(fixed['handoff_required'])
+            self.assertEqual(fixed['check']['tests'], 'executed_zero_exit')
+            self.assertEqual(failed['test_suite_sha256'], fixed['check']['test_suite_sha256'])
+            self.assertNotEqual(failed['candidate_sha256'], fixed['check']['candidate_sha256'])
+            for exhausted in (pid, fixed['proposal']['proposal_id']):
+                with self.assertRaisesRegex(ValueError, 'budget used'):
+                    session.repair_once(exhausted, 'try again')
+            self.assertEqual(session.completion.calls, 1)
+            self.assertIn(b'return 1', source.read_bytes())
+            (root/'check.py').write_text('raise SystemExit(0)\n')
+            self.assertEqual(session.check_status(fixed['proposal']['proposal_id'])['tests'], 'stale')
+
+    def test_offline_cli_checks_restored_candidate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, _, _, checkpoint = WorkbenchTests().checkpoint_fixture(root)
+            runner = self.runner(root)
+            if not runner.available(): self.skipTest('macOS execution only')
+            requests = '\n'.join(json.dumps(r) for r in [dict(load=str(checkpoint),project_root=str(root)),
+                dict(run_checks='p1'), dict(repair_once='p1', instruction='return four')])+'\n'
+            with patch.object(W.sys, 'argv', ['workbench','--backend','offline','--test-root',str(root),
+                                             '--test-plan',str(root/'plan.json')]), \
+                 patch.object(W.sys, 'stdin', io.StringIO(requests)), patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.main()
+            rows = [json.loads(line) for line in output.getvalue().splitlines()]
+            self.assertTrue(rows[0]['tests_opted_in'])
+            self.assertEqual(rows[2]['tests'], 'executed_nonzero_exit')
+            self.assertEqual(rows[2]['model_requests'], 0)
+            self.assertIn('offline', rows[3]['message'])
+
+    def test_failed_correction_hands_off_without_another_model_call(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, session, result, _ = WorkbenchTests().checkpoint_fixture(root)
+            runner = self.runner(root)
+            if not runner.available(): self.skipTest('macOS execution only')
+            session.test_runner = runner
+            session.run_checks(result['proposal_id'])
+            class BadRevision:
+                calls = 0
+                def complete(self, *args, **kwargs):
+                    self.calls += 1
+                    return dict(complete=True, text=json.dumps({'functions':[
+                        {'symbol':'f','edits':[{'old':'return 2','new':'return 5'}]},
+                        {'symbol':'g','edits':[]}]}))
+            session.completion = BadRevision()
+            result = session.repair_once(result['proposal_id'], 'f returns four; g returns three')
+            self.assertTrue(result['handoff_required'])
+            self.assertEqual(result['check']['tests'], 'executed_nonzero_exit')
+            self.assertEqual(session.completion.calls, 1)
+            self.assertEqual(result['automatic_retries'], 0)
+            checkpoint = root/'failed-correction.json'
+            session.save_checkpoint(result['proposal']['proposal_id'], root, checkpoint)
+            self.assertNotIn('executed_check', json.loads(checkpoint.read_text()))
+            restored = W.ProposalSession(W.OfflineCompletion(), runner)
+            retained = restored.load_checkpoint(checkpoint, root)
+            self.assertEqual(restored.check_status(retained['proposal_id'])['tests'], 'not_run')
+
+
 if __name__ == '__main__':
     unittest.main()

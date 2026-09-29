@@ -80,6 +80,12 @@ it; it does not mean the answer is correct. The source file should remain unchan
 At the `File:` prompt, enter `:help` for a reminder of selection, checkpoint and
 review commands. Help is local and does not inspect source or ask the model.
 
+On macOS, you can also start with `--test-root . --test-plan examples/workbench_checks.json`
+to enable the exercise's three behavior checks. At review, `v` tests a disposable
+copy; `c` requests one correction after a locally observed failure and rechecks.
+These actions never apply a patch. Without those startup flags, execution stays
+disabled. See [the runner's bounds and evidence meanings](WORKBENCH.md#run-declared-checks-and-correct-once-macos).
+
 Choose `e` only after inspecting the proposal, then enter `first-edit.patch`.
 Success reports `Exported` and `Nothing was applied or executed`. From a separate
 terminal in the same repository, check that the patch fits:

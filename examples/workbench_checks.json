@@ -1,0 +1,6 @@
+{
+  "schema": "anvil-python-check-plan-v1",
+  "files": ["examples/workbench_sample.py", "examples/check_workbench_sample.py"],
+  "test_file": "examples/check_workbench_sample.py",
+  "timeout_seconds": 10
+}
