@@ -1,5 +1,11 @@
 # Changelog
 
+- Workbench: reuse the initial in-session request for one checked correction
+  instead of requiring re-entry. Interactive Enter and omitted JSON `instruction`
+  opt into this default; explicit intent still works. Manual revisions, restored
+  checkpoints and overlong requests require explicit current intent. No change
+  to execution opt-in, evidence freshness, correction budget or checkpoint format.
+
 - CLI: verify arrays and scalar JSON roots without crashing. Treat top-level
   authority as absent for non-object roots independently on each side; preserve
   semantic mismatch failures, object authority checks, and file/stdin support.

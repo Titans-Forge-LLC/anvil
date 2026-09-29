@@ -33,18 +33,36 @@ python experiments/workbench.py --backend offline --interactive --project-root .
 
 Load a saved checkpoint, then select `v`. With a model backend, propose the
 sample edit first (return zero for empty input, preserve other cases), then `v`.
-If checks fail, `c` asks for the original intent and must-preserve behavior,
-makes one corrective model request, and runs the same frozen checks on the new
+If checks fail, `c` asks for the current intent and must-preserve behavior. For
+an unrevised proposal created in this session, press Enter to reuse its exact
+initial request, or type the full current requirements to override it. It makes
+one corrective model request and runs the same frozen checks on the new
 candidate. A second correction on that in-memory lineage is refused. Failure
 retains reviewable work for handoff; nothing is applied. Manual `r` revisions
 remain available. Restarting restores code, not the correction counter or evidence.
+Manual revisions and imported checkpoints have no automatic intent default:
+supply the full current requirements rather than silently reusing an older task.
+The 4,000-character correction-intent limit remains; longer initial requests need
+an explicit concise version and are never truncated. Intent is held only in the
+bounded in-memory proposal session, not saved in checkpoints or test receipts.
 
 JSON-lines clients enable the same flags and explicitly send:
 
 ```json
 {"run_checks":"p1"}
+{"repair_once":"p1","max_tokens":1024}
+```
+
+Omitting `instruction` uses the initial request only when available as described
+above. Alternatively supply the complete current intent explicitly:
+
+```json
 {"repair_once":"p1","instruction":"Return zero for empty input; preserve positive and negative averages.","max_tokens":1024}
 ```
+
+The correction result reports `instruction_source` as `retained_initial_request`
+or `explicit`. Neither mode bypasses a current failing local check, stale-input
+rejection, the one-correction limit, or the offline-generation prohibition.
 
 The plan has exactly four fields: `schema` (`anvil-python-check-plan-v1`),
 `files` (1..64 project-relative regular files), `test_file` (a declared Python
