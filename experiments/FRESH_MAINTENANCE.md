@@ -73,3 +73,48 @@ PYTHONPATH=src python -m unittest discover -s tests -p 'test_edit_proposals.py'
 ```
 
 These reproduce the shipped regression checks, not the exact timed model trial.
+
+## September 29: fresh JSON-root verifier repair
+
+A new, existing public CLI defect: `verify` assumed both JSON roots were objects
+and crashed on arrays and scalars, despite the codec supporting those roots.
+Frozen checks reproduced the failure before inference. Both arms received the
+same targeted-edit prompt, source, parser, sandbox checks and one-correction cap.
+The direct arm used ordinary explicit checkpoint handling; ANVIL used its
+retained proposal session, checked candidate, checkpoint restore and export.
+
+| Result | Direct control | ANVIL session |
+| --- | ---: | ---: |
+| Model requests | 1 | 1 |
+| Corrections needed | 0 | 0 |
+| Frozen check methods passing | 5/5 | 5/5 |
+| Recorded arm elapsed | 6.742 s | 5.615 s |
+| Later offline delivery correction | 0.010 s | 0.008 s |
+
+Both produced identical candidate bytes. The model was the resident
+`qwen3.8-flash-next`, temperature zero and reasoning disabled. Shared model-access
+setup took 0.615 s; the original campaign took 13.140 s. These are machine
+intervals, not human task costs. Direct ran first; engine cache state was not
+controlled. **No speedup or coding-quality advantage is established.**
+
+The trial harness appended a newline to both convenience candidate files and
+initially exported a generic-header control diff. Exact candidate bytes remained
+intact in the checked proposals and checkpoint JSON. A subsequent offline export
+correction preserved the original receipts, generated project-relative patches
+for both arms and verified that each applied to the exact checked candidate.
+No model retry was used. This later work and human test authoring/review are not
+included in the original arm timings.
+
+The reviewed candidate is included in this development change, with permanent
+CLI regressions. Verification now treats non-object authority as absent on each
+side independently and preserves semantic mismatch failures and object checks.
+The workbench itself did not apply the patch or alter live source. The trial
+exercises fresh proposal/check/restore/export, **not** the correction branch or
+independent customer acceptance. It supports workflow usability on one task,
+not an economic advantage over ordinary competent tooling.
+
+```sh
+PYTHONPATH=src python -m unittest discover -s tests -p 'test_codec.py'
+```
+
+This reproduces the added regression tests, not the timed model comparison.

@@ -1,5 +1,9 @@
 # Changelog
 
+- CLI: verify arrays and scalar JSON roots without crashing. Treat top-level
+  authority as absent for non-object roots independently on each side; preserve
+  semantic mismatch failures, object authority checks, and file/stdin support.
+
 - Workbench: opt-in macOS sandboxed Python checks on a disposable snapshot of
   declared inputs, with candidate/test/plan binding, bounded output and timeout,
   and no network or live-source writes. One explicit correction can consume the

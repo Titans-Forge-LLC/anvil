@@ -70,14 +70,14 @@ def main(argv: list[str] | None = None) -> int:
         wire = _read_text(args.wire).strip()
         decoded = codec.decode(wire)
         exact = canonical_json(source) == canonical_json(decoded)
-        authority_exact = semantic_sha256(source.get("authority")) == semantic_sha256(
-            decoded.get("authority")
-        )
+        src_auth = source.get("authority") if isinstance(source, dict) else None
+        dec_auth = decoded.get("authority") if isinstance(decoded, dict) else None
+        authority_exact = semantic_sha256(src_auth) == semantic_sha256(dec_auth)
         print(json.dumps({
             "semantic_exact": exact,
             "authority_exact": authority_exact,
             "semantic_sha256": semantic_sha256(decoded),
-            "authority_sha256": semantic_sha256(decoded.get("authority")),
+            "authority_sha256": semantic_sha256(dec_auth),
         }, indent=2, sort_keys=True))
         return 0 if exact and authority_exact else 1
     if args.command == "benchmark":
