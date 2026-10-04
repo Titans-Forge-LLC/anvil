@@ -76,6 +76,7 @@
     "tests/test_codec.mjs",
     "tests/test_codec.py",
     "tests/test_edit_proposals.py",
+    "tests/test_job_capsule.py",
     "tests/test_legacy_migration.mjs",
     "tests/test_proposal_checks.py",
     "tests/test_reasoning_signature.py",

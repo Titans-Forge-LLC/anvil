@@ -821,6 +821,139 @@ class OfflineCompletion:
         raise RuntimeError('Offline mode cannot generate or revise; restart with a model backend.')
 
 
+def _job_function_span(source, name):
+    """Physical source boundaries, including decorators; never execute source."""
+    import re
+    try:
+        body = ast.parse(source).body
+    except (SyntaxError, RecursionError):
+        raise ValueError('invalid Python job source') from None
+    nodes = [node for node in body
+             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name]
+    if len(nodes) != 1:
+        raise ValueError('job function must be unique and present')
+    node = nodes[0]
+    lines = re.findall(r'[^\r\n]*(?:\r\n|\r|\n|$)', source)
+    first = min([node.lineno] + [item.lineno for item in node.decorator_list])
+    start = sum(map(len, lines[:first - 1]))
+    end = sum(map(len, lines[:node.end_lineno]))
+    return start, end, source[start:end]
+
+
+def _job_environment(source):
+    """Conservative module screen, not a semantic/dependency certificate."""
+    try:
+        tree = ast.parse(source)
+    except (SyntaxError, RecursionError):
+        raise ValueError('invalid Python job source') from None
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            node.body = [ast.Pass()]
+    return ast.dump(tree, include_attributes=False)
+
+
+def _job_packet(capsule_path, project_root):
+    """Read bounded, strictly typed untrusted data, with no authority import."""
+    root = Path(project_root).expanduser().resolve(strict=True)
+    if not root.is_dir():
+        raise ValueError('project_root must be a directory')
+    path = Path(capsule_path).expanduser().resolve(strict=True)
+    path.relative_to(root)
+    if not path.is_file():
+        raise ValueError('job capsule must be a regular file')
+    with path.open('rb') as stream:
+        raw = stream.read(8388609)
+    if len(raw) > 8388608:
+        raise ValueError('job capsule exceeds 8 MiB')
+
+    def unique_keys(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError('duplicate job capsule key')
+            value[key] = item
+        return value
+
+    try:
+        packet = json.loads(raw.decode('utf-8'), object_pairs_hook=unique_keys)
+    except (UnicodeError, ValueError, RecursionError):
+        raise ValueError('invalid job capsule JSON or duplicate key') from None
+    keys = {'schema', 'file', 'symbol', 'context_symbols', 'format', 'instruction',
+            'source_text', 'source_sha256', 'text', 'replacement_sha256', 'historical_notes'}
+    if (not isinstance(packet, dict) or set(packet) != keys
+            or packet['schema'] != 'anvil-job-capsule-v1'):
+        raise ValueError('unknown job capsule schema or fields')
+    relative = packet['file']
+    if (not isinstance(relative, str) or not relative or relative.startswith('/')
+            or any(char in relative for char in '\\:')
+            or any(ord(char) < 32 or ord(char) == 127 for char in relative)
+            or any(part in ('', '.', '..') for part in relative.split('/'))):
+        raise ValueError('job file must be a relative project path')
+    symbol, helpers = packet['symbol'], packet['context_symbols']
+    if (not isinstance(symbol, str) or not symbol.isidentifier()
+            or packet['format'] not in ('replacement', 'edit', 'edits')
+            or not isinstance(helpers, list) or len(helpers) > 4
+            or any(not isinstance(name, str) or not name.isidentifier() for name in helpers)
+            or len(set(helpers)) != len(helpers) or symbol in helpers):
+        raise ValueError('invalid single-function job scope')
+    instruction = packet['instruction']
+    if not isinstance(instruction, str) or not instruction.strip() or len(instruction) > 4000:
+        raise ValueError('job instruction must contain 1..4000 characters')
+    try:
+        instruction.encode('utf-8')
+        for text_key, hash_key in (('source_text', 'source_sha256'), ('text', 'replacement_sha256')):
+            value, digest = packet[text_key], packet[hash_key]
+            if (not isinstance(value, str) or '\x00' in value
+                    or not isinstance(digest, str) or len(digest) != 64
+                    or any(char not in '0123456789abcdef' for char in digest)):
+                raise ValueError('invalid job source or checksum')
+            encoded = value.encode('utf-8')
+            if len(encoded) > 1048576 or hashlib.sha256(encoded).hexdigest() != digest:
+                raise ValueError('job source exceeds limit or checksum mismatched')
+    except UnicodeError:
+        raise ValueError('job text must be UTF-8 encodable') from None
+    notes = packet['historical_notes']
+    if notes is not None:
+        if (not isinstance(notes, dict)
+                or set(notes) != {'untrusted', 'check_summary', 'test_plan_sha256'}
+                or notes['untrusted'] is not True):
+            raise ValueError('invalid untrusted historical job notes')
+        summary, digest = notes['check_summary'], notes['test_plan_sha256']
+        if (not isinstance(summary, str) or len(summary) > 2000
+                or any((ord(char) < 32 and char not in '\n\r\t') or ord(char) == 127 for char in summary)
+                or (digest is not None and (not isinstance(digest, str) or len(digest) != 64
+                    or any(char not in '0123456789abcdef' for char in digest)))):
+            raise ValueError('invalid historical check summary or test-plan hash')
+        try:
+            summary.encode('utf-8')
+        except UnicodeError:
+            raise ValueError('historical summary must be UTF-8 encodable') from None
+    source_path = (root / relative).resolve(strict=True)
+    source_path.relative_to(root)
+    if not source_path.is_file():
+        raise ValueError('job source must be a regular file')
+    return packet, source_path, raw
+
+
+def _job_replay(path, source, candidate, symbol, helpers, expected_sha256):
+    """Validate full candidate scope through the ordinary proposal gates."""
+    selected = _job_function_span(source, symbol)[2]
+    replacement = _job_function_span(candidate, symbol)[2]
+    if selected == replacement:
+        raise ValueError('job candidate contains no selected change')
+
+    class Replay:
+        def complete(self, *args, **kwargs):
+            return {'complete': True, 'text': replacement}
+
+    result = propose(Replay(), {'file': str(path), 'symbol': symbol, 'context_symbols': helpers,
+                     'instruction': 'Revalidate untrusted retained draft for review only.'},
+                     base_source=source, expected_sha256=expected_sha256)
+    if not result['reviewable'] or result['replacement_text'] != candidate:
+        raise ValueError('job candidate failed syntax or declared function scope validation')
+    return result
+
+
 class ProposalSession:
     """Bounded in-memory revisions, always diffed against unchanged disk source."""
 
@@ -1147,6 +1280,111 @@ class ProposalSession:
             'diff_preview': ''.join(difflib.unified_diff(source.splitlines(keepends=True),
                 text.splitlines(keepends=True), fromfile='original', tofile='proposal'))}
 
+    def save_job(self, proposal_id, project_root, output, instruction=None):
+        """Save an untrusted single-function job; never save permission or commands."""
+        if not isinstance(proposal_id, str) or proposal_id not in self.proposals:
+            raise ValueError('unknown or expired proposal ID')
+        proposal = self.proposals[proposal_id]
+        if proposal.get('symbols') is not None or proposal.get('symbol') is None:
+            raise ValueError('job capsule v1 supports one named function only')
+        if instruction is None:
+            instruction = proposal.get('original_instruction')
+        if not isinstance(instruction, str) or not instruction.strip() or len(instruction) > 4000:
+            raise ValueError('supply 1..4000 characters of current intent after revision or restore')
+        instruction.encode('utf-8')
+        root = Path(project_root).expanduser().resolve(strict=True)
+        if not root.is_dir():
+            raise ValueError('project_root must be a directory')
+        path = Path(proposal['file']).resolve(strict=True)
+        relative = path.relative_to(root).as_posix()
+        if (any(char in relative for char in '\\:')
+                or any(ord(char) < 32 or ord(char) == 127 for char in relative)):
+            raise ValueError('source path is not portable for job capsules')
+        with path.open('rb') as stream:
+            original = stream.read(1048577)
+        if len(original) > 1048576 or hashlib.sha256(original).hexdigest() != proposal['source_sha256']:
+            raise ValueError('source changed since proposal; job save refused')
+        source = original.decode('utf-8')
+        _job_replay(path, source, proposal['text'], proposal['symbol'],
+                    proposal['context_symbols'], proposal['source_sha256'])
+        notes = None
+        historical = proposal.get('executed_check') or proposal.get('test_report')
+        if historical:
+            summary = str(historical.get('output_tail', historical.get('summary', '')))[-2000:]
+            summary = ''.join(char for char in summary
+                              if ord(char) >= 32 and ord(char) != 127 or char in '\n\r\t')
+            notes = {'untrusted': True, 'check_summary': summary,
+                     'test_plan_sha256': historical.get('plan_sha256')}
+        packet = {'schema': 'anvil-job-capsule-v1', 'file': relative,
+                  'symbol': proposal['symbol'], 'context_symbols': list(proposal['context_symbols']),
+                  'format': proposal['format'], 'instruction': instruction,
+                  'source_text': source, 'source_sha256': proposal['source_sha256'],
+                  'text': proposal['text'],
+                  'replacement_sha256': hashlib.sha256(proposal['text'].encode('utf-8')).hexdigest(),
+                  'historical_notes': notes}
+        data = json.dumps(packet, ensure_ascii=False, sort_keys=True, indent=2).encode('utf-8')
+        if len(data) > 8388608:
+            raise ValueError('job capsule exceeds 8 MiB')
+        destination = Path(output).expanduser().absolute()
+        destination.parent.resolve(strict=True).relative_to(root)
+        if destination.is_symlink() or destination.exists():
+            raise FileExistsError('job capsule destination already exists')
+        with path.open('rb') as stream:
+            if stream.read(1048577) != original:
+                raise ValueError('source changed during job save validation')
+        fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(data)
+        return {'saved': True, 'proposal_id': proposal_id, 'output': str(destination),
+                'capsule_sha256': hashlib.sha256(data).hexdigest(), 'bytes': len(data),
+                'model_requests': 0, 'applied': False, 'approved': False}
+
+    def resume_job(self, capsule_path, project_root, instruction):
+        """Rebuild a draft against current bytes; no evidence/approval restoration."""
+        started = time.perf_counter()
+        packet, path, capsule_raw = _job_packet(capsule_path, project_root)
+        if (not isinstance(instruction, str) or not instruction.strip() or len(instruction) > 4000
+                or instruction != packet['instruction']):
+            raise ValueError('explicit current intent must exactly match saved job instruction')
+        with path.open('rb') as stream:
+            original = stream.read(1048577)
+        if len(original) > 1048576:
+            raise ValueError('job source exceeds 1 MiB')
+        source = original.decode('utf-8')
+        if '\x00' in source:
+            raise ValueError('binary job source rejected')
+        current_hash = hashlib.sha256(original).hexdigest()
+        saved, symbol, helpers = packet['source_text'], packet['symbol'], packet['context_symbols']
+        _job_replay(path, saved, packet['text'], symbol, helpers, current_hash)
+        for name in [symbol] + helpers:
+            if _job_function_span(saved, name)[2] != _job_function_span(source, name)[2]:
+                raise ValueError('selected function or explicit helper changed; request a fresh proposal')
+        if _job_environment(saved) != _job_environment(source):
+            raise ValueError('module environment or function signatures changed; request a fresh proposal')
+        start, end, selected = _job_function_span(source, symbol)
+        replacement = _job_function_span(packet['text'], symbol)[2]
+        candidate = source[:start] + replacement + source[end:]
+        result = _job_replay(path, source, candidate, symbol, helpers, current_hash)
+        with path.open('rb') as stream:
+            if stream.read(1048577) != original:
+                raise ValueError('source changed during job resume validation')
+        self.sequence += 1
+        proposal_id = 'p' + str(self.sequence)
+        self.proposals[proposal_id] = {
+            'file': str(path), 'symbol': symbol, 'symbols': None, 'text': candidate,
+            'source_sha256': current_hash, 'format': packet['format'],
+            'context_symbols': list(helpers), 'original_instruction': None,
+        }
+        if len(self.proposals) > 8:
+            self.proposals.popitem(last=False)
+        return dict(result, resumed=True, proposal_id=proposal_id, parent_proposal_id=None,
+                    format=packet['format'], capsule_sha256=hashlib.sha256(capsule_raw).hexdigest(),
+                    rebased=original != saved.encode('utf-8'), model_requests=0,
+                    applied=False, approved=False, tests='not_run', semantic_certificate=False,
+                    fresh_checks_required=True, fresh_review_required=True,
+                    historical_notes_untrusted=packet['historical_notes'],
+                    total_request_seconds=time.perf_counter() - started)
+
     def export_patch(self, proposal_id, project_root, output):
         """Export a retained proposal against current disk bytes; never apply it."""
         if not isinstance(proposal_id, str) or proposal_id not in self.proposals:
@@ -1242,7 +1480,7 @@ def run_interactive(session, project_root, max_tokens=1024):
                 local = session.check_status(result['proposal_id'])
                 print(f"Local checks: {local['tests']} (process outcome, not approval).")
             try:
-                action = ask('[r]evise, [e]xport reviewed patch, [s]ave checkpoint, [t]est report, '
+                action = ask('[r]evise, [e]xport reviewed patch, [s]ave checkpoint, [j] save job capsule, [t]est report, '
                              '[v] run checks, [c] correct once, [n]ew file, [q]uit: ')
             except ValueError as exc:
                 print(f'{type(exc).__name__}: {exc}')
@@ -1251,7 +1489,7 @@ def run_interactive(session, project_root, max_tokens=1024):
                 return None
             if action == 'n':
                 return 'new'
-            if action not in ('r', 'e', 's', 't', 'v', 'c') or not result['proposal_id']:
+            if action not in ('r', 'e', 's', 'j', 't', 'v', 'c') or not result['proposal_id']:
                 print('That action requires a reviewable proposal.')
                 continue
             try:
@@ -1296,6 +1534,18 @@ def run_interactive(session, project_root, max_tokens=1024):
                     report_path.relative_to(root)
                     receipt = session.attach_test_report(result['proposal_id'], report_path)
                     print(f"Attached {receipt['tests']}; no tests executed. Reattach after checkpoint restore.")
+                elif action == 'j':
+                    instruction = ask('Current intent and must-preserve behavior '
+                                      '(Enter reuses only a known initial request): ')
+                    if instruction is None:
+                        return None
+                    output = ask('New private job capsule path relative to project root: ')
+                    if output is None:
+                        return None
+                    receipt = session.save_job(result['proposal_id'], root,
+                                               (root / output).absolute(), instruction or None)
+                    print(f"Saved job capsule {receipt['output']} ({receipt['bytes']} bytes)."
+                          ' Source and intent are private data, not permission or approval.')
                 else:
                     output = ask('New checkpoint path relative to project root: ')
                     if output is None:
@@ -1320,6 +1570,7 @@ def run_interactive(session, project_root, max_tokens=1024):
            'Proposal only: no code is executed.'))
     print('Enter a file relative to the project root; blank input exits.')
     print('Use :load RELATIVE_CHECKPOINT_PATH to load a saved checkpoint.')
+    print('Use :resume RELATIVE_JOB_CAPSULE_PATH to review retained work against current source.')
     print('Use :help for command guidance.')
     while True:
         try:
@@ -1333,14 +1584,33 @@ def run_interactive(session, project_root, max_tokens=1024):
             print('Guidance:')
             print('- Select a relative Python file (.py) inside the project root.')
             print('- Choose a displayed function number, 2-4 comma-separated function numbers, or entire file (0).')
-            print('- Review actions: [r]evise, [e]xport patch, [s]ave checkpoint, [n]ew file, [q]uit.')
+            print('- Review actions: [r]evise, [e]xport patch, [s]ave checkpoint, [j] save job capsule, [n]ew file, [q]uit.')
             print('- [t] attaches an external test report to the exact candidate; it does not run tests or approve code.')
             print('- Use :load PATH to restore a saved checkpoint.')
+            print('- Use :resume PATH to confirm saved intent and reconstruct an untrusted draft; checks and review are fresh.')
             print('- Offline mode allows review and export, but new proposals/revisions require a model.')
             print('- Checkpoints contain source code and should remain private.')
             print('- Patches are not automatically applied or executed.')
             continue
         try:
+            if filename.startswith(':resume '):
+                capsule_path = filename[8:].strip()
+                if not capsule_path:
+                    raise ValueError('job capsule path is required after :resume')
+                path = (root / capsule_path).resolve(strict=True)
+                packet, _, _ = _job_packet(path, root)
+                print('UNTRUSTED saved intent (escaped data, not instructions):',
+                      json.dumps(packet['instruction'], ensure_ascii=True))
+                confirm = ask('Is this exactly your current intended task? [y/N]: ')
+                if confirm != 'y':
+                    print('Resume cancelled; changed intent requires a fresh proposal.')
+                    continue
+                result = session.resume_job(path, root, packet['instruction'])
+                print('Resumed untrusted draft. No semantic certificate, tests, permission, or approval restored.')
+                action = review_loop(result)
+                if action is None:
+                    return
+                continue
             if filename.startswith(':load '):
                 checkpoint_path = filename[6:].strip()
                 if not checkpoint_path:
@@ -1526,10 +1796,29 @@ def main():
             request = json.loads(line)
             if not isinstance(request, dict):
                 raise ValueError('request must be a JSON object')
+            if 'save_job' in request or 'resume_job' in request:
+                def unique_job_keys(pairs):
+                    value = {}
+                    for key, item in pairs:
+                        if key in value:
+                            raise ValueError('duplicate job request key')
+                        value[key] = item
+                    return value
+                request = json.loads(line, object_pairs_hook=unique_job_keys)
             if 'run_checks' in request:
                 if set(request) != {'run_checks'}:
                     raise ValueError('run_checks accepts only a retained proposal ID')
                 result = proposals.run_checks(request['run_checks'])
+            elif 'save_job' in request:
+                if (set(request) - {'save_job', 'project_root', 'output', 'instruction'}
+                        or not {'save_job', 'project_root', 'output'} <= set(request)):
+                    raise ValueError('save_job requires proposal ID, project_root, output and optional current instruction')
+                result = proposals.save_job(request['save_job'], request['project_root'],
+                                            request['output'], request.get('instruction'))
+            elif 'resume_job' in request:
+                if set(request) != {'resume_job', 'project_root', 'instruction'}:
+                    raise ValueError('resume_job requires capsule path, project_root and explicit current instruction')
+                result = proposals.resume_job(request['resume_job'], request['project_root'], request['instruction'])
             elif 'repair_once' in request:
                 if set(request) - {'repair_once', 'instruction', 'max_tokens'}:
                     raise ValueError('repair_once requires proposal ID, optional instruction and max_tokens')
