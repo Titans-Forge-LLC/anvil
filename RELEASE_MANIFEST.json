@@ -1,5 +1,5 @@
 {
-  "allowlist_sha256": "c4c5d0f4ce56dcbcedf756ed6594b02b85b8ed8e7b459fc9c3a4a3bf94a10634",
+  "allowlist_sha256": "f30c48599d1b48c8828a4070d4a06a8608f0c29ff299267dc34dc8b9ecb1b3f2",
   "canonical_name": "Adaptive Neural Vector Instruction Language",
   "checks": [
     {
@@ -100,11 +100,11 @@
     },
     {
       "path": "PUBLIC_RELEASE_FILE_ALLOWLIST_V0_1.json",
-      "sha256": "c4c5d0f4ce56dcbcedf756ed6594b02b85b8ed8e7b459fc9c3a4a3bf94a10634"
+      "sha256": "f30c48599d1b48c8828a4070d4a06a8608f0c29ff299267dc34dc8b9ecb1b3f2"
     },
     {
       "path": "README.md",
-      "sha256": "b0b82432bbac0e72af01a6e820b98ba63586bf45a2071cc9fe878310ae9443a0"
+      "sha256": "859db7b56cbf6e1ccf25c7dec8cee2046f427f00b6440e033e5ee6dc0decc252"
     },
     {
       "path": "RELEASE_EVIDENCE_PACKET.md",
@@ -168,7 +168,7 @@
     },
     {
       "path": "experiments/WORKBENCH.md",
-      "sha256": "30b181784f7f4cc49c0f823e0ab260f1f7e362f621c2f65c30beaef9613524cc"
+      "sha256": "3176c860923668b1e1a51fbeee44077db8988a4ab7be849edcceeeae729eccc9"
     },
     {
       "path": "experiments/compare_edit_proposals.py",
@@ -208,7 +208,7 @@
     },
     {
       "path": "experiments/workbench.py",
-      "sha256": "f4cc2318eeec437434530205aa98c0819b9913251b3bd6af76a8f73f5b39f42e"
+      "sha256": "22aa8638ad3f1c84e41bee92e8467e45248de4ec5991a25c57798812b0fee9fe"
     },
     {
       "path": "licenses/MIT.txt",
@@ -292,7 +292,7 @@
     },
     {
       "path": "src/anvil_alpha/cli.py",
-      "sha256": "ec2545d2033cf241886504281ce50f4a39a3641917aea0166033204ac24d8210"
+      "sha256": "934ead04a40c55d761e9a5061760261b193a8b161615b2bbdc19717264456764"
     },
     {
       "path": "src/anvil_alpha/codec.py",
@@ -304,11 +304,15 @@
     },
     {
       "path": "tests/test_codec.py",
-      "sha256": "5c912211aebc6bb844e6c9de55dba83cc7f319a794649ea106db4e4f2a758a34"
+      "sha256": "67288c1e70bb67770e07731a9b103a42c0bfaf597010c293b7cca1ce741f057c"
     },
     {
       "path": "tests/test_edit_proposals.py",
       "sha256": "d0d339d240dbc9f7a63852047f8c76ca62b7607edbd04778d7c7fcf0ce7cb631"
+    },
+    {
+      "path": "tests/test_job_capsule.py",
+      "sha256": "087016ef0142de73fc796efecd37373e2b5aa8b4511a5536486d4345a430c990"
     },
     {
       "path": "tests/test_legacy_migration.mjs",

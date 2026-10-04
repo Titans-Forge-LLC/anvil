@@ -43,8 +43,9 @@ remain available. Restarting restores code, not the correction counter or eviden
 Manual revisions and imported checkpoints have no automatic intent default:
 supply the full current requirements rather than silently reusing an older task.
 The 4,000-character correction-intent limit remains; longer initial requests need
-an explicit concise version and are never truncated. Intent is held only in the
-bounded in-memory proposal session, not saved in checkpoints or test receipts.
+an explicit concise version and are never truncated. Intent is held in the
+bounded in-memory proposal session, not saved in v1 checkpoints or test receipts.
+The explicit job-capsule workflow below can save it as private, untrusted data.
 
 JSON-lines clients enable the same flags and explicitly send:
 
@@ -134,6 +135,61 @@ It does not preserve or certify a model's identity, reasoning, test results or
 review approval. No generated code is executed or applied. Checkpoints larger
 than 8 MiB are refused. This is explicit proposal persistence, not automatic
 semantic caching or reuse after dependencies change.
+
+### Resume a single-function job after unrelated edits
+
+Development preview: a job capsule retains the **task and an untrusted draft**,
+not a cached decision or a semantic validity certificate. Use it when one
+top-level Python function still needs the same change after another function
+was edited. Existing v1 checkpoints keep their whole-source equality rule.
+
+At the review prompt choose `j`, confirm the current intent, then choose a new
+private file inside the project, for example `work.anvil-job.json`. Enter reuses
+the initial request only if it is still known in this session. After a revision
+or restore, supply the full current intent explicitly. Close the workbench and
+reopen offline using the command above. At `File:`, enter:
+
+```text
+:resume work.anvil-job.json
+```
+
+The saved intent is displayed as escaped untrusted text. Confirm `y` only if it
+exactly describes your current task. ANVIL checks the stored source/candidate,
+requires the selected function and explicitly named helpers to be unchanged,
+and screens the module's imports, globals, signatures, defaults, decorators and
+classes for AST equality. Changed bodies of other top-level functions and
+comments can pass this screen. ANVIL reconstructs only the selected function
+against the **current** file, preserving every other current byte.
+
+Resume makes no model request, runs no tests, applies nothing and restores no
+approval. Old check output is labelled historical and untrusted. Start/reload
+with a fresh operator-selected test plan to run `v`, then review the current
+diff before exporting. Further source changes make that exported proposal
+stale, just as for a new proposal. Changed intent, selected code, helpers or
+module environment requires a fresh proposal; there is no automatic fallback.
+
+JSON-lines equivalents:
+
+```json
+{"save_job":"p1","project_root":"/path/to/project","output":"/path/to/project/work.anvil-job.json"}
+{"resume_job":"/path/to/project/work.anvil-job.json","project_root":"/path/to/project","instruction":"The exact current task text saved above."}
+```
+
+`save_job` accepts an optional explicit `instruction`. `resume_job` requires it
+and compares it exactly; it never infers intent from a file. Capsules bind one
+named function and at most four explicit same-file helpers. Whole-file and
+multi-function jobs are unsupported. Files are bounded, strictly typed, refuse
+duplicate JSON keys, and request owner-only creation without overwriting.
+
+Keep capsules private: they contain complete source/candidate text, task text
+and possibly check output. Checksums detect corruption, **not authentication**.
+Compatibility does not prove dependency completeness, correct behavior or
+unchanged intent: a changed function can affect the task through an undeclared
+dependency. Fresh checks and review remain necessary. This is explicit draft
+continuation, not certified computation reuse or an autonomous action layer.
+Ordinary saved Git patches can also avoid regeneration; any economic comparison
+must include that baseline and all fresh checks, not assume a model is called
+again after every edit.
 
 ### Coherent changes across several functions
 

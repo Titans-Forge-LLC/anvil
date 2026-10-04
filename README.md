@@ -14,6 +14,10 @@ Status: `LIMITED PUBLIC BETA`
   proposal is retained as a unit; invalid members reject the whole transaction.
 - Save a source-bound checkpoint, close the session, and resume review offline.
   Changed source blocks reuse. Checkpoints contain code; keep them private.
+- Development preview: save a single-function **job capsule** with its intent
+  and resume an untrusted draft after unrelated edits. No approval or test
+  result is restored; fresh checks and review are required.
+  [Job continuation](experiments/WORKBENCH.md#resume-a-single-function-job-after-unrelated-edits).
 - Explicitly export a new patch for your normal Git workflow. ANVIL does not
   apply changes. Reviewable does not mean correct.
 - Optionally run declared Python checks against a disposable candidate snapshot

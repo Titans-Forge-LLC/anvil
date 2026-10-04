@@ -12,8 +12,19 @@ from .codec import AVP1Codec, canonical_json, semantic_sha256
 
 def _load_json(path: Path):
     if path == Path("-"):
-        return json.loads(sys.stdin.read())
-    return json.loads(path.read_text(encoding="utf-8"))
+        raw = sys.stdin.read()
+    else:
+        raw = path.read_text(encoding="utf-8")
+
+    def pairs_hook(pairs):
+        seen = set()
+        for key, _ in pairs:
+            if key in seen:
+                raise ValueError("Duplicate JSON object member names are not allowed")
+            seen.add(key)
+        return dict(pairs)
+
+    return json.loads(raw, object_pairs_hook=pairs_hook)
 
 
 def _write(path: Path | None, text: str) -> None:

@@ -104,6 +104,48 @@ class AVP1CodecTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     cli.main([command, '-'])
 
+    def test_cli_duplicate_members_rejected_without_payload_disclosure(self):
+        cases = (
+            '{"private_marker":1,"private_marker":2}',
+            '{"authority":{"forbids":["publish"],"forbids":[]}}',
+            '[{"safe":1},{"private_marker":1,"private_marker":2}]',
+            '{"a":1,"\\u0061":2}',
+        )
+        for raw in cases:
+            for operand in ('stdin', 'file'):
+                with self.subTest(raw=raw, operand=operand), tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / 'input.json'
+                    path.write_text(raw, encoding='utf-8')
+                    with patch.object(cli.sys, 'stdin', io.StringIO(raw)):
+                        with self.assertRaises(ValueError) as error:
+                            cli._load_json(Path('-') if operand == 'stdin' else path)
+                    self.assertNotIn('private_marker', str(error.exception))
+
+    def test_cli_duplicate_authority_does_not_emit_wire(self):
+        raw = '{"authority":{"forbids":["publish"],"forbids":[]}}'
+        with patch.object(cli.sys, 'stdin', io.StringIO(raw)), redirect_stdout(io.StringIO()) as output:
+            with self.assertRaises(ValueError):
+                cli.main(['encode', '-'])
+            self.assertEqual(output.getvalue(), '')
+
+    def test_cli_unique_members_and_malformed_input_preserved(self):
+        values = ({'authority': {'forbids': ['publish']}, 'text': 'café'},
+                  [{'same': 1}, {'same': 2}], [], 'text', 42, 1.5, True, False, None)
+        for raw, expected in [(json.dumps(value, ensure_ascii=False), value) for value in values]:
+            for operand in ('stdin', 'file'):
+                with self.subTest(raw=raw, operand=operand), tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / 'input.json'
+                    path.write_text(raw, encoding='utf-8')
+                    with patch.object(cli.sys, 'stdin', io.StringIO(raw)):
+                        self.assertEqual(cli._load_json(Path('-') if operand == 'stdin' else path), expected)
+        for operand in ('stdin', 'file'):
+            with self.subTest(operand=operand), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / 'input.json'
+                path.write_text('{"broken":', encoding='utf-8')
+                with patch.object(cli.sys, 'stdin', io.StringIO('{"broken":')):
+                    with self.assertRaises(json.JSONDecodeError):
+                        cli._load_json(Path('-') if operand == 'stdin' else path)
+
     def test_cli_write_adds_only_missing_newline(self):
         for text in ('', 'hello', 'hello\n', 'hello\n\n', 'café\n', 'x\r\n'):
             expected = text if text.endswith('\n') else text + '\n'
