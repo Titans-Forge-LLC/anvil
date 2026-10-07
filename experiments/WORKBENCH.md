@@ -315,6 +315,52 @@ The bounded loopback transport and proposal-only behavior are shared with the
 Splash adapter. TensorFold owns speculation; adding this backend alone does not
 establish an ANVIL speedup or add repository-aware drafting.
 
+### Replay an identical HTTP response without another request
+
+Add `--reuse-http-responses` to either HTTP backend to opt in:
+
+```sh
+python experiments/workbench.py --backend tensorfold --reuse-http-responses --interactive --project-root /path/to/project
+```
+
+This is ordinary exact response caching, **off by default**, not speculative
+decoding or a semantic validity certificate. A retained complete text response
+can satisfy an identical request without contacting the server again. The key
+binds the endpoint, backend type, full transmitted payload (including explicit
+model/sampling options), and a hashed credential namespace. Changed messages,
+budgets or explicit options miss. Validation still precedes lookup; incomplete,
+malformed, refused and tool-call responses are not retained. Current credential
+syntax is checked, but a hit does not authenticate with the server again.
+
+Each client keeps at most 32 responses and 4 MiB of serialized keys and results;
+Python object overhead is additional. Source prompts and generated code are
+private in-process data, not persisted or added to receipts by this option.
+Restarting the client discards the cache. Python callers can also call
+`clear_responses()`. Returned dictionaries are independent copies.
+
+Replay is **not a fresh sample or an attestation of the current server model**.
+A server can change weights, defaults or authorization under the same name;
+this cache cannot detect that on a hit. Opt in only when reusing an old draft
+is acceptable. Clear it or leave reuse disabled when freshness is required.
+No engine installation, server restart or model download is performed.
+
+On a hit, `retained_response_reused` and `exact_hit` are true, `http_requests`,
+`model_calls`, `input_tokens` and `output_tokens` are zero, and
+`delivered_output_tokens` reports the old response's token count if known.
+Current `server_metrics` are null; `retained_response` holds historical counters
+and acquisition timing, not new engine work. Its `completion_seconds` covers
+the original acquisition/validation interval before cache retention. A miss's
+returned `completion_seconds` includes retention bookkeeping; a hit's covers
+lookup and copying. `total_request_seconds` still charges the whole proposal
+workflow. Model loading and human review remain outside these timers.
+
+Cached text is only a draft. Current-source, syntax and scope checks run again,
+and each reviewable proposal gets a fresh ID. No approval or executed test
+evidence is restored. An unchanged function prompt can hit after an unrelated
+module edit, but rebinding it to current source is not proof of unchanged
+behavior. Review remains necessary. This feature makes no advantage claim
+over a competent ordinary exact cache or a general end-to-end speed claim.
+
 ### Use the in-process MLX adapter
 
 Requires an Apple Silicon Mac, Python 3.10+, MLX and mlx-lm, and an existing

@@ -10,6 +10,9 @@ Status: `LIMITED PUBLIC BETA`
 [workbench reference](experiments/WORKBENCH.md).
 
 - Use an existing local Splash or TensorFold server, or the in-process MLX backend.
+- Opt in to bounded, in-process exact HTTP response replay for repeated drafts.
+  It avoids another identical request, not fresh sampling or fresh review.
+  [HTTP response reuse](experiments/WORKBENCH.md#replay-an-identical-http-response-without-another-request).
 - Select one function or 2–4 related functions in the same file. A multi-function
   proposal is retained as a unit; invalid members reject the whole transaction.
 - Save a source-bound checkpoint, close the session, and resume review offline.

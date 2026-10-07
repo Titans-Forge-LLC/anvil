@@ -1,5 +1,5 @@
 {
-  "allowlist_sha256": "f30c48599d1b48c8828a4070d4a06a8608f0c29ff299267dc34dc8b9ecb1b3f2",
+  "allowlist_sha256": "c00ac0ab013263ad5a1b964ad1e2d8761ae0b1679ad8dc443f60202907254144",
   "canonical_name": "Adaptive Neural Vector Instruction Language",
   "checks": [
     {
@@ -100,11 +100,11 @@
     },
     {
       "path": "PUBLIC_RELEASE_FILE_ALLOWLIST_V0_1.json",
-      "sha256": "f30c48599d1b48c8828a4070d4a06a8608f0c29ff299267dc34dc8b9ecb1b3f2"
+      "sha256": "c00ac0ab013263ad5a1b964ad1e2d8761ae0b1679ad8dc443f60202907254144"
     },
     {
       "path": "README.md",
-      "sha256": "859db7b56cbf6e1ccf25c7dec8cee2046f427f00b6440e033e5ee6dc0decc252"
+      "sha256": "a69d9bb6657a2955310c58c71014e4208879d8c627d47991037b8f0bffdf4d42"
     },
     {
       "path": "RELEASE_EVIDENCE_PACKET.md",
@@ -168,7 +168,7 @@
     },
     {
       "path": "experiments/WORKBENCH.md",
-      "sha256": "3176c860923668b1e1a51fbeee44077db8988a4ab7be849edcceeeae729eccc9"
+      "sha256": "f133b205c517cf48832bd9ca55988b6f7553874f106cd4b468d5d52e773438d6"
     },
     {
       "path": "experiments/compare_edit_proposals.py",
@@ -208,7 +208,7 @@
     },
     {
       "path": "experiments/workbench.py",
-      "sha256": "22aa8638ad3f1c84e41bee92e8467e45248de4ec5991a25c57798812b0fee9fe"
+      "sha256": "c7819b6bf53a7863873571bd468f5fcdde8aa2af0a0320bccde1c54e83bceac1"
     },
     {
       "path": "licenses/MIT.txt",
@@ -309,6 +309,10 @@
     {
       "path": "tests/test_edit_proposals.py",
       "sha256": "d0d339d240dbc9f7a63852047f8c76ca62b7607edbd04778d7c7fcf0ce7cb631"
+    },
+    {
+      "path": "tests/test_http_reuse.py",
+      "sha256": "51bfce7e33b7141e60caad184dba711b03fe3ecb515d96ab499bf38c27984829"
     },
     {
       "path": "tests/test_job_capsule.py",

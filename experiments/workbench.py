@@ -157,10 +157,15 @@ class SplashCompletion:
     backend_name = 'splash_http'
     api_key_env = 'SPLASH_API_KEY'
     url_option = '--splash-url'
+    MAX_RESPONSE_ENTRIES = 32
+    MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 
-    def __init__(self, base_url='http://127.0.0.1:8000', model=None, timeout=120, *, reasoning_effort='none'):
+    def __init__(self, base_url='http://127.0.0.1:8000', model=None, timeout=120, *,
+                 reasoning_effort='none', reuse_responses=False):
         if reasoning_effort not in ('none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'):
             raise ValueError('invalid reasoning effort')
+        if type(reuse_responses) is not bool:
+            raise ValueError('reuse_responses must be a boolean')
         url = urllib.parse.urlsplit(base_url)
         if (url.scheme != 'http' or url.hostname not in ('127.0.0.1', '::1')
                 or url.username is not None or url.password is not None
@@ -172,6 +177,33 @@ class SplashCompletion:
         self.model, self.timeout = model, timeout
         self.reasoning_effort = reasoning_effort
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+        self.reuse_responses = reuse_responses
+        self._responses = OrderedDict()
+        self._response_bytes = 0
+
+    def clear_responses(self):
+        """Discard private retained drafts; no model/service state is changed."""
+        count = len(self._responses)
+        self._responses.clear()
+        self._response_bytes = 0
+        return count
+
+    def _retain_response(self, key, result):
+        # Serialized retention is bounded; Python object overhead is additional.
+        # JSON storage also prevents callers from mutating a retained response.
+        raw = json.dumps(result, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')
+        size = len(key) + len(raw)
+        if size > self.MAX_RESPONSE_BYTES:
+            return
+        previous = self._responses.pop(key, None)
+        if previous is not None:
+            self._response_bytes -= len(key) + len(previous)
+        while self._responses and (len(self._responses) >= self.MAX_RESPONSE_ENTRIES
+                                  or self._response_bytes + size > self.MAX_RESPONSE_BYTES):
+            old_key, old_raw = self._responses.popitem(last=False)
+            self._response_bytes -= len(old_key) + len(old_raw)
+        self._responses[key] = raw
+        self._response_bytes += size
 
     def check_server(self):
         """Check the model catalog, not generation readiness; send no source."""
@@ -231,6 +263,30 @@ class SplashCompletion:
             if not key.isascii() or any(ord(char) < 32 or ord(char) == 127 for char in key):
                 raise ValueError(f'invalid {self.api_key_env} header characters')
             headers['Authorization'] = 'Bearer ' + key
+        response_key = None
+        if self.reuse_responses:
+            # No credential is retained in plaintext. This is cache separation,
+            # not authentication or attestation of the server's current model.
+            namespace = hashlib.sha256((key or '').encode('ascii')).hexdigest()
+            identity = [self.endpoint, type(self).__qualname__, self.backend_name, namespace]
+            response_key = json.dumps(identity, separators=(',', ':')).encode('utf-8') + b'\n' + body
+            cached = self._responses.get(response_key)
+            if cached is not None:
+                result = json.loads(cached)
+                self._responses.move_to_end(response_key)
+                historical = {name: result[name] for name in (
+                    'backend', 'http_requests', 'model_calls', 'input_tokens', 'output_tokens',
+                    'completion_seconds', 'prefix_tokens_reused', 'server_metrics') if name in result}
+                result.update(
+                    exact_hit=True, retained_response_reused=True, retained_response=historical,
+                    http_requests=0, model_calls=0, input_tokens=0, output_tokens=0,
+                    delivered_output_tokens=historical.get('output_tokens'),
+                    prefix_tokens_reused=None, draft_tokens_verified=None, draft_tokens_scored=None,
+                    draft_origin='retained_response', completion_seconds=time.perf_counter() - started)
+                if 'server_metrics' in result:
+                    result['server_metrics'] = {name: None for name in result['server_metrics']}
+                result['completion_seconds'] = time.perf_counter() - started
+                return result
         request = urllib.request.Request(self.endpoint, data=body, headers=headers, method='POST')
         try:
             with self.opener.open(request, timeout=self.timeout) as response:
@@ -266,9 +322,11 @@ class SplashCompletion:
                 raise ValueError('invalid token count')
         except (ValueError, TypeError, KeyError, AttributeError, IndexError):
             raise ValueError(f'invalid {self.label} text-completion response') from None
-        return {
+        result = {
             'text': content, 'complete': reason == 'stop', 'output_tokens': tokens, 'input_tokens': prompt_tokens,
             'finish_reason': reason, 'backend': self.backend_name,
+            'delivered_output_tokens': tokens,
+            'retained_response_reused': False, 'retained_response': None,
             'reasoning_effort': effort if self.supports_reasoning else None,
             'http_requests': 1, 'model_calls': None, 'exact_hit': False,
             'prefix_tokens_reused': None, 'draft_tokens_verified': None,
@@ -276,6 +334,12 @@ class SplashCompletion:
             'completion_seconds': time.perf_counter() - started,
             **self._metadata(data, usage),
         }
+        if response_key is not None and result['complete']:
+            self._retain_response(response_key, result)
+            # Include retention serialization and eviction in the miss's local
+            # time. The stored acquisition interval is historical only.
+            result['completion_seconds'] = time.perf_counter() - started
+        return result
 
 
 class TensorFoldCompletion(SplashCompletion):
@@ -288,8 +352,9 @@ class TensorFoldCompletion(SplashCompletion):
     url_option = '--tensorfold-url'
 
     def __init__(self, base_url='http://127.0.0.1:18420', model=None, timeout=120, *,
-                 temperature=None, top_p=None, top_k=None, seed=None, thinking=False, draft=True):
-        super().__init__(base_url, model, timeout)
+                 temperature=None, top_p=None, top_k=None, seed=None, thinking=False, draft=True,
+                 reuse_responses=False):
+        super().__init__(base_url, model, timeout, reuse_responses=reuse_responses)
         for name, value in (('temperature', temperature), ('top_p', top_p)):
             if value is not None and (type(value) not in (int, float) or not math.isfinite(value)
                                       or value < 0 or (name == 'top_p' and not 0 < value <= 1)):
@@ -1695,6 +1760,8 @@ def main():
     parser.add_argument('--reasoning-effort', default='none',
                         choices=('none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'),
                         help='Splash-only reasoning mode; default none')
+    parser.add_argument('--reuse-http-responses', action='store_true',
+                        help='opt in to private in-process exact response replay for HTTP backends; not fresh sampling')
     parser.add_argument('--ordinary', action='store_true', help='disable MLX or TensorFold drafts, retain prefix caches')
     parser.add_argument('--source-draft', action='store_true', help='experimental: verify source instead of previous answer as draft')
     parser.add_argument('--memory-gib', type=int, default=20)
@@ -1722,6 +1789,8 @@ def main():
             parser.error(f'Invalid --project-root: {exc}')
     if args.ordinary and args.source_draft:
         parser.error('--ordinary and --source-draft are mutually exclusive')
+    if args.reuse_http_responses and args.backend not in ('splash', 'tensorfold'):
+        parser.error('--reuse-http-responses requires --backend splash or tensorfold')
     if args.backend != 'tensorfold' and any(value is not None for value in
             (args.temperature, args.top_p, args.top_k, args.seed, args.thinking)):
         parser.error('sampling and --thinking options require --backend tensorfold')
@@ -1752,14 +1821,16 @@ def main():
         try:
             completion = TensorFoldCompletion(args.tensorfold_url, args.model,
                 temperature=args.temperature, top_p=args.top_p, top_k=args.top_k,
-                seed=args.seed, thinking=args.thinking == 'on', draft=not args.ordinary)
+                seed=args.seed, thinking=args.thinking == 'on', draft=not args.ordinary,
+                reuse_responses=args.reuse_http_responses)
         except ValueError as exc:
             parser.error(str(exc))
         load_seconds = None
     elif args.backend == 'splash':
         if args.ordinary or args.source_draft:
             parser.error('Splash owns decoding: --ordinary and --source-draft are unavailable for Splash')
-        completion = SplashCompletion(args.splash_url, args.model, reasoning_effort=args.reasoning_effort)
+        completion = SplashCompletion(args.splash_url, args.model, reasoning_effort=args.reasoning_effort,
+                                      reuse_responses=args.reuse_http_responses)
         load_seconds = None
     else:
         if args.reasoning_effort != 'none':
@@ -1780,6 +1851,7 @@ def main():
         run_interactive(proposals, args.project_root, args.max_tokens)
         return
     print(json.dumps({'ready': True, 'backend': args.backend, 'load_seconds': load_seconds,
+                      'http_response_reuse': args.reuse_http_responses,
                       'server_readiness': 'not_checked' if args.backend in ('splash', 'tensorfold') else 'not_applicable',
                       'proposal_only': test_runner is None, 'tests_opted_in': test_runner is not None}), flush=True)
     while True:
