@@ -120,6 +120,13 @@ wire may be `-`, but not both: one stdin stream cannot supply both documents.
 Omitting the output still writes to stdout. To access a file literally named `-`,
 use its absolute path (`./-` is normalized to `-` by the path parser).
 
+Named output files use same-directory temporary writes and atomic replacement:
+encoding/write/promotion failures leave the old output intact. Existing regular
+file permissions are preserved; new files use private temporary-file permissions.
+Symlinks and other nonregular destinations are refused, and missing parent
+directories are not created. Stdout/newline behavior is unchanged. This is not
+a crash-durability or concurrent-filesystem-race guarantee.
+
 A network-free Python installation requires `setuptools>=68` and `wheel` to be
 present in the build environment before running `pip install --no-build-isolation .`.
 Normal connected `pip install .` environments may obtain those declared build

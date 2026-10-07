@@ -32,8 +32,39 @@ def _write(path: Path | None, text: str) -> None:
         text += '\n'
     if path is None or path == Path("-"):
         sys.stdout.write(text)
+        return
+
+    import os
+    import stat
+    import tempfile
+
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        mode = None
     else:
-        path.write_text(text, encoding="utf-8")
+        if not stat.S_ISREG(metadata.st_mode):
+            raise ValueError("Output destination must be a regular file, not a symlink or other file type")
+        mode = stat.S_IMODE(metadata.st_mode)
+
+    fd, temporary = tempfile.mkstemp(dir=path.parent, prefix=".anvil-output-")
+    try:
+        stream = os.fdopen(fd, "w", encoding="utf-8")
+        fd = None  # The stream owns the descriptor after fdopen succeeds.
+        with stream:
+            stream.write(text)
+        if mode is not None:
+            os.chmod(temporary, mode)
+        os.replace(temporary, path)
+    finally:
+        try:
+            if fd is not None:
+                os.close(fd)
+        finally:
+            try:
+                os.unlink(temporary)
+            except FileNotFoundError:
+                pass
 
 
 def _read_text(path: Path) -> str:
