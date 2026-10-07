@@ -165,8 +165,9 @@ Resume makes no model request, runs no tests, applies nothing and restores no
 approval. Old check output is labelled historical and untrusted. Start/reload
 with a fresh operator-selected test plan to run `v`, then review the current
 diff before exporting. Further source changes make that exported proposal
-stale, just as for a new proposal. Changed intent, selected code, helpers or
-module environment requires a fresh proposal; there is no automatic fallback.
+stale, just as for a new proposal. Changed intent, helpers or module environment
+requires a fresh assessment; there is no automatic fallback. Changed selected
+code still blocks strict resume, but you can reconcile it explicitly below.
 
 JSON-lines equivalents:
 
@@ -190,6 +191,42 @@ continuation, not certified computation reuse or an autonomous action layer.
 Ordinary saved Git patches can also avoid regeneration; any economic comparison
 must include that baseline and all fresh checks, not assume a model is called
 again after every edit.
+
+### Reconcile a changed selected function without regeneration
+
+Offline development preview: use `:inspect work.anvil-job.json` to see the
+private base, current and retained function, compatibility reasons and current
+source SHA-256. It creates no proposal and runs nothing. Text is untrusted,
+escaped data. Keep this view private, just like the capsule.
+
+If the selected function's body changed, resolve it yourself using an editor
+or ordinary Git three-way tools. Save **only the resolved function** in a
+UTF-8 file inside the project (32 KiB maximum). Then use
+`:resolve work.anvil-job.json`, confirm the unchanged task and select that
+file. The workbench binds the import to the source hash displayed by its
+inspection. A further source edit refuses the import.
+
+JSON-lines equivalents:
+
+```json
+{"inspect_job":"/path/to/project/work.anvil-job.json","project_root":"/path/to/project","instruction":"The exact current task text saved above."}
+{"resolve_job":"/path/to/project/work.anvil-job.json","project_root":"/path/to/project","instruction":"The exact current task text saved above.","replacement":"/path/to/project/resolved.py","current_source_sha256":"COPY_THE_INSPECTION_SOURCE_SHA256_HERE"}
+```
+
+Import preserves all current bytes outside the selected function, validates
+the candidate through normal syntax/scope gates and produces a new unapproved
+draft. Declared helpers and the module-environment screen must still match the
+saved base. No old test result, permission or approval is restored; run fresh
+checks and review the current diff. Invalid/extra scope, no-ops, stale source,
+changed intent and incompatible dependencies are refused. The current capsule
+and source are not modified. No model is called.
+
+This is **operator-authored reconciliation**, not automatic merging, semantic
+equivalence, or certified reuse. A clean merge can silently combine conflicting
+behavior even when its hunks do not overlap. The importer cannot establish that
+you preserved every intended current change. Ordinary Git can also retain and
+resolve work without inference; this feature makes that workflow accessible
+inside ANVIL, not faster than Git or proof of cheaper completed jobs.
 
 ### Coherent changes across several functions
 

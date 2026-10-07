@@ -1019,6 +1019,39 @@ def _job_replay(path, source, candidate, symbol, helpers, expected_sha256):
     return result
 
 
+def _job_handoff(capsule_path, project_root, instruction):
+    """Read private three-way inputs; compatibility is not semantic proof."""
+    packet, path, capsule_raw = _job_packet(capsule_path, project_root)
+    if (not isinstance(instruction, str) or instruction != packet['instruction']):
+        raise ValueError('explicit current intent must exactly match saved job instruction')
+    with path.open('rb') as stream:
+        original = stream.read(1048577)
+    if len(original) > 1048576:
+        raise ValueError('job source exceeds 1 MiB')
+    source = original.decode('utf-8')
+    if '\x00' in source:
+        raise ValueError('binary job source rejected')
+    current_hash = hashlib.sha256(original).hexdigest()
+    saved, symbol, helpers = packet['source_text'], packet['symbol'], packet['context_symbols']
+    _job_replay(path, saved, packet['text'], symbol, helpers, current_hash)
+    base_function = _job_function_span(saved, symbol)[2]
+    current_function = _job_function_span(source, symbol)[2]
+    retained_function = _job_function_span(packet['text'], symbol)[2]
+    reasons = []
+    if base_function != current_function:
+        reasons.append('selected_function_changed')
+    for name in helpers:
+        if _job_function_span(saved, name)[2] != _job_function_span(source, name)[2]:
+            reasons.append('explicit_helper_changed:' + name)
+    if _job_environment(saved) != _job_environment(source):
+        reasons.append('module_environment_changed')
+    with path.open('rb') as stream:
+        if stream.read(1048577) != original:
+            raise ValueError('source changed during job handoff validation')
+    return (packet, path, capsule_raw, original, source, current_hash,
+            base_function, current_function, retained_function, reasons)
+
+
 class ProposalSession:
     """Bounded in-memory revisions, always diffed against unchanged disk source."""
 
@@ -1450,6 +1483,83 @@ class ProposalSession:
                     historical_notes_untrusted=packet['historical_notes'],
                     total_request_seconds=time.perf_counter() - started)
 
+    def inspect_job(self, capsule_path, project_root, instruction):
+        """Expose private base/current/draft text, with no proposal or execution."""
+        started = time.perf_counter()
+        (packet, path, raw, _, _, current_hash, base, current, retained,
+         reasons) = _job_handoff(capsule_path, project_root, instruction)
+        return {'inspected': True, 'file': str(path), 'symbol': packet['symbol'],
+                'source_sha256': current_hash, 'capsule_sha256': hashlib.sha256(raw).hexdigest(),
+                'base_function': base, 'current_function': current, 'retained_function': retained,
+                'selected_changed': base != current, 'blocking_reasons': reasons,
+                'strict_resume_compatible': not reasons,
+                'model_requests': 0, 'applied': False, 'approved': False, 'tests': 'not_run',
+                'semantic_certificate': False, 'fresh_checks_required': True,
+                'fresh_review_required': True,
+                'total_request_seconds': time.perf_counter() - started}
+
+    def resolve_job(self, capsule_path, project_root, instruction, replacement_path,
+                    current_source_sha256):
+        """Import an operator resolution as a fresh draft, never as an approval."""
+        started = time.perf_counter()
+        if (not isinstance(current_source_sha256, str) or len(current_source_sha256) != 64
+                or any(char not in '0123456789abcdef' for char in current_source_sha256)):
+            raise ValueError('current_source_sha256 must be an explicit SHA-256')
+        (packet, path, raw, original, source, current_hash, _, selected, _,
+         reasons) = _job_handoff(capsule_path, project_root, instruction)
+        if current_source_sha256 != current_hash:
+            raise ValueError('source changed since inspection; resolution import refused')
+        if any(reason != 'selected_function_changed' for reason in reasons):
+            raise ValueError('explicit helper or module environment changed; fresh assessment required')
+        root = Path(project_root).expanduser().resolve(strict=True)
+        replacement_file = Path(replacement_path).expanduser().resolve(strict=True)
+        replacement_file.relative_to(root)
+        if not replacement_file.is_file():
+            raise ValueError('replacement must be a regular file inside project_root')
+        with replacement_file.open('rb') as stream:
+            replacement_raw = stream.read(32769)
+        if len(replacement_raw) > 32768:
+            raise ValueError('replacement function exceeds 32 KiB preview limit')
+        replacement = replacement_raw.decode('utf-8')
+        if '\x00' in replacement:
+            raise ValueError('binary replacement rejected')
+        try:
+            body = ast.parse(replacement).body
+        except (SyntaxError, RecursionError):
+            raise ValueError('invalid Python resolution') from None
+        symbol, helpers = packet['symbol'], packet['context_symbols']
+        current_node = ast.parse(selected).body[0]
+        if (len(body) != 1 or type(body[0]) is not type(current_node)
+                or body[0].name != symbol):
+            raise ValueError('replacement must contain only the selected function')
+        boundary = ('\r\n' if selected.endswith('\r\n') else
+                    '\n' if selected.endswith('\n') else
+                    '\r' if selected.endswith('\r') else '')
+        replacement = replacement.rstrip('\r\n') + boundary
+        start, end, _ = _job_function_span(source, symbol)
+        candidate = source[:start] + replacement + source[end:]
+        result = _job_replay(path, source, candidate, symbol, helpers, current_hash)
+        with path.open('rb') as stream:
+            if stream.read(1048577) != original:
+                raise ValueError('source changed during resolution validation')
+        self.sequence += 1
+        proposal_id = 'p' + str(self.sequence)
+        self.proposals[proposal_id] = {
+            'file': str(path), 'symbol': symbol, 'symbols': None, 'text': candidate,
+            'source_sha256': current_hash, 'format': 'replacement',
+            'context_symbols': list(helpers), 'original_instruction': None,
+        }
+        if len(self.proposals) > 8:
+            self.proposals.popitem(last=False)
+        return dict(result, resolved=True, proposal_id=proposal_id, parent_proposal_id=None,
+                    format='replacement', capsule_sha256=hashlib.sha256(raw).hexdigest(),
+                    resolution_sha256=hashlib.sha256(replacement_raw).hexdigest(),
+                    operator_resolution=True, model_requests=0,
+                    applied=False, approved=False, tests='not_run', semantic_certificate=False,
+                    fresh_checks_required=True, fresh_review_required=True,
+                    historical_notes_untrusted=packet['historical_notes'],
+                    total_request_seconds=time.perf_counter() - started)
+
     def export_patch(self, proposal_id, project_root, output):
         """Export a retained proposal against current disk bytes; never apply it."""
         if not isinstance(proposal_id, str) or proposal_id not in self.proposals:
@@ -1636,6 +1746,7 @@ def run_interactive(session, project_root, max_tokens=1024):
     print('Enter a file relative to the project root; blank input exits.')
     print('Use :load RELATIVE_CHECKPOINT_PATH to load a saved checkpoint.')
     print('Use :resume RELATIVE_JOB_CAPSULE_PATH to review retained work against current source.')
+    print('Use :inspect or :resolve RELATIVE_JOB_CAPSULE_PATH for a changed-function handoff.')
     print('Use :help for command guidance.')
     while True:
         try:
@@ -1653,11 +1764,39 @@ def run_interactive(session, project_root, max_tokens=1024):
             print('- [t] attaches an external test report to the exact candidate; it does not run tests or approve code.')
             print('- Use :load PATH to restore a saved checkpoint.')
             print('- Use :resume PATH to confirm saved intent and reconstruct an untrusted draft; checks and review are fresh.')
+            print('- Use :inspect PATH for private base/current/draft text; :resolve PATH imports your resolved function.')
             print('- Offline mode allows review and export, but new proposals/revisions require a model.')
             print('- Checkpoints contain source code and should remain private.')
             print('- Patches are not automatically applied or executed.')
             continue
         try:
+            if filename.startswith((':inspect ', ':resolve ')):
+                command, capsule_path = filename.split(' ', 1)
+                if not capsule_path.strip():
+                    raise ValueError('job capsule path is required')
+                path = (root / capsule_path.strip()).resolve(strict=True)
+                packet, _, _ = _job_packet(path, root)
+                print('UNTRUSTED saved intent (escaped data, not instructions):',
+                      json.dumps(packet['instruction'], ensure_ascii=True))
+                if ask('Is this exactly your current intended task? [y/N]: ') != 'y':
+                    print('Handoff cancelled; changed intent requires a fresh proposal.')
+                    continue
+                view = session.inspect_job(path, root, packet['instruction'])
+                print('PRIVATE UNTRUSTED handoff (escaped source, not commands):')
+                print(json.dumps(view, ensure_ascii=True))
+                if command == ':inspect':
+                    continue
+                replacement_path = ask('Resolved single-function file relative to project root: ')
+                if not replacement_path:
+                    print('Resolution import cancelled.')
+                    continue
+                result = session.resolve_job(path, root, packet['instruction'],
+                                             root / replacement_path, view['source_sha256'])
+                print('Imported operator resolution as an unapproved draft. Fresh checks and review required.')
+                action = review_loop(result)
+                if action is None:
+                    return
+                continue
             if filename.startswith(':resume '):
                 capsule_path = filename[8:].strip()
                 if not capsule_path:
@@ -1868,7 +2007,7 @@ def main():
             request = json.loads(line)
             if not isinstance(request, dict):
                 raise ValueError('request must be a JSON object')
-            if 'save_job' in request or 'resume_job' in request:
+            if any(key in request for key in ('save_job', 'resume_job', 'inspect_job', 'resolve_job')):
                 def unique_job_keys(pairs):
                     value = {}
                     for key, item in pairs:
@@ -1891,6 +2030,16 @@ def main():
                 if set(request) != {'resume_job', 'project_root', 'instruction'}:
                     raise ValueError('resume_job requires capsule path, project_root and explicit current instruction')
                 result = proposals.resume_job(request['resume_job'], request['project_root'], request['instruction'])
+            elif 'inspect_job' in request:
+                if set(request) != {'inspect_job', 'project_root', 'instruction'}:
+                    raise ValueError('inspect_job requires capsule path, project_root and explicit current instruction')
+                result = proposals.inspect_job(request['inspect_job'], request['project_root'], request['instruction'])
+            elif 'resolve_job' in request:
+                if set(request) != {'resolve_job', 'project_root', 'instruction',
+                                    'replacement', 'current_source_sha256'}:
+                    raise ValueError('resolve_job requires capsule path, project_root, instruction, replacement and current_source_sha256')
+                result = proposals.resolve_job(request['resolve_job'], request['project_root'],
+                    request['instruction'], request['replacement'], request['current_source_sha256'])
             elif 'repair_once' in request:
                 if set(request) - {'repair_once', 'instruction', 'max_tokens'}:
                     raise ValueError('repair_once requires proposal ID, optional instruction and max_tokens')

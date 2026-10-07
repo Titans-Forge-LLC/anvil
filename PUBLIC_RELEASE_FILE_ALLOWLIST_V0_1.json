@@ -79,6 +79,7 @@
     "tests/test_edit_proposals.py",
     "tests/test_http_reuse.py",
     "tests/test_job_capsule.py",
+    "tests/test_job_resolution.py",
     "tests/test_legacy_migration.mjs",
     "tests/test_proposal_checks.py",
     "tests/test_reasoning_signature.py",
