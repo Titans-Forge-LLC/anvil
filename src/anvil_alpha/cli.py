@@ -16,6 +16,9 @@ def _load_json(path: Path):
     else:
         raw = path.read_text(encoding="utf-8")
 
+    if raw.startswith("\ufeff"):
+        raw = raw[1:]
+
     def pairs_hook(pairs):
         seen = set()
         for key, _ in pairs:
@@ -68,6 +71,7 @@ def _write(path: Path | None, text: str) -> None:
 
 
 def _read_text(path: Path) -> str:
+    """Read transport text literally; JSON-source BOM handling is separate."""
     if path == Path("-"):
         return sys.stdin.read()
     return path.read_text(encoding="utf-8")

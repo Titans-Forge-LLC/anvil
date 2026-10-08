@@ -148,7 +148,7 @@
     },
     {
       "path": "experiments/FRESH_MAINTENANCE.md",
-      "sha256": "7fa65cd973e70c918b64bb0c0594e4c2c8899f22c613570342086f67d942439f"
+      "sha256": "5b72f2716b8e326ad1d6f312f3177ecebe08ae035bf7e801b32b45e2947d7366"
     },
     {
       "path": "experiments/REPAIR_LOOP_SCREEN.md",
@@ -292,7 +292,7 @@
     },
     {
       "path": "src/anvil_alpha/cli.py",
-      "sha256": "8fda4cd4a48f9c2aa824845f8022c244a1d4fa72b8987de8ebc47a7b72933863"
+      "sha256": "fc9d39dcb9be39d4374fcaac457226c2aed8d4c1a5a3e716340bd0ccb7991882"
     },
     {
       "path": "src/anvil_alpha/codec.py",
@@ -308,7 +308,7 @@
     },
     {
       "path": "tests/test_codec.py",
-      "sha256": "67288c1e70bb67770e07731a9b103a42c0bfaf597010c293b7cca1ce741f057c"
+      "sha256": "28f6f4823a55dd9d04823db450167400d7d1054332ab79f4a2882034508c3dc4"
     },
     {
       "path": "tests/test_edit_proposals.py",

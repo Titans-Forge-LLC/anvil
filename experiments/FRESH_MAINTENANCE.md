@@ -148,3 +148,45 @@ addresses and raw receipts remain private. There was no direct control in this
 integration task, so **successful bounded recovery is demonstrated, not a speed
 or quality advantage over another tool**. Independent operator usability remains
 unmeasured.
+
+## October 7: BOM compatibility and retained-job follow-up
+
+A new CLI maintenance task accepted one leading UTF-8 byte-order mark in JSON
+source files and text stdin. Duplicate keys, invalid UTF-8, malformed JSON,
+repeated/misplaced marks and literal marks inside strings retained their existing
+behavior. Wire decoding was not loosened. The unmodified CLI failed the frozen
+checks before generation; the repair and eight regression methods are now local.
+
+Two fixed-order paths used the same resident served model, identical request
+payloads, output limit and structural gates. The plain path retained a Git patch;
+the ANVIL path retained its patch plus a private job capsule. Each generated the
+same repair in one POST, using 294 input and 130 output tokens, with no correction.
+Each passed the eight frozen checks. An actual separate wire-reader docstring
+change was then preserved during offline follow-up, with both candidates passing
+fresh checks and requiring no additional model request.
+
+| Counted machine work | Plain/Git path | ANVIL job path |
+|---|---:|---:|
+| Initial generation requests | 1 | 1 |
+| Corrections | 0 | 0 |
+| Initial frozen check methods passed | 8/8 | 8/8 |
+| Offline follow-up check methods passed | 8/8 | 8/8 |
+| Additional model requests on follow-up | 0 | 0 |
+| Construction, generation, checks, retention, follow-up and cleanup | 3.959 s | 3.617 s |
+| Patch bytes | 280 | 280 |
+| Additional capsule bytes | none | 11,258 |
+
+Shared model-access setup was 0.678 s; the whole campaign took 8.440 s before
+receipt serialization, including the original failing check and cleanup. Human
+task/test authoring and review were not timed. The plain path uses the same
+source-selection/check machinery for fairness; this is not an independent tool
+comparison. Git applies only in a disposable copy; ANVIL exports a reviewable
+patch and does not apply it. Both current candidates were byte-identical.
+
+**No unique inference saving, quality gain or causal latency advantage was
+demonstrated.** Fixed order, two samples and a shared warm server do not isolate
+the reason for the timing difference. The capsule adds task/history metadata and
+fresh-evidence requirements, not a semantic certificate or cheap automatic merge.
+Old evidence was not restored as a current pass. Raw source, capsules, test tails,
+infrastructure details and full receipts remain private. Nothing was installed
+in a running agent, merged, pushed or released by this trial.

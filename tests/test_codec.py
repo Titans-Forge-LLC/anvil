@@ -17,6 +17,90 @@ from anvil_alpha.codec import semantic_sha256
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class JSONSourceBOMTests(unittest.TestCase):
+    def load(self, raw, stdin=False):
+        if stdin:
+            with patch.object(cli.sys, 'stdin', io.StringIO(raw)):
+                return cli._load_json(Path('-'))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'input.json'
+            encoded = raw.encode('utf-8')
+            path.write_bytes(encoded)
+            value = cli._load_json(path)
+            self.assertEqual(path.read_bytes(), encoded)
+            return value
+
+    def test_all_roots_plain_and_one_bom_files(self):
+        for value in (None, True, False, 42, 1.25, '', 'café 🛠', [], [1, 2], {'x': 3}):
+            for prefix in ('', '\ufeff'):
+                with self.subTest(value=value, prefix=prefix):
+                    self.assertEqual(self.load(prefix + json.dumps(value, ensure_ascii=False)), value)
+
+    def test_all_roots_plain_and_one_bom_stdin(self):
+        for value in (None, True, False, 42, 1.25, '', 'café 🛠', [], [1, 2], {'x': 3}):
+            for prefix in ('', '\ufeff'):
+                with self.subTest(value=value, prefix=prefix):
+                    self.assertEqual(self.load(prefix + json.dumps(value, ensure_ascii=False), True), value)
+
+    def test_internal_bom_is_data_not_removed(self):
+        value = {'\ufeffkey': ['before\ufeffafter', '\ufeff', 'end\ufeff']}
+        for stdin in (False, True):
+            for prefix in ('', '\ufeff'):
+                self.assertEqual(self.load(prefix + json.dumps(value, ensure_ascii=False), stdin), value)
+
+    def test_duplicate_members_at_every_depth_are_still_rejected(self):
+        for raw in ('{"x":1,"x":2}', '{"nested":{"x":1,"x":2}}',
+                    '[{"x":1,"\\u0078":2}]',
+                    '{"authority":{"forbids":["publish"],"forbids":[]}}'):
+            for stdin in (False, True):
+                for prefix in ('', '\ufeff'):
+                    with self.subTest(raw=raw, stdin=stdin, prefix=prefix):
+                        with self.assertRaisesRegex(ValueError, '^Duplicate JSON object member names are not allowed$'):
+                            self.load(prefix + raw, stdin)
+
+    def test_repeated_misplaced_and_empty_bom_documents_rejected(self):
+        for raw in ('', '\ufeff', '\ufeff\ufeff{}', ' \ufeff{}', '\ufeff \ufeff{}',
+                    '{}\ufeff', '\ufeff{"x":', '\ufeff{} {}'):
+            for stdin in (False, True):
+                with self.subTest(raw=raw, stdin=stdin):
+                    with self.assertRaises(json.JSONDecodeError):
+                        self.load(raw, stdin)
+
+    def test_invalid_utf8_is_not_replaced(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'invalid.json'
+            for raw in (b'\xff{}', b'\xef\xbb\xbf{"x":"\xff"}'):
+                path.write_bytes(raw)
+                with self.assertRaises(UnicodeError):
+                    cli._load_json(path)
+                self.assertEqual(path.read_bytes(), raw)
+
+    def test_cli_encode_verify_and_decode_bom_source(self):
+        value = {'authority': {'forbids': ['publish']}, 'text': 'café\ufeff🛠'}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, wire, decoded = (root / name for name in ('input.json', 'wire.avp1', 'decoded.json'))
+            source.write_bytes(('\ufeff' + json.dumps(value, ensure_ascii=False)).encode('utf-8'))
+            self.assertEqual(cli.main(['encode', str(source), str(wire)]), 0)
+            self.assertEqual(AVP1Codec().decode(wire.read_text().strip()), value)
+            with redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(cli.main(['verify', str(source), str(wire)]), 0)
+            report = json.loads(output.getvalue())
+            self.assertTrue(report['semantic_exact'])
+            self.assertTrue(report['authority_exact'])
+            self.assertEqual(cli.main(['decode', str(wire), str(decoded)]), 0)
+            self.assertEqual(json.loads(decoded.read_text()), value)
+
+    def test_wire_reader_does_not_silently_strip_bom(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'wire.avp1'
+            raw = '\ufeff' + AVP1Codec().encode({'x': 1})
+            path.write_bytes(raw.encode('utf-8'))
+            self.assertEqual(cli._read_text(path), raw)
+            with self.assertRaises(ValueError):
+                AVP1Codec().decode(cli._read_text(path))
+
+
 class AVP1CodecTests(unittest.TestCase):
     def _verify_pair(self, source, decoded, mode='files'):
         with tempfile.TemporaryDirectory() as directory:
