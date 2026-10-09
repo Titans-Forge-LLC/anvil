@@ -216,7 +216,7 @@
     },
     {
       "path": "experiments/workbench.py",
-      "sha256": "87dd31291301487dce9be2f66e8efaeb2eb3ef183b1647ad26123c41565f5cf1"
+      "sha256": "726898bb67b066f5665c5937740007515ee78388ffb55457078792b568e33f10"
     },
     {
       "path": "licenses/MIT.txt",
@@ -344,7 +344,7 @@
     },
     {
       "path": "tests/test_workbench.py",
-      "sha256": "5a907eae62d666289cad432ad88d5e602fb529716efa241ec2935d66a84e4e6c"
+      "sha256": "e90781aea6857a21c08c0e2828258d7106814d79ff8a45ed0a8deb4fa8ff4e28"
     }
   ],
   "profile": "AVP1/governed-mission-v1",
