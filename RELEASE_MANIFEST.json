@@ -1,5 +1,5 @@
 {
-  "allowlist_sha256": "c685e001b3175f1ea0f0c395af44aa53f744ff08cd1fb4a2f137c1e22e907b44",
+  "allowlist_sha256": "af914f23ac6604f879a931313f0b653c5b7703f23f1e6d536b9f3c4d31565b3f",
   "canonical_name": "Adaptive Neural Vector Instruction Language",
   "checks": [
     {
@@ -44,7 +44,7 @@
     },
     {
       "path": ".github/workflows/conformance.yml",
-      "sha256": "cad26cc110b73abe46a1f5afb6a15ff5b54ad206dd6179c24eabde1d640cc594"
+      "sha256": "90a2841f6777c21851e1ef1f03750b6a7159744074dfc4a8b07dd8da412cd431"
     },
     {
       "path": ".gitignore",
@@ -100,11 +100,11 @@
     },
     {
       "path": "PUBLIC_RELEASE_FILE_ALLOWLIST_V0_1.json",
-      "sha256": "c685e001b3175f1ea0f0c395af44aa53f744ff08cd1fb4a2f137c1e22e907b44"
+      "sha256": "af914f23ac6604f879a931313f0b653c5b7703f23f1e6d536b9f3c4d31565b3f"
     },
     {
       "path": "README.md",
-      "sha256": "7288cfe2f294cabb5571a5e455a9b5d92bc2e1435d5a6674a34715b10d588d13"
+      "sha256": "464f92fd97ca95a9f36b89fbde02c53ffc003f1b2ea15ea95d64b8de3ff295cd"
     },
     {
       "path": "RELEASE_EVIDENCE_PACKET.md",
@@ -147,6 +147,14 @@
       "sha256": "df82e92cb32e244d7a18c943d5cb047eb47273e95dda0b76bb6e006cd6825312"
     },
     {
+      "path": "experiments/SESSION_RECOVERY.md",
+      "sha256": "d0b1bf034b7c973ecf827cd5649d0cfed4ff6808e5d8a0b6b7c444eb812e16d0"
+    },
+    {
+      "path": "experiments/SESSION_RECOVERY_COMPARISON.md",
+      "sha256": "f2cce32eeba1a6ce5118bc53e698a4dae382fc2cb4d62750a2158158806278fd"
+    },
+    {
       "path": "experiments/SPLASH_LIVE_SMOKE.md",
       "sha256": "b6fc32d50dba6f39539214bf074666c5068afd904133cdd48d4a03bb09743b38"
     },
@@ -156,7 +164,7 @@
     },
     {
       "path": "experiments/START_HERE.md",
-      "sha256": "76e00cbe8a4bfee73f14286f9b560ffc884622e532279361ff8f45b8ceb0b6f0"
+      "sha256": "f54fdc5411cf783190da72db529b62606f3a54d1caed66c3d7c23e5563351a9a"
     },
     {
       "path": "experiments/WORKBENCH.md",
@@ -185,6 +193,18 @@
     {
       "path": "experiments/reasoning-signature/contract.json",
       "sha256": "2b5914bd732958610aa7c8dcccd48a8a450e81fbf7c2569881b336ca0620872c"
+    },
+    {
+      "path": "experiments/recovery_comparison.py",
+      "sha256": "0a4a2e6688b874c4d1488b70a606bb8b43322dde528eae0e0e52a9fd19b733fb"
+    },
+    {
+      "path": "experiments/session_recovery_demo.py",
+      "sha256": "9df1812b029a805a042f1ad1be344ed08ca6838c2876390bab0831b522a8dfe4"
+    },
+    {
+      "path": "experiments/session_recovery_results_20261009.json",
+      "sha256": "e2eb0b3d0f6b8e9a9aaf710d2ba42f51e375eb4009e247f41412254f5c5b0562"
     },
     {
       "path": "experiments/source_draft_screen.json",

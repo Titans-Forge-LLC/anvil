@@ -1,0 +1,702 @@
+{
+  "baselines": [
+    {
+      "before_acceptance_passed": false,
+      "before_sha256": "5d4acc6f364ec7fedc7ce44139fb9de07f2b685dba46481e8f51cc4c497511d7",
+      "candidate_sha256": "2968fd04ba67c6eef33995e2d0d9f6ef278b51c97ba54cfa29024a79d4b363d9",
+      "case": "mixed_keys",
+      "failure_summary": "TypeError: '<' not supported between instances of 'int' and 'str'",
+      "repair_commit": "2ed808f7a2facf70e343d553455fe09937e3e9a9"
+    },
+    {
+      "before_acceptance_passed": false,
+      "before_sha256": "25f035f89b87ba02e4609636ed0be473cc71c2d693d55da3aa60094520f7d22f",
+      "candidate_sha256": "b5bd697fe470e24b2eadf4b3ab414c842cf26e62ee924c00a12004f5332c5a17",
+      "case": "newlines",
+      "failure_summary": "AssertionError",
+      "repair_commit": "4139f79e6e79d6be0455119e2cae779280e58722"
+    },
+    {
+      "before_acceptance_passed": false,
+      "before_sha256": "b5bd697fe470e24b2eadf4b3ab414c842cf26e62ee924c00a12004f5332c5a17",
+      "candidate_sha256": "03fea749d5dcd460707f338bad7c061eab3151997015f6eafc438cb41f449035",
+      "case": "pipeline",
+      "failure_summary": "FileNotFoundError: [Errno 2] No such file or directory: '-'",
+      "repair_commit": "9a187b7b80b1436056b7b184351e3a3ad8a5aaab"
+    }
+  ],
+  "boundaries": [
+    {
+      "arm": "anvil",
+      "case": "mixed_keys",
+      "new_model_requests": 0,
+      "outcome": "refused_changed_target"
+    },
+    {
+      "arm": "git_patch",
+      "case": "mixed_keys",
+      "new_model_requests": 0,
+      "outcome": "context_patch_still_applies"
+    },
+    {
+      "arm": "anvil",
+      "case": "newlines",
+      "new_model_requests": 0,
+      "outcome": "refused_changed_target"
+    },
+    {
+      "arm": "git_patch",
+      "case": "newlines",
+      "new_model_requests": 0,
+      "outcome": "context_patch_still_applies"
+    },
+    {
+      "arm": "anvil",
+      "case": "pipeline",
+      "new_model_requests": 0,
+      "outcome": "refused_changed_target"
+    },
+    {
+      "arm": "git_patch",
+      "case": "pipeline",
+      "new_model_requests": 0,
+      "outcome": "context_patch_still_applies"
+    }
+  ],
+  "limits": [
+    "historical repair replay, not newly autonomous maintenance work",
+    "same committed candidate in both arms; zero new model requests in both",
+    "local component timings, not evidence of human productivity or end-to-end model speedup",
+    "human correction time and usability not measured",
+    "one machine; no randomized machine-state control"
+  ],
+  "machine": "arm64",
+  "provenance": {
+    "date": "2026-10-09",
+    "privacy": "Absolute paths removed from failure tracebacks; local complete tracebacks retained.",
+    "runner_sha256": "0a4a2e6688b874c4d1488b70a606bb8b43322dde528eae0e0e52a9fd19b733fb",
+    "source_receipt_sha256": "569399e7f540c3c74927c9cf319118ae59a0d304caddc3ed8dbf77b78715fa14",
+    "workbench_base_commit": "91d886a05ecc9ab61fb0792abf47dbc50629df6b",
+    "workbench_sha256": "87dd31291301487dce9be2f66e8efaeb2eb3ef183b1647ad26123c41565f5cf1"
+  },
+  "python": "3.12.14",
+  "records": [
+    {
+      "acceptance_process_seconds": 0.03126170893665403,
+      "arm": "anvil",
+      "case": "mixed_keys",
+      "checks_passed": 5,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.04492787504568696,
+      "recovery_seconds": 0.011308124987408519,
+      "repeat": 0,
+      "retries": 0,
+      "save_process_seconds": 0.04168208397459239,
+      "save_seconds": 0.0007690000347793102,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.030175457941368222,
+      "arm": "git_patch",
+      "case": "mixed_keys",
+      "checks_passed": 5,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.0429387919139117,
+      "recovery_seconds": 0.010376541991718113,
+      "repeat": 0,
+      "retries": 0,
+      "save_process_seconds": 0.03261633403599262,
+      "save_seconds": 0.0005140419816598296,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.031468332977965474,
+      "arm": "git_patch",
+      "case": "mixed_keys",
+      "checks_passed": 5,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "git_patch",
+        "anvil"
+      ],
+      "recovery_process_seconds": 0.04258550005033612,
+      "recovery_seconds": 0.010117707890458405,
+      "repeat": 1,
+      "retries": 0,
+      "save_process_seconds": 0.03272479202132672,
+      "save_seconds": 0.0004650839837267995,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.030505792004987597,
+      "arm": "anvil",
+      "case": "mixed_keys",
+      "checks_passed": 5,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "git_patch",
+        "anvil"
+      ],
+      "recovery_process_seconds": 0.045403708005324006,
+      "recovery_seconds": 0.011242125066928566,
+      "repeat": 1,
+      "retries": 0,
+      "save_process_seconds": 0.03296879190020263,
+      "save_seconds": 0.0006829589838162065,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.03075799997895956,
+      "arm": "anvil",
+      "case": "mixed_keys",
+      "checks_passed": 5,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.04296795907430351,
+      "recovery_seconds": 0.009578000055626035,
+      "repeat": 2,
+      "retries": 0,
+      "save_process_seconds": 0.03324308409355581,
+      "save_seconds": 0.0007242090068757534,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.030735917040146887,
+      "arm": "git_patch",
+      "case": "mixed_keys",
+      "checks_passed": 5,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.04178320802748203,
+      "recovery_seconds": 0.009971458930522203,
+      "repeat": 2,
+      "retries": 0,
+      "save_process_seconds": 0.032039750018157065,
+      "save_seconds": 0.0004341250751167536,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.031177417025901377,
+      "arm": "git_patch",
+      "case": "mixed_keys",
+      "checks_passed": 5,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "git_patch",
+        "anvil"
+      ],
+      "recovery_process_seconds": 0.04284008301328868,
+      "recovery_seconds": 0.009774875012226403,
+      "repeat": 3,
+      "retries": 0,
+      "save_process_seconds": 0.03260670893359929,
+      "save_seconds": 0.0004427909152582288,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.030965875019319355,
+      "arm": "anvil",
+      "case": "mixed_keys",
+      "checks_passed": 5,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "git_patch",
+        "anvil"
+      ],
+      "recovery_process_seconds": 0.04287808295339346,
+      "recovery_seconds": 0.01020154100842774,
+      "repeat": 3,
+      "retries": 0,
+      "save_process_seconds": 0.03259850002359599,
+      "save_seconds": 0.0006975419819355011,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.031129500013776124,
+      "arm": "anvil",
+      "case": "mixed_keys",
+      "checks_passed": 5,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.0462274169549346,
+      "recovery_seconds": 0.011473792023025453,
+      "repeat": 4,
+      "retries": 0,
+      "save_process_seconds": 0.03359866596292704,
+      "save_seconds": 0.0007390000391751528,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.030101333046332,
+      "arm": "git_patch",
+      "case": "mixed_keys",
+      "checks_passed": 5,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.04237416700925678,
+      "recovery_seconds": 0.009575917036272585,
+      "repeat": 4,
+      "retries": 0,
+      "save_process_seconds": 0.03336954198312014,
+      "save_seconds": 0.000635584001429379,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.03151266695931554,
+      "arm": "anvil",
+      "case": "newlines",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.04406320792622864,
+      "recovery_seconds": 0.010558457928709686,
+      "repeat": 0,
+      "retries": 0,
+      "save_process_seconds": 0.032691124943085015,
+      "save_seconds": 0.0006573330610990524,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.031263167038559914,
+      "arm": "git_patch",
+      "case": "newlines",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.042232542065903544,
+      "recovery_seconds": 0.009771125041879714,
+      "repeat": 0,
+      "retries": 0,
+      "save_process_seconds": 0.03206733404658735,
+      "save_seconds": 0.0003715419443324208,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.03103570791427046,
+      "arm": "git_patch",
+      "case": "newlines",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "git_patch",
+        "anvil"
+      ],
+      "recovery_process_seconds": 0.04202541697304696,
+      "recovery_seconds": 0.009567208937369287,
+      "repeat": 1,
+      "retries": 0,
+      "save_process_seconds": 0.03236708405893296,
+      "save_seconds": 0.00042212498374283314,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.03280429192818701,
+      "arm": "anvil",
+      "case": "newlines",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "git_patch",
+        "anvil"
+      ],
+      "recovery_process_seconds": 0.042469542007893324,
+      "recovery_seconds": 0.010448165936395526,
+      "repeat": 1,
+      "retries": 0,
+      "save_process_seconds": 0.03250812506303191,
+      "save_seconds": 0.0006495829438790679,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.031330417026765645,
+      "arm": "anvil",
+      "case": "newlines",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.04283237492199987,
+      "recovery_seconds": 0.010308375000022352,
+      "repeat": 2,
+      "retries": 0,
+      "save_process_seconds": 0.032316209049895406,
+      "save_seconds": 0.000622540945187211,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.032177167013287544,
+      "arm": "git_patch",
+      "case": "newlines",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.04304124996997416,
+      "recovery_seconds": 0.0099998340010643,
+      "repeat": 2,
+      "retries": 0,
+      "save_process_seconds": 0.03252450004220009,
+      "save_seconds": 0.000364916049875319,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.03259079100098461,
+      "arm": "git_patch",
+      "case": "newlines",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "git_patch",
+        "anvil"
+      ],
+      "recovery_process_seconds": 0.041925958008505404,
+      "recovery_seconds": 0.009465500013902783,
+      "repeat": 3,
+      "retries": 0,
+      "save_process_seconds": 0.03178566705901176,
+      "save_seconds": 0.00037720799446105957,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.03167245804797858,
+      "arm": "anvil",
+      "case": "newlines",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "git_patch",
+        "anvil"
+      ],
+      "recovery_process_seconds": 0.04311979201156646,
+      "recovery_seconds": 0.010322708054445684,
+      "repeat": 3,
+      "retries": 0,
+      "save_process_seconds": 0.03264937491621822,
+      "save_seconds": 0.0006027499912306666,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.03209654102101922,
+      "arm": "anvil",
+      "case": "newlines",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.043736500083468854,
+      "recovery_seconds": 0.01063262508250773,
+      "repeat": 4,
+      "retries": 0,
+      "save_process_seconds": 0.03285883297212422,
+      "save_seconds": 0.0006657500052824616,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.031742417020723224,
+      "arm": "git_patch",
+      "case": "newlines",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.04194399993866682,
+      "recovery_seconds": 0.00948695803526789,
+      "repeat": 4,
+      "retries": 0,
+      "save_process_seconds": 0.03221720899455249,
+      "save_seconds": 0.0003211670555174351,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.23954008403234184,
+      "arm": "anvil",
+      "case": "pipeline",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.04317745799198747,
+      "recovery_seconds": 0.010808708029799163,
+      "repeat": 0,
+      "retries": 0,
+      "save_process_seconds": 0.03266050003003329,
+      "save_seconds": 0.000657708034850657,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.23646616598125547,
+      "arm": "git_patch",
+      "case": "pipeline",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.04208654200192541,
+      "recovery_seconds": 0.010373290977440774,
+      "repeat": 0,
+      "retries": 0,
+      "save_process_seconds": 0.031651666038669646,
+      "save_seconds": 0.0003957080189138651,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.23495737498160452,
+      "arm": "git_patch",
+      "case": "pipeline",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "git_patch",
+        "anvil"
+      ],
+      "recovery_process_seconds": 0.04328587499912828,
+      "recovery_seconds": 0.009509042021818459,
+      "repeat": 1,
+      "retries": 0,
+      "save_process_seconds": 0.03269366605672985,
+      "save_seconds": 0.0004290839424356818,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.23054304206743836,
+      "arm": "anvil",
+      "case": "pipeline",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "git_patch",
+        "anvil"
+      ],
+      "recovery_process_seconds": 0.04274324991274625,
+      "recovery_seconds": 0.010753375012427568,
+      "repeat": 1,
+      "retries": 0,
+      "save_process_seconds": 0.034081083023920655,
+      "save_seconds": 0.000743458978831768,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.23247845901641995,
+      "arm": "anvil",
+      "case": "pipeline",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.04174687503837049,
+      "recovery_seconds": 0.01003050000872463,
+      "repeat": 2,
+      "retries": 0,
+      "save_process_seconds": 0.033017874928191304,
+      "save_seconds": 0.000724207959137857,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.23243008297868073,
+      "arm": "git_patch",
+      "case": "pipeline",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.04212674999143928,
+      "recovery_seconds": 0.009644333040341735,
+      "repeat": 2,
+      "retries": 0,
+      "save_process_seconds": 0.03282329207286239,
+      "save_seconds": 0.0004628750029951334,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.2388973330380395,
+      "arm": "git_patch",
+      "case": "pipeline",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "git_patch",
+        "anvil"
+      ],
+      "recovery_process_seconds": 0.04320379195269197,
+      "recovery_seconds": 0.01003216695971787,
+      "repeat": 3,
+      "retries": 0,
+      "save_process_seconds": 0.03791883401572704,
+      "save_seconds": 0.000370291993021965,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.23118020792026073,
+      "arm": "anvil",
+      "case": "pipeline",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "git_patch",
+        "anvil"
+      ],
+      "recovery_process_seconds": 0.04230358300264925,
+      "recovery_seconds": 0.010353749967180192,
+      "repeat": 3,
+      "retries": 0,
+      "save_process_seconds": 0.03246979194227606,
+      "save_seconds": 0.0006569580873474479,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.23496279190294445,
+      "arm": "anvil",
+      "case": "pipeline",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.04323708300944418,
+      "recovery_seconds": 0.010233458946458995,
+      "repeat": 4,
+      "retries": 0,
+      "save_process_seconds": 0.03315862501040101,
+      "save_seconds": 0.0006298329681158066,
+      "separate_edit_preserved": true
+    },
+    {
+      "acceptance_process_seconds": 0.2478541670134291,
+      "arm": "git_patch",
+      "case": "pipeline",
+      "checks_passed": 8,
+      "exact_candidate_restored": true,
+      "new_model_requests": 0,
+      "order": [
+        "anvil",
+        "git_patch"
+      ],
+      "recovery_process_seconds": 0.04733704205136746,
+      "recovery_seconds": 0.010774999973364174,
+      "repeat": 4,
+      "retries": 0,
+      "save_process_seconds": 0.0348047079751268,
+      "save_seconds": 0.00041104096453636885,
+      "separate_edit_preserved": true
+    }
+  ],
+  "repetitions": 5,
+  "schema": "anvil-historical-recovery-comparison-v1",
+  "summary": [
+    {
+      "arm": "anvil",
+      "case": "mixed_keys",
+      "median_recovery_process_seconds": 0.04492787504568696,
+      "median_recovery_seconds": 0.011242125066928566,
+      "passed": 5
+    },
+    {
+      "arm": "git_patch",
+      "case": "mixed_keys",
+      "median_recovery_process_seconds": 0.04258550005033612,
+      "median_recovery_seconds": 0.009971458930522203,
+      "passed": 5
+    },
+    {
+      "arm": "anvil",
+      "case": "newlines",
+      "median_recovery_process_seconds": 0.04311979201156646,
+      "median_recovery_seconds": 0.010448165936395526,
+      "passed": 5
+    },
+    {
+      "arm": "git_patch",
+      "case": "newlines",
+      "median_recovery_process_seconds": 0.04202541697304696,
+      "median_recovery_seconds": 0.009567208937369287,
+      "passed": 5
+    },
+    {
+      "arm": "anvil",
+      "case": "pipeline",
+      "median_recovery_process_seconds": 0.04274324991274625,
+      "median_recovery_seconds": 0.010353749967180192,
+      "passed": 5
+    },
+    {
+      "arm": "git_patch",
+      "case": "pipeline",
+      "median_recovery_process_seconds": 0.04320379195269197,
+      "median_recovery_seconds": 0.01003216695971787,
+      "passed": 5
+    }
+  ],
+  "system": "Darwin"
+}

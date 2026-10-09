@@ -1,5 +1,7 @@
 # ANVIL Limited Public Beta
 
+**See a saved draft survive a session restart:** the [recovery walkthrough](experiments/SESSION_RECOVERY.md) runs locally with Python and Git, without downloading a model. It restores a recorded candidate for review, preserves a separate-file edit, and checks the patch in a throwaway copy.
+
 **ANVIL** (Adaptive Neural Vector Instruction Language) is an experimental local
 agent project. Its current workbench helps you propose a Python change, inspect
 its scope and diff, save it, and resume review without asking the model again.

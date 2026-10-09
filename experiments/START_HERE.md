@@ -5,6 +5,8 @@ one small Python file. You do not need to understand its research architecture.
 
 ## Choose your starting point
 
+**Want to see what survives a restart?** Run the [offline session-recovery demonstration](SESSION_RECOVERY.md). It uses the workbench in this checkout, needs Python and Git, and makes no model request.
+
 **Just want to see it work?** [Open the recorded demonstration](https://www.titansforge.tech/anvil-demonstration).
 To reproduce it without a model, download **ANVIL-Demonstration.zip** from the
 [demo release](https://github.com/Titans-Forge-LLC/anvil/releases/tag/demo-workbench-2026-09-25),
