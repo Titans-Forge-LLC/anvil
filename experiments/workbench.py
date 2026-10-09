@@ -1091,13 +1091,15 @@ def run_interactive(session, project_root, max_tokens=1024):
         raise ValueError('project_root must be a directory')
 
     def ask(label):
-        print(label, end='', flush=True)
-        answer = sys.stdin.readline(16385)
-        if len(answer) > 16384:
-            while answer and not answer.endswith('\n'):
-                answer = sys.stdin.readline(16385)
-            raise ValueError('interactive answer exceeds 16 KiB')
-        return answer.rstrip('\r\n') if answer else None
+        while True:
+            print(label, end='', flush=True)
+            answer = sys.stdin.readline(16385)
+            if len(answer) > 16384:
+                while answer and not answer.endswith('\n'):
+                    answer = sys.stdin.readline(16385)
+                print('ValueError: interactive answer exceeds 16 KiB. Try a shorter answer.')
+                continue
+            return answer.rstrip('\r\n') if answer else None
 
     def review_loop(result):
         while True:
