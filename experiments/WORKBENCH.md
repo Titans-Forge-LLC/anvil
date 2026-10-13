@@ -228,6 +228,43 @@ you preserved every intended current change. Ordinary Git can also retain and
 resolve work without inference; this feature makes that workflow accessible
 inside ANVIL, not faster than Git or proof of cheaper completed jobs.
 
+### Optional model-assisted reconciliation
+
+Development preview: `:reconcile work.anvil-job.json` first inspects the private
+base/current/retained function, confirms the unchanged current task, then asks
+whether to send these function texts and declared helpers to the configured model
+backend. It requests **one draft**, not an automatic merge or approval.
+
+The JSON-lines equivalent is an explicit generation request:
+
+```json
+{"reconcile_job":"/path/to/project/work.anvil-job.json","project_root":"/path/to/project","instruction":"The exact current task text saved above.","current_source_sha256":"COPY_THE_INSPECTION_SOURCE_SHA256_HERE","max_tokens":1024}
+```
+
+Only a changed selected-function body is supported. Changed helpers, module
+environment, signatures, task text or stale inspected source require a fresh
+assessment. If the selected function is unchanged, use model-free `resume_job`.
+The three functions are capped at 32 KiB each, declared helpers at 8 KiB, and
+combined escaped prompt content at 64 KiB. Backend context limits also apply.
+
+The model can return `ANVIL_UNRESOLVED`. Incomplete, invalid or out-of-scope output
+and source/capsule changes discard the draft; no automatic retry follows. Accepted
+syntax produces only a new unapproved proposal, preserving current bytes outside
+the selected function. No tests run, old evidence is not imported, and no patch is
+applied. Use the ordinary fresh-check and review flow before export.
+
+`completion_invocations` counts calls to the configured completion interface;
+`completion_statistics` retains available backend counters. This does not equate
+one invocation with one engine forward pass or necessarily a new HTTP generation
+(a separately enabled exact-response cache can serve it). No completion is made
+in offline mode. Source/drafts can contain private information; select a backend
+you are permitted to send them to. No task or source changes gain new authority.
+
+This feature reduces manual handoff friction. Deterministic test fixtures do not
+establish model reconciliation quality, human time saved, reusable reasoning or
+an economic advantage over ordinary Git and a competent coding assistant. A valid
+function can still discard intended behavior: **reviewable is not correct**.
+
 ### Coherent changes across several functions
 
 Select 2..4 comma-separated function numbers in interactive mode, or send:

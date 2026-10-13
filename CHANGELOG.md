@@ -1,5 +1,11 @@
 # Changelog
 
+- Workbench: optional model-assisted changed-function reconciliation from private
+  base/current/retained text, bound to explicit current intent and inspected source.
+  One completion invocation, unresolved exit, no automatic retries, tests or
+  application. Fresh evidence/review remain required; offline inspect/resolve
+  and model-free resume are unchanged. No semantic or speedup claim.
+
 - Workbench: reuse the initial in-session request for one checked correction
   instead of requiring re-entry. Interactive Enter and omitted JSON `instruction`
   opt into this default; explicit intent still works. Manual revisions, restored

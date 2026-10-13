@@ -56,7 +56,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "84d132d621235c7092c28cd77b4c48394d01b9b8412ef2ca0c32c0e0d63745ba"
+      "sha256": "3b9f90699eb12d2a40dc0ed0f09b6ce67f437ba4afe4d94c59af51d0930218f4"
     },
     {
       "path": "CITATION.cff",
@@ -168,7 +168,7 @@
     },
     {
       "path": "experiments/WORKBENCH.md",
-      "sha256": "a793e9fbe4a1c51bfb0d94d2bcc481642f0e3187a05e380d09addf13d189021b"
+      "sha256": "a0337162feb43fd2eabb818d29f2629e9b014845365a76e7f47b9f3a28689fe8"
     },
     {
       "path": "experiments/compare_edit_proposals.py",
@@ -208,7 +208,7 @@
     },
     {
       "path": "experiments/workbench.py",
-      "sha256": "310418f2b3960ae71e185df95dfef75bee65145a75225fcf908e828b2be041c1"
+      "sha256": "4f6c97f70305c50dca7382bd43e97b74de27660d6a2b1784e88b486dea178ad1"
     },
     {
       "path": "licenses/MIT.txt",
@@ -324,7 +324,7 @@
     },
     {
       "path": "tests/test_job_resolution.py",
-      "sha256": "77cc5ed11dd61c7f16d11e1fd3a3c702b271924fb7fc4a844326667818d595c4"
+      "sha256": "2e4b4d393c63ce2a2a186cd0a719923e78bed3512ea37de46e306edb5ce2ed12"
     },
     {
       "path": "tests/test_legacy_migration.mjs",

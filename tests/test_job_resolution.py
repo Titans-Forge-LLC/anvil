@@ -48,9 +48,11 @@ class LabelledCompletionStub:
 
     def __init__(self, text=None):
         self.text, self.calls = text, 0
+        self.messages = []
 
     def complete(self, *args, **kwargs):
         self.calls += 1
+        self.messages.append(args[0])
         if self.text is None:
             raise AssertionError('offline handoff must not request completion')
         return {'complete': True, 'text': self.text}
@@ -300,6 +302,200 @@ class JobResolutionTests(unittest.TestCase):
             complete.assert_not_called()
             self.assertEqual(source.read_bytes(), before)
             self.assertEqual(capsule.read_bytes(), saved)
+
+
+class JobReconciliationTests(unittest.TestCase):
+    """Completion invocations below are deterministic stubs, never inference."""
+
+    fixture = JobResolutionTests.fixture
+    digest = JobResolutionTests.digest
+
+    def reconcile(self, source, capsule, session, instruction=INTENT, digest=None, max_tokens=1024):
+        return session.reconcile_job(capsule, source.parent, instruction,
+                                     self.digest(source) if digest is None else digest, max_tokens)
+
+    def test_one_draft_preserves_current_outside_bytes_and_imports_no_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source, capsule, _, session, backend, runner = self.fixture(Path(directory), historical=True)
+            backend.text = RESOLVED
+            before, saved = source.read_bytes(), capsule.read_bytes()
+            result = self.reconcile(source, capsule, session)
+            self.assertTrue(result['reviewable'], result.get('rejection'))
+            self.assertEqual(backend.calls, 1)
+            self.assertEqual(result['completion_invocations'], 1)
+            self.assertIsNone(result['model_requests'])  # Stub has no transport metrics.
+            self.assertEqual(result['automatic_retries'], 0)
+            self.assertFalse(result['approved'])
+            self.assertFalse(result['applied'])
+            self.assertFalse(result['semantic_certificate'])
+            self.assertTrue(result['fresh_checks_required'])
+            self.assertTrue(result['fresh_review_required'])
+            self.assertEqual(session.check_status(result['proposal_id'])['tests'], 'not_run')
+            proposal = session.proposals[result['proposal_id']]
+            self.assertNotIn('executed_check', proposal)
+            self.assertIsNone(proposal['original_instruction'])
+            start, end, _ = W._job_function_span(CURRENT, 'target')
+            self.assertEqual(proposal['text'], CURRENT[:start] + RESOLVED + CURRENT[end:])
+            packet = json.loads(backend.messages[0][1]['content'])
+            self.assertEqual(packet['current_request'], INTENT)
+            self.assertEqual(packet['read_only_helpers'][0]['name'], 'helper')
+            self.assertNotIn('old checks passed', str(packet))
+            self.assertNotIn('def outside', str(packet))
+            runner.run.assert_not_called()
+            runner.fresh_inputs.assert_not_called()
+            self.assertEqual(source.read_bytes(), before)
+            self.assertEqual(capsule.read_bytes(), saved)
+
+    def test_wrong_intent_stale_hash_or_invalid_budget_refuse_before_completion(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source, capsule, _, session, backend, _ = self.fixture(Path(directory))
+            for kwargs in ({'instruction': 'another task'}, {'digest': 'a' * 64},
+                           {'digest': 'invalid'}, {'max_tokens': 0}, {'max_tokens': True},
+                           {'max_tokens': 4097}):
+                with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                    self.reconcile(source, capsule, session, **kwargs)
+            self.assertEqual(backend.calls, 0)
+            self.assertEqual(session.proposals, {})
+
+    def test_unchanged_code_helpers_and_environment_use_existing_routes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source, capsule, _, session, backend, _ = self.fixture(Path(directory))
+            for current in (SOURCE, CURRENT.replace('math.floor(value)', 'math.ceil(value)'),
+                            CURRENT.replace('LIMIT = 5', 'LIMIT = 6')):
+                source.write_text(current, encoding='utf-8')
+                with self.subTest(current=current), self.assertRaises(ValueError):
+                    self.reconcile(source, capsule, session)
+            self.assertEqual(backend.calls, 0)
+
+    def test_refusal_bad_scope_header_and_incomplete_outputs_add_no_proposal(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source, capsule, _, session, backend, _ = self.fixture(Path(directory))
+            for text in ('ANVIL_UNRESOLVED', '```python\n' + RESOLVED + '```',
+                         'def another(value):\n    return value\n',
+                         RESOLVED + '\nLIMIT = 0\n',
+                         RESOLVED.replace('target(value)', 'target(value, extra=1)'),
+                         'def target(value):\n    return (\n',
+                         'def target(value):\n    return "\ud800"\n'):
+                backend.text = text
+                with self.subTest(text=text):
+                    result = self.reconcile(source, capsule, session)
+                    self.assertFalse(result['reviewable'])
+                    self.assertIsNone(result['proposal_id'])
+                    self.assertTrue(result['rejection'])
+                    self.assertEqual(result['unresolved'], text == 'ANVIL_UNRESOLVED')
+            self.assertEqual(backend.calls, 7)
+            with patch.object(backend, 'complete', return_value={'complete': False, 'text': RESOLVED}) as call:
+                result = self.reconcile(source, capsule, session)
+            self.assertFalse(result['reviewable'])
+            call.assert_called_once()
+            self.assertEqual(session.proposals, {})
+
+    def test_source_and_capsule_changes_during_completion_discard_draft(self):
+        for changed_input in ('source', 'capsule'):
+            with self.subTest(changed_input=changed_input), tempfile.TemporaryDirectory() as directory:
+                source, capsule, _, session, backend, _ = self.fixture(Path(directory))
+                backend.text = RESOLVED
+                complete = backend.complete
+
+                def mutate(*args, **kwargs):
+                    generated = complete(*args, **kwargs)
+                    changed = source if changed_input == 'source' else capsule
+                    changed.write_bytes(changed.read_bytes() + b'\n')
+                    return generated
+
+                with patch.object(backend, 'complete', side_effect=mutate):
+                    result = self.reconcile(source, capsule, session)
+                self.assertFalse(result['reviewable'])
+                self.assertTrue(result[changed_input + '_changed'])
+                self.assertEqual(backend.calls, 1)
+                self.assertEqual(session.proposals, {})
+
+    def test_crlf_boundaries_survive_model_draft(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source, capsule, _, session, backend, _ = self.fixture(Path(directory), newline='\r\n')
+            backend.text = RESOLVED
+            result = self.reconcile(source, capsule, session)
+            self.assertTrue(result['reviewable'])
+            candidate = session.proposals[result['proposal_id']]['text']
+            start, end, _ = W._job_function_span(CURRENT.replace('\n', '\r\n'), 'target')
+            self.assertEqual(candidate[:start], CURRENT.replace('\n', '\r\n')[:start])
+            self.assertTrue(W._job_function_span(candidate, 'target')[2].endswith('\r\n'))
+            self.assertTrue(candidate.endswith(CURRENT.replace('\n', '\r\n')[end:]))
+
+    def test_prompt_limit_and_retained_header_changes_refuse_before_completion(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source, capsule, _, session, backend, _ = self.fixture(Path(directory))
+            # Valid source but excessive combined escaped handoff context.
+            large = '\n'.join('    # ' + 'x' * 80 for _ in range(310)) + '\n'
+            packet = json.loads(capsule.read_bytes())
+            packet['source_text'] = packet['source_text'].replace('def target(value):\n',
+                                                               'def target(value):\n' + large)
+            packet['text'] = packet['text'].replace('def target(value):\n',
+                                                 'def target(value):\n' + large)
+            for key, checksum in (('source_text', 'source_sha256'), ('text', 'replacement_sha256')):
+                packet[checksum] = W.hashlib.sha256(packet[key].encode()).hexdigest()
+            capsule.write_text(json.dumps(packet), encoding='utf-8')
+            source.write_text(packet['source_text'].replace('    return helper(value) + LIMIT\n',
+                              '    value = max(value, 0)\n    return helper(value) + LIMIT\n'), encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'prompt exceeds'):
+                self.reconcile(source, capsule, session)
+            self.assertEqual(backend.calls, 0)
+            packet['text'] = packet['text'].replace('target(value)', 'target(value, extra=1)')
+            packet['replacement_sha256'] = W.hashlib.sha256(packet['text'].encode()).hexdigest()
+            capsule.write_text(json.dumps(packet), encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'retained signature'):
+                self.reconcile(source, capsule, session)
+            self.assertEqual(backend.calls, 0)
+
+    def test_wrong_but_syntactically_valid_answer_is_not_a_semantic_certificate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source, capsule, _, session, backend, _ = self.fixture(Path(directory))
+            backend.text = 'def target(value):\n    return 0\n'
+            result = self.reconcile(source, capsule, session)
+            self.assertTrue(result['reviewable'])  # Important retained negative boundary.
+            self.assertFalse(result['semantic_certificate'])
+            self.assertFalse(result['approved'])
+            self.assertTrue(result['fresh_review_required'])
+
+    def test_offline_and_json_duplicate_keys_make_no_completion_request(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source, capsule, _, _, _, _ = self.fixture(Path(directory))
+            request = {'reconcile_job': str(capsule), 'project_root': str(source.parent),
+                       'instruction': INTENT, 'current_source_sha256': self.digest(source)}
+            lines = [json.dumps(request), json.dumps(request)[:-1] + ',"instruction":"other"}']
+            with patch.object(W.sys, 'argv', ['workbench', '--backend', 'offline']), \
+                    patch.object(W.sys, 'stdin', io.StringIO('\n'.join(lines) + '\n')), \
+                    patch.object(W.sys, 'stdout', io.StringIO()) as output, \
+                    patch.object(W.OfflineCompletion, 'complete', side_effect=AssertionError('no inference')) as call:
+                W.main()
+            replies = [json.loads(line) for line in output.getvalue().splitlines()]
+            self.assertEqual(replies[1]['error'], 'RuntimeError')
+            self.assertEqual(replies[2]['error'], 'ValueError')
+            self.assertIn('duplicate', replies[2]['message'])
+            call.assert_not_called()
+
+    def test_json_dispatch_uses_one_stub_completion_and_backend_failure_never_retries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source, capsule, _, session, backend, runner = self.fixture(Path(directory))
+            backend.text = RESOLVED
+            request = {'reconcile_job': str(capsule), 'project_root': str(source.parent),
+                       'instruction': INTENT, 'current_source_sha256': self.digest(source)}
+            # Patch the backend constructor: there is no HTTP endpoint or model.
+            with patch.object(W.SplashCompletion, '__new__', return_value=backend), \
+                    patch.object(W.sys, 'argv', ['workbench', '--backend', 'splash',
+                                               '--model', 'deterministic-fixture']), \
+                    patch.object(W.sys, 'stdin', io.StringIO(json.dumps(request) + '\n')), \
+                    patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.main()
+            replies = [json.loads(line) for line in output.getvalue().splitlines()]
+            self.assertTrue(replies[1]['reviewable'])
+            self.assertEqual(backend.calls, 1)
+            with patch.object(backend, 'complete', side_effect=RuntimeError('fixture backend failure')) as call:
+                with self.assertRaises(RuntimeError):
+                    self.reconcile(source, capsule, session)
+                call.assert_called_once()
+            self.assertEqual(session.proposals, {})
+            runner.run.assert_not_called()
 
 
 if __name__ == '__main__':
