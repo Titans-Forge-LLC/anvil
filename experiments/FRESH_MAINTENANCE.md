@@ -1,5 +1,46 @@
 # Fresh maintenance: both proposal formats needed correction
 
+## October 20: actual hosted-CI portability repair versus ordinary Git
+
+The installable-workbench update exposed three test-harness defects in hosted
+CI: a Python 3.9 pathlib-internal assumption, an implicit Windows text encoding,
+and newline translation that changed a supposedly untouched dependency. The
+[initial failed run](https://github.com/Titans-Forge-LLC/anvil/actions/runs/39510246493)
+is retained. The repair changes fixtures, not production behavior or the matrix.
+Permission/I/O errors must still propagate before allocation, Unicode must still
+round-trip exactly, and changed dependencies must still be refused.
+
+Both paths received the same assistant-authored literal repair for three test
+files. Ordinary Git constructed a patch directly; ANVIL formed three source-bound
+whole-file proposals and exported patches. Both then used ordinary Git to check
+and apply only in disposable copies. Neither needed inference. This compares
+repair application, not independently solving the defects.
+
+| One fixed-order application per arm | Ordinary Git | ANVIL then Git |
+|---|---:|---:|
+| Model requests | 0 | 0 |
+| Candidate file bytes identical | Yes | Yes |
+| Corrections / fallback | 0 / 0 | 0 / 0 |
+| Python 3.9 targeted methods passing | 62/62 | 62/62 |
+| Python 3.13 targeted methods passing | 62/62 | 62/62 |
+| Emulated Windows text-boundary checks passing | 2/2 | 2/2 |
+| Counted machine elapsed, including cleanup | 0.795 s | 0.766 s |
+| Repair materialization, validation and export | 0.006 s | 0.030 s |
+
+Totals include snapshot assembly, bookkeeping, export, Git check/application,
+the same checks and cleanup. Shared diagnosis, test/repair authoring and human
+review were not timed; those costs are unknown, not zero. Ordinary Git ran first.
+The Windows boundary simulation reproduces the two observed text issues; it
+does not replace actual hosted Windows CI. The full campaign, including failing
+controls, took 1.735 seconds before receipt serialization.
+
+**No speedup, model-call saving or quality advantage was demonstrated.** ANVIL
+provided a proposal/review boundary but added export overhead on this small
+mechanical task. Raw local receipts remain private. The repaired PR still needs
+the unchanged hosted matrix; passing local checks alone is not release approval.
+
+---
+
 September 19, 2026. One real workbench bug, discovered after the earlier
 [edit-span screen](EDIT_SPAN_SCREEN.md), not another replay of its three tasks.
 

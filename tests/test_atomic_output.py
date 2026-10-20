@@ -218,25 +218,25 @@ class AtomicOutputTests(unittest.TestCase):
         self.assert_only_destination()
 
     def test_destination_metadata_failures_are_not_treated_as_absence(self):
-        # Path.lstat delegates to stat(..., follow_symlinks=False). Test both
-        # entry points so only FileNotFoundError is accepted as ordinary absence.
-        for lookup in ("stat", "lstat"):
-            for error in (PermissionError("metadata permission fault"),
-                          OSError(errno.EIO, "metadata I/O fault")):
-                original_lookup = getattr(Path, lookup)
+        # Inject at the public boundary used by _write. pathlib's internal
+        # lstat implementation differs across supported Python versions.
+        original_lookup = Path.lstat
+        for error in (PermissionError("metadata permission fault"),
+                      OSError(errno.EIO, "metadata I/O fault")):
+            def fail_destination(path, *args, **kwargs):
+                if path == self.destination:
+                    raise error
+                return original_lookup(path, *args, **kwargs)
 
-                def fail_destination(path, *args, **kwargs):
-                    if path == self.destination:
-                        raise error
-                    return original_lookup(path, *args, **kwargs)
-
-                with self.subTest(lookup=lookup, error=type(error).__name__):
-                    with patch.object(Path, lookup, autospec=True, side_effect=fail_destination):
-                        with self.assertRaises(OSError) as caught:
-                            _write(self.destination, "replacement-content")
-                    self.assertIs(caught.exception, error)
-                    self.assertEqual(self.destination.read_bytes(), self.sentinel)
-                    self.assert_only_destination()
+            with self.subTest(error=type(error).__name__):
+                with patch.object(Path, "lstat", autospec=True, side_effect=fail_destination), \
+                        patch("tempfile.mkstemp") as allocate:
+                    with self.assertRaises(OSError) as caught:
+                        _write(self.destination, "replacement-content")
+                allocate.assert_not_called()
+                self.assertIs(caught.exception, error)
+                self.assertEqual(self.destination.read_bytes(), self.sentinel)
+                self.assert_only_destination()
 
     def test_directory_destination_is_refused_without_changes(self):
         directory = self.root / "directory"

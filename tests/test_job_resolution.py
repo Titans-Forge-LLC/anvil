@@ -435,8 +435,9 @@ class JobReconciliationTests(unittest.TestCase):
             for key, checksum in (('source_text', 'source_sha256'), ('text', 'replacement_sha256')):
                 packet[checksum] = W.hashlib.sha256(packet[key].encode()).hexdigest()
             capsule.write_text(json.dumps(packet), encoding='utf-8')
-            source.write_text(packet['source_text'].replace('    return helper(value) + LIMIT\n',
-                              '    value = max(value, 0)\n    return helper(value) + LIMIT\n'), encoding='utf-8')
+            # Keep helpers byte-identical on Windows; only the target changes.
+            source.write_bytes(packet['source_text'].replace('    return helper(value) + LIMIT\n',
+                               '    value = max(value, 0)\n    return helper(value) + LIMIT\n').encode('utf-8'))
             with self.assertRaisesRegex(ValueError, 'prompt exceeds'):
                 self.reconcile(source, capsule, session)
             self.assertEqual(backend.calls, 0)

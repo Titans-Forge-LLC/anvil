@@ -1,5 +1,10 @@
 # Changelog
 
+- Test portability: inject metadata faults at the public `Path.lstat` boundary,
+  read Unicode fixtures explicitly as UTF-8, and preserve dependency bytes when
+  constructing changed-function fixtures on Windows. Keep the full Python/OS
+  matrix and fail-closed assertions; runtime and wire behavior are unchanged.
+
 - Development preview: install the existing workbench as `anvil-workbench` or
   `python -m anvil_workbench`, without model dependencies. Keep checkout launchers
   and existing codec commands. Add a clean-environment, outside-checkout wheel

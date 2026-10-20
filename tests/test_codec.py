@@ -82,14 +82,14 @@ class JSONSourceBOMTests(unittest.TestCase):
             source, wire, decoded = (root / name for name in ('input.json', 'wire.avp1', 'decoded.json'))
             source.write_bytes(('\ufeff' + json.dumps(value, ensure_ascii=False)).encode('utf-8'))
             self.assertEqual(cli.main(['encode', str(source), str(wire)]), 0)
-            self.assertEqual(AVP1Codec().decode(wire.read_text().strip()), value)
+            self.assertEqual(AVP1Codec().decode(wire.read_text(encoding='utf-8').strip()), value)
             with redirect_stdout(io.StringIO()) as output:
                 self.assertEqual(cli.main(['verify', str(source), str(wire)]), 0)
             report = json.loads(output.getvalue())
             self.assertTrue(report['semantic_exact'])
             self.assertTrue(report['authority_exact'])
             self.assertEqual(cli.main(['decode', str(wire), str(decoded)]), 0)
-            self.assertEqual(json.loads(decoded.read_text()), value)
+            self.assertEqual(json.loads(decoded.read_text(encoding='utf-8')), value)
 
     def test_wire_reader_does_not_silently_strip_bom(self):
         with tempfile.TemporaryDirectory() as directory:
