@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-SPEC = importlib.util.spec_from_file_location('edit_workbench', Path(__file__).resolve().parents[1] / 'experiments/workbench.py')
+SPEC = importlib.util.spec_from_file_location('edit_workbench', Path(__file__).resolve().parents[1] / 'src/anvil_workbench/workbench.py')
 W = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(W)
 

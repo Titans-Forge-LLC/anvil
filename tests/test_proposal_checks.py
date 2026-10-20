@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-SPEC = importlib.util.spec_from_file_location('proposal_checks', Path(__file__).resolve().parents[1] / 'experiments/proposal_checks.py')
+SPEC = importlib.util.spec_from_file_location('proposal_checks', Path(__file__).resolve().parents[1] / 'src/anvil_workbench/proposal_checks.py')
 C = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(C)
 

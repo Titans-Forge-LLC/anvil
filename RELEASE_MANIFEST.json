@@ -1,5 +1,5 @@
 {
-  "allowlist_sha256": "0bd1839491926b99ea65eee70c38e1b77061e90eafc27731671bb95192afb7c9",
+  "allowlist_sha256": "1a20e8cc1659e7c31aa6cd2ee7aecb252eb81e81901a2d8d66f463ad722da15b",
   "canonical_name": "Adaptive Neural Vector Instruction Language",
   "checks": [
     {
@@ -44,7 +44,7 @@
     },
     {
       "path": ".github/workflows/conformance.yml",
-      "sha256": "cad26cc110b73abe46a1f5afb6a15ff5b54ad206dd6179c24eabde1d640cc594"
+      "sha256": "dcd44ab37aac180633026f7d474a8f9ecc6b97f613a32166508c00c0c3a77538"
     },
     {
       "path": ".gitignore",
@@ -56,7 +56,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "3b9f90699eb12d2a40dc0ed0f09b6ce67f437ba4afe4d94c59af51d0930218f4"
+      "sha256": "ddcc62f168beeec2cfa24da1c8e927cf5ad98d8312e9bd848b7be57a9c90c409"
     },
     {
       "path": "CITATION.cff",
@@ -100,11 +100,11 @@
     },
     {
       "path": "PUBLIC_RELEASE_FILE_ALLOWLIST_V0_1.json",
-      "sha256": "0bd1839491926b99ea65eee70c38e1b77061e90eafc27731671bb95192afb7c9"
+      "sha256": "1a20e8cc1659e7c31aa6cd2ee7aecb252eb81e81901a2d8d66f463ad722da15b"
     },
     {
       "path": "README.md",
-      "sha256": "ea3cbf2e3244f927841f61fb3510ac6413792f10f4ce2a41f5fa4b00ba28b71e"
+      "sha256": "c81b6cbc03e4c61e97bd54dece9cfc52dc61ac2d17e7dd3e324c70f6d99d0201"
     },
     {
       "path": "RELEASE_EVIDENCE_PACKET.md",
@@ -164,19 +164,19 @@
     },
     {
       "path": "experiments/START_HERE.md",
-      "sha256": "0def39d122ee6f9be97df4c8e3bba9672279a571c7eaf4f500ec90d12f2d3384"
+      "sha256": "907328e29bcc72fbf458e4b0fdd9c831d84cb7b33f7160e7f831ba9e924f28c8"
     },
     {
       "path": "experiments/WORKBENCH.md",
-      "sha256": "a0337162feb43fd2eabb818d29f2629e9b014845365a76e7f47b9f3a28689fe8"
+      "sha256": "dfc671495bbb5df37ad8968626e0ce7fe5da6133abcbeb699ff11af875c531d4"
     },
     {
       "path": "experiments/compare_edit_proposals.py",
-      "sha256": "d8bee11e7b3904dfd9895a759dec0732de05aa1537f072a53b6feb8ed1d28120"
+      "sha256": "c28e28af4f64e370c4fb2741ac2b32d921d55efd3d15dbea4dbcc624afb982d7"
     },
     {
       "path": "experiments/compare_source_drafts.py",
-      "sha256": "d7622fb333961f29a8d97cd33d698b76907c92471cb5f48f9e84d6a1793434e5"
+      "sha256": "d1229b0ec6749185537d06abce46d05885cdd9d4947b18f13c0caedd19271e28"
     },
     {
       "path": "experiments/edit_span_screen.json",
@@ -184,7 +184,7 @@
     },
     {
       "path": "experiments/proposal_checks.py",
-      "sha256": "9eb6b9b7c39ef74863ca879313aa769a28eb35ff70d699701e83d432ee7d5264"
+      "sha256": "16ba25b1debf8a8f46e522ea46543b056381d501b63367e1f119f072ba53749f"
     },
     {
       "path": "experiments/reasoning-signature/README.md",
@@ -208,7 +208,7 @@
     },
     {
       "path": "experiments/workbench.py",
-      "sha256": "4f6c97f70305c50dca7382bd43e97b74de27660d6a2b1784e88b486dea178ad1"
+      "sha256": "7a1bd37ad9b6013c819369d6c1171620888da62c9537b34e79b7d3c86da64d0e"
     },
     {
       "path": "licenses/MIT.txt",
@@ -216,7 +216,7 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "9efa896ab6da1e2b711e3ad084b7043fa6e0c174ba005cc1076b6f47b7849604"
+      "sha256": "bab093039ca60650d524f56fae3bea6a63bb80b2917ec39432685d0d1c1df520"
     },
     {
       "path": "scripts/create_test_receipt.py",
@@ -237,6 +237,10 @@
     {
       "path": "scripts/run_reasoning_signature_ollama.py",
       "sha256": "8c37ab95199ebadb915e0df2100622ce81a1976a99ce95db56344fd2d179e4d2"
+    },
+    {
+      "path": "scripts/verify_installed_workbench.py",
+      "sha256": "afb60e11863e697e2f635b05178d84d92eefe82a6704abed2bb61fdc109a866a"
     },
     {
       "path": "scripts/verify_release.py",
@@ -299,6 +303,22 @@
       "sha256": "2968fd04ba67c6eef33995e2d0d9f6ef278b51c97ba54cfa29024a79d4b363d9"
     },
     {
+      "path": "src/anvil_workbench/__init__.py",
+      "sha256": "f4e8e7a83f54f3cb5eec028bd09237f655331bf4d3606be6cd807bdb007ff057"
+    },
+    {
+      "path": "src/anvil_workbench/__main__.py",
+      "sha256": "cb1d3c9fdf636e63b29c1ca772916aa9e60775a7140acf017e5a69efc583de59"
+    },
+    {
+      "path": "src/anvil_workbench/proposal_checks.py",
+      "sha256": "9eb6b9b7c39ef74863ca879313aa769a28eb35ff70d699701e83d432ee7d5264"
+    },
+    {
+      "path": "src/anvil_workbench/workbench.py",
+      "sha256": "d61267f7056ea73fb31db6694e586ea95c04cc93370c5fb9ddc74a4af5189075"
+    },
+    {
       "path": "tests/test_atomic_output.py",
       "sha256": "80317ecc17fd13c58e47fc8466c1af33a197d140a060651a477332633f6a2ec9"
     },
@@ -312,19 +332,19 @@
     },
     {
       "path": "tests/test_edit_proposals.py",
-      "sha256": "d0d339d240dbc9f7a63852047f8c76ca62b7607edbd04778d7c7fcf0ce7cb631"
+      "sha256": "59ad448e859133f28b8043186cd24b08dda4a889baec3419304a423d44556d3a"
     },
     {
       "path": "tests/test_http_reuse.py",
-      "sha256": "51bfce7e33b7141e60caad184dba711b03fe3ecb515d96ab499bf38c27984829"
+      "sha256": "b94aa3e61807a1ef9e6ab5840a2b349c4230380b64eecad7667236ed777cd653"
     },
     {
       "path": "tests/test_job_capsule.py",
-      "sha256": "087016ef0142de73fc796efecd37373e2b5aa8b4511a5536486d4345a430c990"
+      "sha256": "29dfc4fabe19c77d025921b18e53f97d964852959bcbbf92c19b15526d6c0f0e"
     },
     {
       "path": "tests/test_job_resolution.py",
-      "sha256": "2e4b4d393c63ce2a2a186cd0a719923e78bed3512ea37de46e306edb5ce2ed12"
+      "sha256": "64554803cff6bc004ee5492ad768d137adcb896b7b74f6f5d4a6829a20ae8eb8"
     },
     {
       "path": "tests/test_legacy_migration.mjs",
@@ -332,7 +352,7 @@
     },
     {
       "path": "tests/test_proposal_checks.py",
-      "sha256": "9f5e0c3d97b005eb61dc6ff86e5e8f7545291e40332b0f3c667812ab40a083f7"
+      "sha256": "7d660840e3bb7e7130f9c44d85587b8db5cf5d90ffbd1a0e12db58fd6adb909b"
     },
     {
       "path": "tests/test_reasoning_signature.py",
@@ -348,7 +368,7 @@
     },
     {
       "path": "tests/test_splash_adapter.py",
-      "sha256": "d42361906c1bac9f79721f6060e01f105376a794eafc6ea70671ba79629f6f2f"
+      "sha256": "44f79f701d1b615a58eac23d05ad379380a511221db9a82b12fca19e99464005"
     },
     {
       "path": "tests/test_test_receipt.py",
@@ -356,7 +376,7 @@
     },
     {
       "path": "tests/test_workbench.py",
-      "sha256": "447c9aad87ee832594d6ca53818a3a2982aed906595cf19c299e1f7c2b811bee"
+      "sha256": "3eba2f861bd1e498af92aa81e039214e6e54ca2628e30e92cda307e793c06d21"
     }
   ],
   "profile": "AVP1/governed-mission-v1",

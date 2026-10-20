@@ -20,6 +20,7 @@ Issues = "https://github.com/Titans-Forge-LLC/anvil/issues"
 [project.scripts]
 anvil = "anvil_alpha.cli:main"
 anvil-alpha = "anvil_alpha.cli:main"
+anvil-workbench = "anvil_workbench.workbench:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

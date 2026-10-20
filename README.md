@@ -9,6 +9,26 @@ Status: `LIMITED PUBLIC BETA`
 **[Start with one small edit](experiments/START_HERE.md)**, or read the
 [workbench reference](experiments/WORKBENCH.md).
 
+### Install this development preview
+
+From this checkout, install into a virtual environment outside the repository:
+
+```sh
+python3 -m venv ../anvil-env
+../anvil-env/bin/python -m pip install .
+../anvil-env/bin/anvil-workbench --help
+```
+
+On Windows, use `py -3 -m venv ..\anvil-env`, then
+`..\anvil-env\Scripts\python -m pip install .` and
+`..\anvil-env\Scripts\anvil-workbench --help`.
+
+Run `anvil-workbench` from that environment against your own project. The equivalent
+module command is `python -m anvil_workbench`. Installation includes the workbench
+and optional check-runner code, but does not install MLX, a model, or a server.
+The original `anvil` and `anvil-alpha` codec commands are unchanged. Installing a
+development checkout is not a new tagged release or a PyPI publication.
+
 - Use an existing local Splash or TensorFold server, or the in-process MLX backend.
 - Opt in to bounded, in-process exact HTTP response replay for repeated drafts.
   It avoids another identical request, not fresh sampling or fresh review.
@@ -158,13 +178,11 @@ records, or patent-filing documents.
 
 ## Package boundary
 
-This beta candidate contains only:
-
-- the AVP1 reference codec and CLI;
-- a synthetic governed-mission example;
-- exactness and wrong-context tests;
-- an offline interactive demonstration;
-- release-verification and documentation files.
+The installed Python wheel contains the AVP1 codec and CLI, the proposal-only
+workbench and its opt-in check runner, and package metadata. The checkout also
+includes public examples, tests, recorded development screens, documentation,
+release-verification tools and an offline browser demonstration. Those extra
+checkout materials are not installed as runtime packages.
 
 It contains no private Forge directives, workflow database, retired shadow,
 patent filing documents, optimized private codec, hosted service, or live

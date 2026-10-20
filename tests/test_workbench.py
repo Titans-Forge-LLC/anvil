@@ -10,7 +10,7 @@ import tempfile
 import unittest
 
 SPEC = importlib.util.spec_from_file_location(
-    'workbench', Path(__file__).resolve().parents[1] / 'experiments/workbench.py')
+    'workbench', Path(__file__).resolve().parents[1] / 'src/anvil_workbench/workbench.py')
 W = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(W)
 
@@ -54,6 +54,18 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_checkout_launcher_preserves_help_and_offline_startup(self):
+        launcher = Path(__file__).resolve().parents[1] / 'experiments/workbench.py'
+        with tempfile.TemporaryDirectory() as directory:
+            help_result = subprocess.run([W.sys.executable, str(launcher), '--help'],
+                cwd=directory, text=True, capture_output=True, timeout=15)
+            self.assertEqual(help_result.returncode, 0, help_result.stderr)
+            self.assertIn('--backend', help_result.stdout)
+            offline = subprocess.run([W.sys.executable, str(launcher), '--backend', 'offline'],
+                cwd=directory, input='', text=True, capture_output=True, timeout=15)
+            self.assertEqual(offline.returncode, 0, offline.stderr)
+            self.assertEqual(json.loads(offline.stdout)['backend'], 'offline')
+
     def checkpoint_fixture(self, root):
         class Complete:
             def complete(self, *args, **kwargs):

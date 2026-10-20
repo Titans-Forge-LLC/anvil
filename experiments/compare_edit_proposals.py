@@ -89,7 +89,7 @@ def main():
     print(json.dumps({'summary': dict(rows=rows,
         campaign_seconds=time.perf_counter() - started, startup_included=False,
         runner_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-        workbench_sha256=hashlib.sha256((ROOT / 'experiments/workbench.py').read_bytes()).hexdigest(),
+        workbench_sha256=hashlib.sha256((ROOT / 'src/anvil_workbench/workbench.py').read_bytes()).hexdigest(),
         scope='three known public tasks, reversed order, one shared warm server; not independent tasks or a job benchmark',
         code_applied=False, code_executed=False)}), flush=True)
 

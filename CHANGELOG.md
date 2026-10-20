@@ -1,5 +1,11 @@
 # Changelog
 
+- Development preview: install the existing workbench as `anvil-workbench` or
+  `python -m anvil_workbench`, without model dependencies. Keep checkout launchers
+  and existing codec commands. Add a clean-environment, outside-checkout wheel
+  test for offline restore/export and stale-source refusal. Runtime and authority
+  behavior are unchanged; this is packaging, not a measured agent speedup.
+
 - Workbench: optional model-assisted changed-function reconciliation from private
   base/current/retained text, bound to explicit current intent and inspected source.
   One completion invocation, unresolved exit, no automatic retries, tests or

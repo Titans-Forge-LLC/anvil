@@ -17,6 +17,21 @@ or telemetry is started. Treat output as untrusted code requiring review.
 
 ## Run
 
+### Installed command
+
+Install this development checkout with `python -m pip install .` inside a virtual
+environment. It provides `anvil-workbench` and `python -m anvil_workbench` without
+installing a model, server, or MLX. The examples using
+`python experiments/workbench.py` remain valid from a checkout; replace that
+prefix with `anvil-workbench` when using the installed command. Relative project,
+checkpoint, plan and export paths refer to your working directory, not the
+installed package. See [the installation steps](START_HERE.md).
+
+The canonical implementation lives in `src/anvil_workbench/`; the older
+`experiments/` entry points are compatibility launchers. The wheel contains no
+experiment results, private checkpoints, models or test fixtures. The optional
+runner still requires macOS sandbox-exec and fails closed elsewhere.
+
 ### Run declared checks and correct once (macOS)
 
 The optional runner closes the proposal/check/correction loop without modifying
