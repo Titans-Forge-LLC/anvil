@@ -1,5 +1,11 @@
 # Changelog
 
+- Workbench: port the pending interactive-recovery fix into the installable
+  runtime. Oversized input is drained and the same question is asked again,
+  preserving a recovered draft and pending patch-export action. Add regression
+  coverage at file, action and destination prompts; no automatic application,
+  execution or new model request is introduced.
+
 - Test portability: inject metadata faults at the public `Path.lstat` boundary,
   read Unicode fixtures explicitly as UTF-8, and preserve dependency bytes when
   constructing changed-function fixtures on Windows. Keep the full Python/OS

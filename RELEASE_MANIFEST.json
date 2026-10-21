@@ -56,7 +56,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "a805378836a9b52a87fe42f0a9509e671e3cd86c08df3cdc66dc7f0a577adef4"
+      "sha256": "374d9f38eff10b8b9876adc9aa56b07ef15409581e4ac2118f0a2edd86bb2b08"
     },
     {
       "path": "CITATION.cff",
@@ -148,7 +148,7 @@
     },
     {
       "path": "experiments/FRESH_MAINTENANCE.md",
-      "sha256": "1631b0cfd2560fa745a562a6ec31e452533028400ea901380e821372183003de"
+      "sha256": "fa68bbbb102613adf8f5208f42d3e35f4c71f234d224140cea99842cf4b8bc10"
     },
     {
       "path": "experiments/REPAIR_LOOP_SCREEN.md",
@@ -240,7 +240,7 @@
     },
     {
       "path": "scripts/verify_installed_workbench.py",
-      "sha256": "afb60e11863e697e2f635b05178d84d92eefe82a6704abed2bb61fdc109a866a"
+      "sha256": "2f59d3ab743d15c6991099d8f2127c182f72d7832b30d436ac7ef0b1e820bf0d"
     },
     {
       "path": "scripts/verify_release.py",
@@ -316,7 +316,7 @@
     },
     {
       "path": "src/anvil_workbench/workbench.py",
-      "sha256": "d61267f7056ea73fb31db6694e586ea95c04cc93370c5fb9ddc74a4af5189075"
+      "sha256": "f62563f54e6599248f05ca686283a315b14b505e67e8fb01e49eea56ce73f704"
     },
     {
       "path": "tests/test_atomic_output.py",
@@ -376,7 +376,7 @@
     },
     {
       "path": "tests/test_workbench.py",
-      "sha256": "3eba2f861bd1e498af92aa81e039214e6e54ca2628e30e92cda307e793c06d21"
+      "sha256": "822037cac594661e00975b53f18f7db9e11524abc6dd0d2c7a841afdf136b918"
     }
   ],
   "profile": "AVP1/governed-mission-v1",

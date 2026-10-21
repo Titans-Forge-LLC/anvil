@@ -137,6 +137,25 @@ print(json.dumps({'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest
             raise AssertionError('offline restore did not preserve evidence boundaries')
         if (project / 'resumed.patch').read_bytes() != (project / 'expected.patch').read_bytes():
             raise AssertionError('installed restart changed the patch')
+        checkpoint = project / 'saved.anvil-checkpoint.json'
+        checkpoint_before = checkpoint.read_bytes()
+        oversized = 'x' * 20000 + '\n'
+        for name in ('file', 'action', 'destination'):
+            destination = 'interactive-' + name + '.patch'
+            load = ':load saved.anvil-checkpoint.json\n'
+            answers = {
+                'file': oversized + load + 'e\n' + destination + '\nq\n',
+                'action': load + oversized + 'e\n' + destination + '\nq\n',
+                'destination': load + 'e\n' + oversized + destination + '\nq\n',
+            }[name]
+            transcript = run([str(executable), '--backend', 'offline', '--interactive',
+                              '--project-root', str(project)], project, env, text=answers)
+            if (project / destination).read_bytes() != (project / 'expected.patch').read_bytes():
+                raise AssertionError('installed oversized input lost the pending export')
+            if checkpoint.read_bytes() != checkpoint_before:
+                raise AssertionError('installed recovery modified the checkpoint')
+            if 'Try a shorter answer.' not in transcript or 'x' * 100 in transcript:
+                raise AssertionError('installed recovery failed to reject input safely')
         source = project / 'sample.py'
         if hashlib.sha256(source.read_bytes()).hexdigest() != baseline['source_sha256']:
             raise AssertionError('offline restore/export modified source')
@@ -150,6 +169,7 @@ print(json.dumps({'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest
                       'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
                       'clean_install': True, 'checkout_imports': False,
                       'offline_restore_export': True, 'stale_restore_refused': True,
+                      'oversized_input_recovery_prompts': 3,
                       'restored_approval': False, 'model_requests': 0,
                       'scope': 'fixed-fixture packaging smoke, not useful-job economics'}, indent=2))
 

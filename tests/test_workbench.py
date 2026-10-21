@@ -199,6 +199,29 @@ class WorkbenchTests(unittest.TestCase):
                 if outcome is not None:
                     client.complete.assert_called_once()
 
+    def test_oversized_interactive_input_keeps_recovered_review(self):
+        oversized = 'x' * 20000 + '\n'
+        cases = (
+            ('file', oversized + ':load saved.anvil-checkpoint.json\ne\nretained.patch\nq\n'),
+            ('action', ':load saved.anvil-checkpoint.json\n' + oversized + 'e\nretained.patch\nq\n'),
+            ('destination', ':load saved.anvil-checkpoint.json\ne\n' + oversized + 'retained.patch\nq\n'),
+        )
+        for name, answers in cases:
+            with self.subTest(prompt=name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source, original_session, first, checkpoint = self.checkpoint_fixture(root)
+                original, saved = source.read_bytes(), checkpoint.read_bytes()
+                original_session.export_patch(first['proposal_id'], root, root / 'expected.patch')
+                with patch.object(W.sys, 'stdin', io.StringIO(answers)), \
+                     patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                    W.run_interactive(W.ProposalSession(W.OfflineCompletion()), root)
+                self.assertTrue((root / 'retained.patch').is_file(), output.getvalue())
+                self.assertEqual((root / 'retained.patch').read_bytes(), (root / 'expected.patch').read_bytes())
+                self.assertEqual(source.read_bytes(), original)
+                self.assertEqual(checkpoint.read_bytes(), saved)
+                self.assertIn('interactive answer exceeds 16 KiB', output.getvalue())
+                self.assertNotIn('x' * 100, output.getvalue())
+
     def test_retained_review_still_refuses_export_after_source_change(self):
         from unittest.mock import Mock
         with tempfile.TemporaryDirectory() as directory:
