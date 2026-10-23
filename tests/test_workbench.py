@@ -1177,6 +1177,45 @@ class WorkbenchTests(unittest.TestCase):
 
 
 class InputRecoveryTests(unittest.TestCase):
+    def test_utf8_byte_boundary_recovers_at_the_same_instruction_prompt(self):
+        class Complete:
+            def __init__(self):
+                self.instructions = []
+            def complete(self, messages, *args, **kwargs):
+                self.instructions.append(messages[-1]['content'].split('REQUEST:\n', 1)[1])
+                return dict(text='def f():\n    return 2\n', complete=True)
+        class BoundedInput(io.StringIO):
+            def readline(self, size=-1):
+                if not 0 < size <= 16385:
+                    raise AssertionError('interactive reads must remain bounded')
+                return super().readline(size)
+        for character in ('é', '€', '🦉'):
+            for size in (16384, 16385):
+                count, remainder = divmod(size - 1, len(character.encode('utf-8')))
+                value = character * count + 'a' * remainder
+                with self.subTest(character=character, size=size), tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / 'sample.py'
+                    original = b'def f():\n    return 1\n'
+                    path.write_bytes(original)
+                    client = Complete()
+                    replacement = 'Return two.\n' if size > 16384 else ''
+                    answers = 'sample.py\n1\n\n' + value + '\n' + replacement + '\nq\n'
+                    with patch.object(W.sys, 'stdin', BoundedInput(answers)), \
+                         patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                        W.run_interactive(W.ProposalSession(client), directory)
+                    self.assertEqual(client.instructions, ['Return two.' if size > 16384 else value])
+                    self.assertEqual('16 KiB' in output.getvalue(), size > 16384)
+                    self.assertEqual(path.read_bytes(), original)
+
+    def test_multibyte_oversize_at_eof_terminates_without_echoing_input(self):
+        value = '🛠' * 6000
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(W.sys, 'stdin', io.StringIO(value)), \
+                 patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(W.ProposalSession(W.OfflineCompletion()), directory)
+            self.assertEqual(output.getvalue().count('interactive answer exceeds 16 KiB'), 1)
+            self.assertNotIn(value[:100], output.getvalue())
+
     def test_oversize_file_prompt_recovers_without_consuming_next_line(self):
         for oversized in ('x'*16385+'\n', 'x'*16384+'\n'):
             with self.subTest(length=len(oversized)), tempfile.TemporaryDirectory() as directory:

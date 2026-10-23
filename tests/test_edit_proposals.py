@@ -1,6 +1,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 
@@ -22,6 +23,19 @@ class Completion:
 
 
 class EditTests(unittest.TestCase):
+    def test_deep_json_is_a_normal_refusal_without_changing_recursion_limit(self):
+        limit = sys.getrecursionlimit()
+        depth = limit * 2 + 50
+        nested = '[' * depth + '0' + ']' * depth
+        self.assertLess(len(nested.encode('utf-8')), 32768)
+        for text, multiple in ((nested, False), ('{"old":' + nested + ',"new":"x"}', False),
+                               ('{"edits":' + nested + '}', True)):
+            with self.subTest(multiple=multiple), self.assertRaises(ValueError) as caught:
+                W.reconstruct_edit('abc', text, multiple=multiple)
+            self.assertNotIsInstance(caught.exception, RecursionError)
+            self.assertIn('nesting', str(caught.exception))
+        self.assertEqual(sys.getrecursionlimit(), limit)
+
     def test_atomic_edits_use_original_snapshot_independent_of_order(self):
         edits = [{'old': 'abc', 'new': 'XYZ'}, {'old': 'XYZ', 'new': 'abc'}]
         for order in (edits, edits[::-1]):

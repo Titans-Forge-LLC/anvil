@@ -316,7 +316,7 @@
     },
     {
       "path": "src/anvil_workbench/workbench.py",
-      "sha256": "f62563f54e6599248f05ca686283a315b14b505e67e8fb01e49eea56ce73f704"
+      "sha256": "f64d67727a158ab8a9bd8aa3aa72d6ff5ad5234587bebd7c933eacbf7fc4fa20"
     },
     {
       "path": "tests/test_atomic_output.py",
@@ -332,7 +332,7 @@
     },
     {
       "path": "tests/test_edit_proposals.py",
-      "sha256": "59ad448e859133f28b8043186cd24b08dda4a889baec3419304a423d44556d3a"
+      "sha256": "22280d591b7adba0ab46b82fc71fd9959f0fac2b7756984829603cd076371ba1"
     },
     {
       "path": "tests/test_http_reuse.py",
@@ -376,7 +376,7 @@
     },
     {
       "path": "tests/test_workbench.py",
-      "sha256": "822037cac594661e00975b53f18f7db9e11524abc6dd0d2c7a841afdf136b918"
+      "sha256": "a7ddf2dc78fd1377da062e53fa1e67d82b3723fef3b26dc1fac5b96d3162c2d7"
     }
   ],
   "profile": "AVP1/governed-mission-v1",

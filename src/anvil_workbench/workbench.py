@@ -515,7 +515,10 @@ def reconstruct_edit(selected, text, *, multiple=False):
                 raise ValueError('duplicate edit key')
             result[key] = value
         return result
-    edit = json.loads(text, object_pairs_hook=unique_keys)
+    try:
+        edit = json.loads(text, object_pairs_hook=unique_keys)
+    except RecursionError:
+        raise ValueError('edit envelope nesting exceeds limit') from None
     if multiple:
         if not isinstance(edit, dict) or set(edit) != {'edits'}:
             raise ValueError('multi-edit envelope must contain exactly edits')
@@ -1753,7 +1756,7 @@ def run_interactive(session, project_root, max_tokens=1024):
         while True:
             print(label, end='', flush=True)
             answer = sys.stdin.readline(16385)
-            if len(answer) > 16384:
+            if len(answer.encode('utf-8')) > 16384:
                 while answer and not answer.endswith('\n'):
                     answer = sys.stdin.readline(16385)
                 print('ValueError: interactive answer exceeds 16 KiB. Try a shorter answer.')
