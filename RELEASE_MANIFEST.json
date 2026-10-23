@@ -332,7 +332,7 @@
     },
     {
       "path": "tests/test_edit_proposals.py",
-      "sha256": "22280d591b7adba0ab46b82fc71fd9959f0fac2b7756984829603cd076371ba1"
+      "sha256": "bb0cc9fa7ab6cc444d9aeaa5fe5976c0289f25b1bea9c437e6b9338a524ce4bb"
     },
     {
       "path": "tests/test_http_reuse.py",

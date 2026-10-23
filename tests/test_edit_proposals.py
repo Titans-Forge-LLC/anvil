@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SPEC = importlib.util.spec_from_file_location('edit_workbench', Path(__file__).resolve().parents[1] / 'src/anvil_workbench/workbench.py')
 W = importlib.util.module_from_spec(SPEC)
@@ -33,7 +34,11 @@ class EditTests(unittest.TestCase):
             with self.subTest(multiple=multiple), self.assertRaises(ValueError) as caught:
                 W.reconstruct_edit('abc', text, multiple=multiple)
             self.assertNotIsInstance(caught.exception, RecursionError)
-            self.assertIn('nesting', str(caught.exception))
+        # Decoder depth limits differ across Python versions. Parsing successfully
+        # and then rejecting the envelope is also a correct ordinary refusal.
+        with patch.object(W.json, 'loads', side_effect=RecursionError('decoder depth')):
+            with self.assertRaisesRegex(ValueError, 'nesting'):
+                W.reconstruct_edit('abc', '{"old":"a","new":"b"}')
         self.assertEqual(sys.getrecursionlimit(), limit)
 
     def test_atomic_edits_use_original_snapshot_independent_of_order(self):
