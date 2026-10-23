@@ -12,8 +12,22 @@ from .codec import AVP1Codec, canonical_json, semantic_sha256
 
 def _load_json(path: Path):
     if path == Path("-"):
-        return json.loads(sys.stdin.read())
-    return json.loads(path.read_text(encoding="utf-8"))
+        raw = sys.stdin.read()
+    else:
+        raw = path.read_text(encoding="utf-8")
+
+    if raw.startswith("\ufeff"):
+        raw = raw[1:]
+
+    def pairs_hook(pairs):
+        seen = set()
+        for key, _ in pairs:
+            if key in seen:
+                raise ValueError("Duplicate JSON object member names are not allowed")
+            seen.add(key)
+        return dict(pairs)
+
+    return json.loads(raw, object_pairs_hook=pairs_hook)
 
 
 def _write(path: Path | None, text: str) -> None:
@@ -21,11 +35,43 @@ def _write(path: Path | None, text: str) -> None:
         text += '\n'
     if path is None or path == Path("-"):
         sys.stdout.write(text)
+        return
+
+    import os
+    import stat
+    import tempfile
+
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        mode = None
     else:
-        path.write_text(text, encoding="utf-8")
+        if not stat.S_ISREG(metadata.st_mode):
+            raise ValueError("Output destination must be a regular file, not a symlink or other file type")
+        mode = stat.S_IMODE(metadata.st_mode)
+
+    fd, temporary = tempfile.mkstemp(dir=path.parent, prefix=".anvil-output-")
+    try:
+        stream = os.fdopen(fd, "w", encoding="utf-8")
+        fd = None  # The stream owns the descriptor after fdopen succeeds.
+        with stream:
+            stream.write(text)
+        if mode is not None:
+            os.chmod(temporary, mode)
+        os.replace(temporary, path)
+    finally:
+        try:
+            if fd is not None:
+                os.close(fd)
+        finally:
+            try:
+                os.unlink(temporary)
+            except FileNotFoundError:
+                pass
 
 
 def _read_text(path: Path) -> str:
+    """Read transport text literally; JSON-source BOM handling is separate."""
     if path == Path("-"):
         return sys.stdin.read()
     return path.read_text(encoding="utf-8")
@@ -70,14 +116,14 @@ def main(argv: list[str] | None = None) -> int:
         wire = _read_text(args.wire).strip()
         decoded = codec.decode(wire)
         exact = canonical_json(source) == canonical_json(decoded)
-        authority_exact = semantic_sha256(source.get("authority")) == semantic_sha256(
-            decoded.get("authority")
-        )
+        src_auth = source.get("authority") if isinstance(source, dict) else None
+        dec_auth = decoded.get("authority") if isinstance(decoded, dict) else None
+        authority_exact = semantic_sha256(src_auth) == semantic_sha256(dec_auth)
         print(json.dumps({
             "semantic_exact": exact,
             "authority_exact": authority_exact,
             "semantic_sha256": semantic_sha256(decoded),
-            "authority_sha256": semantic_sha256(decoded.get("authority")),
+            "authority_sha256": semantic_sha256(dec_auth),
         }, indent=2, sort_keys=True))
         return 0 if exact and authority_exact else 1
     if args.command == "benchmark":

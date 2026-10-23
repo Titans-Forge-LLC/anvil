@@ -1,5 +1,56 @@
 # Changelog
 
+- Workbench: port the pending interactive-recovery fix into the installable
+  runtime. Oversized input is drained and the same question is asked again,
+  preserving a recovered draft and pending patch-export action. Add regression
+  coverage at file, action and destination prompts; no automatic application,
+  execution or new model request is introduced.
+
+- Test portability: inject metadata faults at the public `Path.lstat` boundary,
+  read Unicode fixtures explicitly as UTF-8, and preserve dependency bytes when
+  constructing changed-function fixtures on Windows. Keep the full Python/OS
+  matrix and fail-closed assertions; runtime and wire behavior are unchanged.
+
+- Development preview: install the existing workbench as `anvil-workbench` or
+  `python -m anvil_workbench`, without model dependencies. Keep checkout launchers
+  and existing codec commands. Add a clean-environment, outside-checkout wheel
+  test for offline restore/export and stale-source refusal. Runtime and authority
+  behavior are unchanged; this is packaging, not a measured agent speedup.
+
+- Workbench: optional model-assisted changed-function reconciliation from private
+  base/current/retained text, bound to explicit current intent and inspected source.
+  One completion invocation, unresolved exit, no automatic retries, tests or
+  application. Fresh evidence/review remain required; offline inspect/resolve
+  and model-free resume are unchanged. No semantic or speedup claim.
+
+- Workbench: reuse the initial in-session request for one checked correction
+  instead of requiring re-entry. Interactive Enter and omitted JSON `instruction`
+  opt into this default; explicit intent still works. Manual revisions, restored
+  checkpoints and overlong requests require explicit current intent. No change
+  to execution opt-in, evidence freshness, correction budget or checkpoint format.
+
+- CLI: verify arrays and scalar JSON roots without crashing. Treat top-level
+  authority as absent for non-object roots independently on each side; preserve
+  semantic mismatch failures, object authority checks, and file/stdin support.
+
+- Workbench: opt-in macOS sandboxed Python checks on a disposable snapshot of
+  declared inputs, with candidate/test/plan binding, bounded output and timeout,
+  and no network or live-source writes. One explicit correction can consume the
+  local failure and recheck; no automatic retries or patch application. Offline
+  checkpoints can be checked without inference. Unsupported hosts fail closed.
+
+- Workbench: attach a bounded external test report to exact original-source and
+  candidate hashes. Display reported pass/fail separately from reviewability;
+  changed source makes evidence stale and revisions start without a report.
+  Reports are unauthenticated claims, not test execution or approval.
+
+- Workbench: local `:help` at the file prompt explains scope selection, saved
+  checkpoints, offline review and explicit export without invoking a model.
+
+- Workbench: recover from oversized input at the file and review-action prompts
+  without exiting or losing the current proposal. Keep the 16 KiB input limit,
+  line draining, source checks, and explicit export requirement unchanged.
+
 - Workbench: explicit source-bound proposal checkpoints, restart-safe review and
   patch export, and a no-model offline backend. Revalidate source and named-function
   scope on restore; preserve raw review boundaries. Checkpoints contain private

@@ -42,6 +42,23 @@ cd anvil
 python3 experiments/workbench.py --help
 ```
 
+You can keep using these checkout commands, or install this development preview
+once and use `anvil-workbench` from any project folder. On macOS/Linux:
+
+```sh
+python3 -m venv ../anvil-env
+../anvil-env/bin/python -m pip install .
+../anvil-env/bin/anvil-workbench --help
+```
+
+Windows: `py -3 -m venv ..\anvil-env`, then
+`..\anvil-env\Scripts\python -m pip install .` and
+`..\anvil-env\Scripts\anvil-workbench --help`. Use that environment's executable
+in place of `python3 experiments/workbench.py` below. This installs no model or
+server, and does not add the optional MLX dependencies. For network-free builds,
+the build environment must already contain `setuptools>=68` and `wheel`; use
+`pip install --no-index --no-deps --no-build-isolation .`.
+
 These commands use the current `main` branch in a fresh clone. The workbench is
 still an experimental preview, not a newly tagged release. The older demo ZIP
 does not include multi-function transactions or saved checkpoints. Preserve any
@@ -76,6 +93,18 @@ catalog does not prove model loading or generation will succeed. At the prompts:
 A successful proposal displays `Reviewable: True` and a diff. Look for an empty
 input check and preserved averaging behavior. Reviewable means you can inspect
 it; it does not mean the answer is correct. The source file should remain unchanged.
+
+At the `File:` prompt, enter `:help` for a reminder of selection, checkpoint and
+review commands. Help is local and does not inspect source or ask the model.
+
+On macOS, you can also start with `--test-root . --test-plan examples/workbench_checks.json`
+to enable the exercise's three behavior checks. At review, `v` tests a disposable
+copy; `c` requests one correction after a locally observed failure and rechecks.
+For a new, unrevised proposal, press Enter at the correction-intent prompt to
+reuse your original request. After manual revision or checkpoint restore, enter
+the full current intent; ANVIL will not guess whether the old requirements apply.
+These actions never apply a patch. Without those startup flags, execution stays
+disabled. See [the runner's bounds and evidence meanings](WORKBENCH.md#run-declared-checks-and-correct-once-macos).
 
 Choose `e` only after inspecting the proposal, then enter `first-edit.patch`.
 Success reports `Exported` and `Nothing was applied or executed`. From a separate

@@ -9,13 +9,44 @@ Status: `LIMITED PUBLIC BETA`
 **[Start with one small edit](experiments/START_HERE.md)**, or read the
 [workbench reference](experiments/WORKBENCH.md).
 
+### Install this development preview
+
+From this checkout, install into a virtual environment outside the repository:
+
+```sh
+python3 -m venv ../anvil-env
+../anvil-env/bin/python -m pip install .
+../anvil-env/bin/anvil-workbench --help
+```
+
+On Windows, use `py -3 -m venv ..\anvil-env`, then
+`..\anvil-env\Scripts\python -m pip install .` and
+`..\anvil-env\Scripts\anvil-workbench --help`.
+
+Run `anvil-workbench` from that environment against your own project. The equivalent
+module command is `python -m anvil_workbench`. Installation includes the workbench
+and optional check-runner code, but does not install MLX, a model, or a server.
+The original `anvil` and `anvil-alpha` codec commands are unchanged. Installing a
+development checkout is not a new tagged release or a PyPI publication.
+
 - Use an existing local Splash or TensorFold server, or the in-process MLX backend.
+- Opt in to bounded, in-process exact HTTP response replay for repeated drafts.
+  It avoids another identical request, not fresh sampling or fresh review.
+  [HTTP response reuse](experiments/WORKBENCH.md#replay-an-identical-http-response-without-another-request).
 - Select one function or 2–4 related functions in the same file. A multi-function
   proposal is retained as a unit; invalid members reject the whole transaction.
 - Save a source-bound checkpoint, close the session, and resume review offline.
   Changed source blocks reuse. Checkpoints contain code; keep them private.
+- Development preview: save a single-function **job capsule** with its intent
+  and resume an untrusted draft after unrelated edits. No approval or test
+  result is restored; fresh checks and review are required.
+  [Job continuation](experiments/WORKBENCH.md#resume-a-single-function-job-after-unrelated-edits).
 - Explicitly export a new patch for your normal Git workflow. ANVIL does not
-  apply changes or execute generated code. Reviewable does not mean correct.
+  apply changes. Reviewable does not mean correct.
+- Optionally run declared Python checks against a disposable candidate snapshot
+  on macOS, then request one correction and recheck. Execution is disabled unless
+  started with a test plan; network access and live-source writes are denied.
+  [Run checks and correct once](experiments/WORKBENCH.md#run-declared-checks-and-correct-once-macos).
 
 The TensorFold, multi-function and checkpoint workflow is available from
 `main`. These features remain an experimental preview, not a new tagged release.
@@ -109,6 +140,13 @@ wire may be `-`, but not both: one stdin stream cannot supply both documents.
 Omitting the output still writes to stdout. To access a file literally named `-`,
 use its absolute path (`./-` is normalized to `-` by the path parser).
 
+Named output files use same-directory temporary writes and atomic replacement:
+encoding/write/promotion failures leave the old output intact. Existing regular
+file permissions are preserved; new files use private temporary-file permissions.
+Symlinks and other nonregular destinations are refused, and missing parent
+directories are not created. Stdout/newline behavior is unchanged. This is not
+a crash-durability or concurrent-filesystem-race guarantee.
+
 A network-free Python installation requires `setuptools>=68` and `wheel` to be
 present in the build environment before running `pip install --no-build-isolation .`.
 Normal connected `pip install .` environments may obtain those declared build
@@ -140,13 +178,11 @@ records, or patent-filing documents.
 
 ## Package boundary
 
-This beta candidate contains only:
-
-- the AVP1 reference codec and CLI;
-- a synthetic governed-mission example;
-- exactness and wrong-context tests;
-- an offline interactive demonstration;
-- release-verification and documentation files.
+The installed Python wheel contains the AVP1 codec and CLI, the proposal-only
+workbench and its opt-in check runner, and package metadata. The checkout also
+includes public examples, tests, recorded development screens, documentation,
+release-verification tools and an offline browser demonstration. Those extra
+checkout materials are not installed as runtime packages.
 
 It contains no private Forge directives, workflow database, retired shadow,
 patent filing documents, optimized private codec, hosted service, or live

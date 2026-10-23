@@ -63,7 +63,7 @@ def main():
         'shared_load_seconds': backend.load_seconds,
         'campaign_seconds': time.perf_counter() - started,
         'runner_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-        'workbench_sha256': hashlib.sha256((ROOT / 'experiments/workbench.py').read_bytes()).hexdigest(),
+        'workbench_sha256': hashlib.sha256((ROOT / 'src/anvil_workbench/workbench.py').read_bytes()).hexdigest(),
         'scope': 'three authored first-edit requests, two reversed-order repetitions; no behavior execution',
     }}), flush=True)
 

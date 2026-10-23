@@ -9,11 +9,109 @@ first mismatch it rolls back rejected KV rows and continues normally.
 
 This is a single-file proposal loop, not an autonomous coding agent.
 It reads only the file you select, returns replacement text and a review diff,
-and never applies changes, executes generated code, or calls tools. Explicit patch
+and never applies changes. By default it does not execute generated code or call tools.
+The optional check runner below executes a candidate only when explicitly requested.
+Explicit patch
 export can create a new file at a destination you choose. No server
 or telemetry is started. Treat output as untrusted code requiring review.
 
 ## Run
+
+### Installed command
+
+Install this development checkout with `python -m pip install .` inside a virtual
+environment. It provides `anvil-workbench` and `python -m anvil_workbench` without
+installing a model, server, or MLX. The examples using
+`python experiments/workbench.py` remain valid from a checkout; replace that
+prefix with `anvil-workbench` when using the installed command. Relative project,
+checkpoint, plan and export paths refer to your working directory, not the
+installed package. See [the installation steps](START_HERE.md).
+
+The canonical implementation lives in `src/anvil_workbench/`; the older
+`experiments/` entry points are compatibility launchers. The wheel contains no
+experiment results, private checkpoints, models or test fixtures. The optional
+runner still requires macOS sandbox-exec and fails closed elsewhere.
+
+### Run declared checks and correct once (macOS)
+
+The optional runner closes the proposal/check/correction loop without modifying
+the live project. It needs macOS with `/usr/bin/sandbox-exec`; other platforms
+retain the existing workbench and external-report workflow. There is no
+unrestricted execution fallback, model installation, or background service.
+
+From the repository root, enable the small public exercise's existing checks:
+
+```sh
+python experiments/workbench.py --backend offline --interactive --project-root . \
+  --test-root . --test-plan examples/workbench_checks.json
+```
+
+Load a saved checkpoint, then select `v`. With a model backend, propose the
+sample edit first (return zero for empty input, preserve other cases), then `v`.
+If checks fail, `c` asks for the current intent and must-preserve behavior. For
+an unrevised proposal created in this session, press Enter to reuse its exact
+initial request, or type the full current requirements to override it. It makes
+one corrective model request and runs the same frozen checks on the new
+candidate. A second correction on that in-memory lineage is refused. Failure
+retains reviewable work for handoff; nothing is applied. Manual `r` revisions
+remain available. Restarting restores code, not the correction counter or evidence.
+Manual revisions and imported checkpoints have no automatic intent default:
+supply the full current requirements rather than silently reusing an older task.
+The 4,000-character correction-intent limit remains; longer initial requests need
+an explicit concise version and are never truncated. Intent is held in the
+bounded in-memory proposal session, not saved in v1 checkpoints or test receipts.
+The explicit job-capsule workflow below can save it as private, untrusted data.
+
+JSON-lines clients enable the same flags and explicitly send:
+
+```json
+{"run_checks":"p1"}
+{"repair_once":"p1","max_tokens":1024}
+```
+
+Omitting `instruction` uses the initial request only when available as described
+above. Alternatively supply the complete current intent explicitly:
+
+```json
+{"repair_once":"p1","instruction":"Return zero for empty input; preserve positive and negative averages.","max_tokens":1024}
+```
+
+The correction result reports `instruction_source` as `retained_initial_request`
+or `explicit`. Neither mode bypasses a current failing local check, stale-input
+rejection, the one-correction limit, or the offline-generation prohibition.
+
+The plan has exactly four fields: `schema` (`anvil-python-check-plan-v1`),
+`files` (1..64 project-relative regular files), `test_file` (a declared Python
+entry point), and `timeout_seconds` (1..120). Include the candidate source,
+tests, and their local imports/fixtures. No directory crawling occurs. Inputs
+are limited to 1 MiB each and 8 MiB total; symlinks and path traversal are refused.
+The plan and every input are frozen when the session starts. Changes require
+an explicit restart/reload, not silent acceptance. The model cannot choose the
+plan, environment, test command, or timeout.
+
+Checks run under the current Python interpreter in a separate process with a
+minimal environment. The snapshot is read-only; only temporary scratch is
+writable. Network and subprocess creation are denied. The interpreter runtime,
+system libraries, and parent-directory metadata are readable; this is not a VM
+or protection against interpreter/kernel vulnerabilities. Use reviewed test
+entry points. Scratch has no aggregate storage quota. The runner supports
+in-process Python tests, not arbitrary shell commands or subprocess-based suites.
+`ANVIL_JOB_CANDIDATE` names the substituted snapshot file for test scripts that
+need it. A timeout kills the process group; stdout/stderr have 1 MiB limits each.
+
+Outcomes are `executed_zero_exit`, `executed_nonzero_exit`, `timed_out`,
+`runner_error`, or `stale`. Zero exit is **not** an assertion that all intended
+tests ran, that coverage is adequate, or that the candidate satisfies user intent.
+Candidate code can interfere with in-process tests. No outcome grants approval.
+Evidence records source, candidate, input, plan, interpreter and sandbox-profile
+hashes, exit status, a bounded output tail, and total check elapsed time including
+snapshot construction and validation. It is local evidence, not remote attestation.
+Outputs can contain private data: keep receipts private. Only an explicit `c` /
+`repair_once` sends a bounded failure tail to the configured model.
+
+Saved checkpoints still contain code only. Revisions and restored checkpoints
+do not inherit a locally executed result. External reports remain separately
+labelled, unauthenticated reports and cannot authorize a correction by themselves.
 
 ### Save a transaction and resume without a model
 
@@ -52,6 +150,135 @@ It does not preserve or certify a model's identity, reasoning, test results or
 review approval. No generated code is executed or applied. Checkpoints larger
 than 8 MiB are refused. This is explicit proposal persistence, not automatic
 semantic caching or reuse after dependencies change.
+
+### Resume a single-function job after unrelated edits
+
+Development preview: a job capsule retains the **task and an untrusted draft**,
+not a cached decision or a semantic validity certificate. Use it when one
+top-level Python function still needs the same change after another function
+was edited. Existing v1 checkpoints keep their whole-source equality rule.
+
+At the review prompt choose `j`, confirm the current intent, then choose a new
+private file inside the project, for example `work.anvil-job.json`. Enter reuses
+the initial request only if it is still known in this session. After a revision
+or restore, supply the full current intent explicitly. Close the workbench and
+reopen offline using the command above. At `File:`, enter:
+
+```text
+:resume work.anvil-job.json
+```
+
+The saved intent is displayed as escaped untrusted text. Confirm `y` only if it
+exactly describes your current task. ANVIL checks the stored source/candidate,
+requires the selected function and explicitly named helpers to be unchanged,
+and screens the module's imports, globals, signatures, defaults, decorators and
+classes for AST equality. Changed bodies of other top-level functions and
+comments can pass this screen. ANVIL reconstructs only the selected function
+against the **current** file, preserving every other current byte.
+
+Resume makes no model request, runs no tests, applies nothing and restores no
+approval. Old check output is labelled historical and untrusted. Start/reload
+with a fresh operator-selected test plan to run `v`, then review the current
+diff before exporting. Further source changes make that exported proposal
+stale, just as for a new proposal. Changed intent, helpers or module environment
+requires a fresh assessment; there is no automatic fallback. Changed selected
+code still blocks strict resume, but you can reconcile it explicitly below.
+
+JSON-lines equivalents:
+
+```json
+{"save_job":"p1","project_root":"/path/to/project","output":"/path/to/project/work.anvil-job.json"}
+{"resume_job":"/path/to/project/work.anvil-job.json","project_root":"/path/to/project","instruction":"The exact current task text saved above."}
+```
+
+`save_job` accepts an optional explicit `instruction`. `resume_job` requires it
+and compares it exactly; it never infers intent from a file. Capsules bind one
+named function and at most four explicit same-file helpers. Whole-file and
+multi-function jobs are unsupported. Files are bounded, strictly typed, refuse
+duplicate JSON keys, and request owner-only creation without overwriting.
+
+Keep capsules private: they contain complete source/candidate text, task text
+and possibly check output. Checksums detect corruption, **not authentication**.
+Compatibility does not prove dependency completeness, correct behavior or
+unchanged intent: a changed function can affect the task through an undeclared
+dependency. Fresh checks and review remain necessary. This is explicit draft
+continuation, not certified computation reuse or an autonomous action layer.
+Ordinary saved Git patches can also avoid regeneration; any economic comparison
+must include that baseline and all fresh checks, not assume a model is called
+again after every edit.
+
+### Reconcile a changed selected function without regeneration
+
+Offline development preview: use `:inspect work.anvil-job.json` to see the
+private base, current and retained function, compatibility reasons and current
+source SHA-256. It creates no proposal and runs nothing. Text is untrusted,
+escaped data. Keep this view private, just like the capsule.
+
+If the selected function's body changed, resolve it yourself using an editor
+or ordinary Git three-way tools. Save **only the resolved function** in a
+UTF-8 file inside the project (32 KiB maximum). Then use
+`:resolve work.anvil-job.json`, confirm the unchanged task and select that
+file. The workbench binds the import to the source hash displayed by its
+inspection. A further source edit refuses the import.
+
+JSON-lines equivalents:
+
+```json
+{"inspect_job":"/path/to/project/work.anvil-job.json","project_root":"/path/to/project","instruction":"The exact current task text saved above."}
+{"resolve_job":"/path/to/project/work.anvil-job.json","project_root":"/path/to/project","instruction":"The exact current task text saved above.","replacement":"/path/to/project/resolved.py","current_source_sha256":"COPY_THE_INSPECTION_SOURCE_SHA256_HERE"}
+```
+
+Import preserves all current bytes outside the selected function, validates
+the candidate through normal syntax/scope gates and produces a new unapproved
+draft. Declared helpers and the module-environment screen must still match the
+saved base. No old test result, permission or approval is restored; run fresh
+checks and review the current diff. Invalid/extra scope, no-ops, stale source,
+changed intent and incompatible dependencies are refused. The current capsule
+and source are not modified. No model is called.
+
+This is **operator-authored reconciliation**, not automatic merging, semantic
+equivalence, or certified reuse. A clean merge can silently combine conflicting
+behavior even when its hunks do not overlap. The importer cannot establish that
+you preserved every intended current change. Ordinary Git can also retain and
+resolve work without inference; this feature makes that workflow accessible
+inside ANVIL, not faster than Git or proof of cheaper completed jobs.
+
+### Optional model-assisted reconciliation
+
+Development preview: `:reconcile work.anvil-job.json` first inspects the private
+base/current/retained function, confirms the unchanged current task, then asks
+whether to send these function texts and declared helpers to the configured model
+backend. It requests **one draft**, not an automatic merge or approval.
+
+The JSON-lines equivalent is an explicit generation request:
+
+```json
+{"reconcile_job":"/path/to/project/work.anvil-job.json","project_root":"/path/to/project","instruction":"The exact current task text saved above.","current_source_sha256":"COPY_THE_INSPECTION_SOURCE_SHA256_HERE","max_tokens":1024}
+```
+
+Only a changed selected-function body is supported. Changed helpers, module
+environment, signatures, task text or stale inspected source require a fresh
+assessment. If the selected function is unchanged, use model-free `resume_job`.
+The three functions are capped at 32 KiB each, declared helpers at 8 KiB, and
+combined escaped prompt content at 64 KiB. Backend context limits also apply.
+
+The model can return `ANVIL_UNRESOLVED`. Incomplete, invalid or out-of-scope output
+and source/capsule changes discard the draft; no automatic retry follows. Accepted
+syntax produces only a new unapproved proposal, preserving current bytes outside
+the selected function. No tests run, old evidence is not imported, and no patch is
+applied. Use the ordinary fresh-check and review flow before export.
+
+`completion_invocations` counts calls to the configured completion interface;
+`completion_statistics` retains available backend counters. This does not equate
+one invocation with one engine forward pass or necessarily a new HTTP generation
+(a separately enabled exact-response cache can serve it). No completion is made
+in offline mode. Source/drafts can contain private information; select a backend
+you are permitted to send them to. No task or source changes gain new authority.
+
+This feature reduces manual handoff friction. Deterministic test fixtures do not
+establish model reconciliation quality, human time saved, reusable reasoning or
+an economic advantage over ordinary Git and a competent coding assistant. A valid
+function can still discard intended behavior: **reviewable is not correct**.
 
 ### Coherent changes across several functions
 
@@ -176,6 +403,52 @@ including queueing and transport; model loading and human review are outside it.
 The bounded loopback transport and proposal-only behavior are shared with the
 Splash adapter. TensorFold owns speculation; adding this backend alone does not
 establish an ANVIL speedup or add repository-aware drafting.
+
+### Replay an identical HTTP response without another request
+
+Add `--reuse-http-responses` to either HTTP backend to opt in:
+
+```sh
+python experiments/workbench.py --backend tensorfold --reuse-http-responses --interactive --project-root /path/to/project
+```
+
+This is ordinary exact response caching, **off by default**, not speculative
+decoding or a semantic validity certificate. A retained complete text response
+can satisfy an identical request without contacting the server again. The key
+binds the endpoint, backend type, full transmitted payload (including explicit
+model/sampling options), and a hashed credential namespace. Changed messages,
+budgets or explicit options miss. Validation still precedes lookup; incomplete,
+malformed, refused and tool-call responses are not retained. Current credential
+syntax is checked, but a hit does not authenticate with the server again.
+
+Each client keeps at most 32 responses and 4 MiB of serialized keys and results;
+Python object overhead is additional. Source prompts and generated code are
+private in-process data, not persisted or added to receipts by this option.
+Restarting the client discards the cache. Python callers can also call
+`clear_responses()`. Returned dictionaries are independent copies.
+
+Replay is **not a fresh sample or an attestation of the current server model**.
+A server can change weights, defaults or authorization under the same name;
+this cache cannot detect that on a hit. Opt in only when reusing an old draft
+is acceptable. Clear it or leave reuse disabled when freshness is required.
+No engine installation, server restart or model download is performed.
+
+On a hit, `retained_response_reused` and `exact_hit` are true, `http_requests`,
+`model_calls`, `input_tokens` and `output_tokens` are zero, and
+`delivered_output_tokens` reports the old response's token count if known.
+Current `server_metrics` are null; `retained_response` holds historical counters
+and acquisition timing, not new engine work. Its `completion_seconds` covers
+the original acquisition/validation interval before cache retention. A miss's
+returned `completion_seconds` includes retention bookkeeping; a hit's covers
+lookup and copying. `total_request_seconds` still charges the whole proposal
+workflow. Model loading and human review remain outside these timers.
+
+Cached text is only a draft. Current-source, syntax and scope checks run again,
+and each reviewable proposal gets a fresh ID. No approval or executed test
+evidence is restored. An unchanged function prompt can hit after an unrelated
+module edit, but rebinding it to current source is not proof of unchanged
+behavior. Review remains necessary. This feature makes no advantage claim
+over a competent ordinary exact cache or a general end-to-end speed claim.
 
 ### Use the in-process MLX adapter
 
@@ -491,6 +764,52 @@ The local smoke used MLX 0.31.2, mlx-lm 0.31.3, transformers 5.5.4 and
 tokenizers 0.22.2. Hosted CI checks the model-independent logic, not GPU inference.
 
 ## Evidence and remaining work
+
+### Candidate-specific external test reports
+
+`Reviewable` means the proposal met structural checks, not that its behavior is
+correct. At review, `Tests: not_reported` is the default. After running your own
+tests in an isolated copy, choose `t` to attach a report from inside the project
+root. This action does not execute tests, apply a patch, or send anything to a model.
+JSON-lines clients can send:
+
+```json
+{"test_report":"p1","report_path":"/absolute/path/to/report.json"}
+```
+
+A report is a UTF-8 JSON object with exactly these fields:
+
+- `schema`: `anvil-proposal-test-report-v1`.
+- `source_sha256`: SHA-256 of the unchanged original source file bytes.
+- `candidate_sha256`: SHA-256 of the complete candidate file bytes, not the patch.
+- `test_suite_sha256`: SHA-256 identifying the test artifact used. For multi-file
+  suites, use a manifest covering the suite and dependencies.
+- `returncode`: the integer exit status reported by the external test runner;
+  zero is displayed as `reported_pass`, nonzero as `reported_fail`.
+- `summary`: a single-line description, at most 2,000 characters. Keep it free of
+  private payloads and credentials. It is retained in memory but not printed or
+  automatically sent to the model.
+
+Use the actual test exit status, not the exit status of a later shell command.
+Reports are limited to 16 KiB. Duplicate/extra keys, invalid types and mismatched
+source/candidate hashes are refused. A reported failure does not block patch
+export: exporting remains a review operation, not installation or approval.
+
+**Reports are user-supplied and unauthenticated.** Anyone can manufacture a
+matching report; this feature cannot prove tests ran or were adequate. A matching
+test-suite digest is recorded, not independently checked against current tests,
+dependencies or environment. ANVIL never labels this evidence “approved”.
+
+The latest explicitly attached report is shown. Changed source makes it stale;
+an unreadable source makes it unavailable. Every revision starts without a report.
+Checkpoint v1 deliberately remains unchanged: after restoring one, reattach the
+separate report explicitly. This prevents saved code from silently inheriting a
+test claim. Keep both code checkpoints and reports private unless audited.
+
+This feature records evidence only. When a report fails, inspect the failing test
+and explicitly request a revision or correct the patch yourself. Attaching a
+report never triggers execution; the separately opted-in local runner above
+is required to execute checks or request its bounded correction.
 
 The preceding prototype's four authored requests (three related changes and one
 exact repeat), run twice in reversed mode order on a local 14B model, took

@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 SPEC = importlib.util.spec_from_file_location(
-    'workbench', Path(__file__).resolve().parents[1] / 'experiments/workbench.py')
+    'workbench', Path(__file__).resolve().parents[1] / 'src/anvil_workbench/workbench.py')
 W = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(W)
 

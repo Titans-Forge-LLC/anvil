@@ -10,7 +10,7 @@ import tempfile
 import unittest
 
 SPEC = importlib.util.spec_from_file_location(
-    'workbench', Path(__file__).resolve().parents[1] / 'experiments/workbench.py')
+    'workbench', Path(__file__).resolve().parents[1] / 'src/anvil_workbench/workbench.py')
 W = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(W)
 
@@ -54,6 +54,18 @@ class Backend:
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_checkout_launcher_preserves_help_and_offline_startup(self):
+        launcher = Path(__file__).resolve().parents[1] / 'experiments/workbench.py'
+        with tempfile.TemporaryDirectory() as directory:
+            help_result = subprocess.run([W.sys.executable, str(launcher), '--help'],
+                cwd=directory, text=True, capture_output=True, timeout=15)
+            self.assertEqual(help_result.returncode, 0, help_result.stderr)
+            self.assertIn('--backend', help_result.stdout)
+            offline = subprocess.run([W.sys.executable, str(launcher), '--backend', 'offline'],
+                cwd=directory, input='', text=True, capture_output=True, timeout=15)
+            self.assertEqual(offline.returncode, 0, offline.stderr)
+            self.assertEqual(json.loads(offline.stdout)['backend'], 'offline')
+
     def checkpoint_fixture(self, root):
         class Complete:
             def complete(self, *args, **kwargs):
@@ -186,6 +198,29 @@ class WorkbenchTests(unittest.TestCase):
                 self.assertNotIn('PRIVATE_FAILURE_DETAIL', output.getvalue())
                 if outcome is not None:
                     client.complete.assert_called_once()
+
+    def test_oversized_interactive_input_keeps_recovered_review(self):
+        oversized = 'x' * 20000 + '\n'
+        cases = (
+            ('file', oversized + ':load saved.anvil-checkpoint.json\ne\nretained.patch\nq\n'),
+            ('action', ':load saved.anvil-checkpoint.json\n' + oversized + 'e\nretained.patch\nq\n'),
+            ('destination', ':load saved.anvil-checkpoint.json\ne\n' + oversized + 'retained.patch\nq\n'),
+        )
+        for name, answers in cases:
+            with self.subTest(prompt=name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source, original_session, first, checkpoint = self.checkpoint_fixture(root)
+                original, saved = source.read_bytes(), checkpoint.read_bytes()
+                original_session.export_patch(first['proposal_id'], root, root / 'expected.patch')
+                with patch.object(W.sys, 'stdin', io.StringIO(answers)), \
+                     patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                    W.run_interactive(W.ProposalSession(W.OfflineCompletion()), root)
+                self.assertTrue((root / 'retained.patch').is_file(), output.getvalue())
+                self.assertEqual((root / 'retained.patch').read_bytes(), (root / 'expected.patch').read_bytes())
+                self.assertEqual(source.read_bytes(), original)
+                self.assertEqual(checkpoint.read_bytes(), saved)
+                self.assertIn('interactive answer exceeds 16 KiB', output.getvalue())
+                self.assertNotIn('x' * 100, output.getvalue())
 
     def test_retained_review_still_refuses_export_after_source_change(self):
         from unittest.mock import Mock
@@ -1139,6 +1174,456 @@ class WorkbenchTests(unittest.TestCase):
             self.assertTrue(result['source_changed'])
             self.assertFalse(result['reviewable'])
             self.assertIsNone(result['diff_preview'])
+
+
+class InputRecoveryTests(unittest.TestCase):
+    def test_utf8_byte_boundary_recovers_at_the_same_instruction_prompt(self):
+        class Complete:
+            def __init__(self):
+                self.instructions = []
+            def complete(self, messages, *args, **kwargs):
+                self.instructions.append(messages[-1]['content'].split('REQUEST:\n', 1)[1])
+                return dict(text='def f():\n    return 2\n', complete=True)
+        class BoundedInput(io.StringIO):
+            def readline(self, size=-1):
+                if not 0 < size <= 16385:
+                    raise AssertionError('interactive reads must remain bounded')
+                return super().readline(size)
+        for character in ('é', '€', '🦉'):
+            for size in (16384, 16385):
+                count, remainder = divmod(size - 1, len(character.encode('utf-8')))
+                value = character * count + 'a' * remainder
+                with self.subTest(character=character, size=size), tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / 'sample.py'
+                    original = b'def f():\n    return 1\n'
+                    path.write_bytes(original)
+                    client = Complete()
+                    replacement = 'Return two.\n' if size > 16384 else ''
+                    answers = 'sample.py\n1\n\n' + value + '\n' + replacement + '\nq\n'
+                    with patch.object(W.sys, 'stdin', BoundedInput(answers)), \
+                         patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                        W.run_interactive(W.ProposalSession(client), directory)
+                    self.assertEqual(client.instructions, ['Return two.' if size > 16384 else value])
+                    self.assertEqual('16 KiB' in output.getvalue(), size > 16384)
+                    self.assertEqual(path.read_bytes(), original)
+
+    def test_multibyte_oversize_at_eof_terminates_without_echoing_input(self):
+        value = '🛠' * 6000
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(W.sys, 'stdin', io.StringIO(value)), \
+                 patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(W.ProposalSession(W.OfflineCompletion()), directory)
+            self.assertEqual(output.getvalue().count('interactive answer exceeds 16 KiB'), 1)
+            self.assertNotIn(value[:100], output.getvalue())
+
+    def test_oversize_file_prompt_recovers_without_consuming_next_line(self):
+        for oversized in ('x'*16385+'\n', 'x'*16384+'\n'):
+            with self.subTest(length=len(oversized)), tempfile.TemporaryDirectory() as directory:
+                with patch.object(W.sys, 'stdin', io.StringIO(oversized+'\n')), \
+                     patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                    W.run_interactive(W.ProposalSession(W.OfflineCompletion()), directory)
+                self.assertIn('16 KiB', output.getvalue())
+                self.assertEqual(output.getvalue().count('File: '), 2)
+
+    def test_oversize_review_action_retains_proposal_for_export(self):
+        class Complete:
+            calls = 0
+            def complete(self, *args, **kwargs):
+                self.calls += 1
+                return dict(text='def f():\n    return 2\n', complete=True)
+        for oversized in ('x'*16385+'\n', 'x'*16384+'\n'):
+            with self.subTest(length=len(oversized)), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source = root/'source.py'
+                original = b'def f():\n    return 1\n'
+                source.write_bytes(original)
+                client = Complete()
+                session = W.ProposalSession(client)
+                answers = 'source.py\n1\n\nUse two\n\n'+oversized+'e\nreview.patch\nq\n'
+                with patch.object(W.sys, 'stdin', io.StringIO(answers)), \
+                     patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                    W.run_interactive(session, root)
+                self.assertEqual(client.calls, 1)
+                self.assertEqual(source.read_bytes(), original)
+                self.assertTrue((root/'review.patch').is_file(), output.getvalue())
+                self.assertEqual(output.getvalue().count('File: '), 1)
+                self.assertIn('16 KiB', output.getvalue())
+
+    def test_oversize_at_eof_terminates_without_looping(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(W.sys, 'stdin', io.StringIO('x'*16385)), \
+                 patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(W.ProposalSession(W.OfflineCompletion()), directory)
+            self.assertIn('16 KiB', output.getvalue())
+
+
+
+class HelpTests(unittest.TestCase):
+    def test_help_is_local_and_returns_to_file_prompt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(W.sys, 'stdin', io.StringIO(':help\n:help\n\n')), \
+                 patch.object(W.sys, 'stdout', io.StringIO()) as output, \
+                 patch.object(W, 'interactive_symbols', side_effect=AssertionError('must not select a file')):
+                W.run_interactive(W.ProposalSession(W.OfflineCompletion()), directory)
+            text = output.getvalue().lower()
+            for word in ('checkpoint', 'offline', 'export', 'model', ':load'):
+                self.assertIn(word, text)
+            self.assertIn('2-4 comma-separated function numbers', text)
+            self.assertNotIn('by number (1-4)', text)
+            self.assertNotIn('filenotfounderror', text)
+            self.assertEqual(text.count('file: '), 3)
+
+    def test_help_preserves_following_proposal_save_and_export(self):
+        class Client:
+            calls = 0
+            def complete(self, *args, **kwargs):
+                self.calls += 1
+                return dict(complete=True, text='def f():\n    return 2\n')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root/'sample.py'
+            original = b'def f():\n    return 1\n'
+            source.write_bytes(original)
+            client = Client()
+            answers = ':help\nsample.py\n1\n\nReturn two\n\ns\nsaved.json\ne\nedit.patch\nq\n'
+            with patch.object(W.sys, 'stdin', io.StringIO(answers)), patch.object(W.sys, 'stdout', io.StringIO()):
+                W.run_interactive(W.ProposalSession(client), root)
+            self.assertEqual(client.calls, 1)
+            self.assertEqual(source.read_bytes(), original)
+            self.assertTrue((root/'saved.json').is_file())
+            self.assertTrue((root/'edit.patch').is_file())
+
+    def test_help_then_eof_exits(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(W.sys, 'stdin', io.StringIO(':help\n')), patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(W.ProposalSession(W.OfflineCompletion()), directory)
+            self.assertNotIn('FileNotFoundError', output.getvalue())
+
+
+class ProposalEvidenceTests(unittest.TestCase):
+    def fixture(self, root, returncode=1):
+        import hashlib
+        source, session, result, checkpoint = WorkbenchTests().checkpoint_fixture(root)
+        proposal = session.proposals[result['proposal_id']]
+        packet = dict(schema='anvil-proposal-test-report-v1', source_sha256=proposal['source_sha256'],
+                      candidate_sha256=hashlib.sha256(proposal['text'].encode()).hexdigest(),
+                      test_suite_sha256='a'*64, returncode=returncode, summary='one failing check')
+        report = root/'test-report.json'
+        report.write_text(json.dumps(packet))
+        return source, session, result, checkpoint, packet, report
+
+    def test_bound_report_and_stale_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, session, result, _, packet, report = self.fixture(root)
+            pid = result['proposal_id']
+            self.assertEqual(session.test_report_status(pid)['tests'], 'not_reported')
+            status = session.attach_test_report(pid, report)
+            self.assertEqual(status['tests'], 'reported_fail')
+            self.assertFalse(status['authenticated'])
+            self.assertFalse(status['approved'])
+            self.assertFalse(status['tests_executed'])
+            packet['returncode'] = 0
+            report.write_text(json.dumps(packet))
+            self.assertEqual(session.attach_test_report(pid, report)['tests'], 'reported_pass')
+            source.write_bytes(source.read_bytes()+b'\n# change\n')
+            self.assertEqual(session.test_report_status(pid)['tests'], 'stale')
+            with self.assertRaises(ValueError): session.attach_test_report(pid, report)
+
+    def test_report_rejects_wrong_binding_and_malformed_fields(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, session, result, _, packet, report = self.fixture(root)
+            for changes in ({'source_sha256':'b'*64}, {'candidate_sha256':'b'*64}, {'returncode':True},
+                            {'returncode':256}, {'test_suite_sha256':'bad'}, {'summary':'\x1bsecret'},
+                            {'schema':'other'}, {'extra':True}, {'summary':'x'*2001}):
+                with self.subTest(changes=changes):
+                    report.write_text(json.dumps(dict(packet, **changes)))
+                    with self.assertRaises(ValueError): session.attach_test_report(result['proposal_id'], report)
+            for raw in (b'null', b'\xff', b' '*16385, b'{"schema":1,"schema":2}', b'['*1500+b']'*1500):
+                report.write_bytes(raw)
+                with self.assertRaises(ValueError): session.attach_test_report(result['proposal_id'], report)
+            self.assertEqual(session.test_report_status(result['proposal_id'])['tests'], 'not_reported')
+
+    def test_restore_requires_explicit_report_reattachment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, session, result, _, _, report = self.fixture(root, returncode=0)
+            session.attach_test_report(result['proposal_id'], report)
+            checkpoint = root/'with-report.json'
+            session.save_checkpoint(result['proposal_id'], root, checkpoint)
+            self.assertNotIn('test_report', json.loads(checkpoint.read_text()))
+            restored = W.ProposalSession(W.OfflineCompletion())
+            second = restored.load_checkpoint(checkpoint, root)
+            self.assertEqual(restored.test_report_status(second['proposal_id'])['tests'], 'not_reported')
+            self.assertEqual(restored.attach_test_report(second['proposal_id'], report)['tests'], 'reported_pass')
+
+    def test_revision_does_not_inherit_a_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, session, result, _, _, report = self.fixture(root, returncode=0)
+            session.attach_test_report(result['proposal_id'], report)
+            class Revision:
+                def complete(self, *args, **kwargs):
+                    return dict(complete=True, text=json.dumps({'functions':[
+                        {'symbol':'f','edits':[{'old':'return 2','new':'return 4'}]},
+                        {'symbol':'g','edits':[]}]}))
+            session.completion = Revision()
+            next_result = session.propose({'revise':result['proposal_id'], 'instruction':'Use four'})
+            self.assertTrue(next_result['reviewable'])
+            self.assertEqual(session.test_report_status(next_result['proposal_id'])['tests'], 'not_reported')
+            with self.assertRaises(ValueError): session.attach_test_report(next_result['proposal_id'], report)
+
+    def test_interactive_report_is_visible_without_running_tests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, _, _, checkpoint, _, _ = self.fixture(root)
+            answers = ':load '+checkpoint.name+'\nt\ntest-report.json\nq\n'
+            with patch.object(W.sys, 'stdin', io.StringIO(answers)), patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(W.ProposalSession(W.OfflineCompletion()), root)
+            self.assertIn('Tests: reported_fail', output.getvalue())
+            self.assertIn('not authenticated or approval', output.getvalue())
+
+    def test_offline_json_report_command(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, _, _, checkpoint, _, report = self.fixture(root)
+            data = '\n'.join(json.dumps(x) for x in [dict(load=str(checkpoint),project_root=str(root)),
+                dict(test_report='p1',report_path=str(report))])+'\n'
+            with patch.object(W.sys, 'argv', ['workbench','--backend','offline']), \
+                 patch.object(W.sys, 'stdin', io.StringIO(data)), patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.main()
+            rows = [json.loads(line) for line in output.getvalue().splitlines()]
+            self.assertEqual(rows[-1]['tests'],'reported_fail')
+            self.assertFalse(rows[-1]['tests_executed'])
+
+
+class RetainedIntentTests(unittest.TestCase):
+    """Portable control-flow tests; fake runner results are not execution evidence."""
+
+    def fixture(self, root, instruction='Return four; preserve g and its callers.', values=(2, 4)):
+        source = root/'source.py'
+        source.write_text('def f():\n    return 1\n\ndef g():\n    return 3\n')
+
+        class Client:
+            def __init__(self):
+                self.messages = []
+                self.values = iter(values)
+
+            def complete(self, messages, *args, **kwargs):
+                self.messages.append(messages)
+                return dict(complete=True, text='def f():\n    return %s\n' % next(self.values))
+
+        class Runner:
+            stale = False
+
+            def fresh_inputs(self):
+                if self.stale:
+                    raise ValueError('changed test input')
+
+            def run(self, proposal):
+                self.fresh_inputs()
+                return dict(tests='executed_zero_exit' if 'return 4' in proposal['text'] else 'executed_nonzero_exit',
+                            candidate_sha256=W.hashlib.sha256(proposal['text'].encode()).hexdigest(),
+                            output_tail='AssertionError: f must return four', elapsed_seconds=0.0)
+
+        client = Client()
+        session = W.ProposalSession(client, Runner())
+        result = session.propose(dict(file=str(source), symbol='f', instruction=instruction))
+        return source, session, result
+
+    def test_default_retains_initial_intent_without_extra_model_call(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source, session, result = self.fixture(Path(directory))
+            before = source.read_bytes()
+            pid = result['proposal_id']
+            with self.assertRaisesRegex(ValueError, 'locally executed'):
+                session.repair_once(pid)
+            self.assertEqual(len(session.completion.messages), 1)
+            session.run_checks(pid)
+            fixed = session.repair_once(pid)
+            prompt = session.completion.messages[-1][-1]['content']
+            self.assertIn('REQUIREMENTS:\nReturn four; preserve g and its callers.', prompt)
+            self.assertIn('UNTRUSTED CHECK OUTPUT', prompt)
+            self.assertEqual(fixed['instruction_source'], 'retained_initial_request')
+            self.assertFalse(fixed['handoff_required'])
+            self.assertEqual(len(session.completion.messages), 2)
+            self.assertEqual(source.read_bytes(), before)
+            for exhausted in (pid, fixed['proposal']['proposal_id']):
+                with self.assertRaisesRegex(ValueError, 'budget used'):
+                    session.repair_once(exhausted)
+
+    def test_explicit_intent_overrides_default(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, session, result = self.fixture(Path(directory), instruction='INITIAL_INTENT')
+            session.run_checks(result['proposal_id'])
+            fixed = session.repair_once(result['proposal_id'], 'CURRENT_INTENT')
+            prompt = session.completion.messages[-1][-1]['content']
+            self.assertIn('REQUIREMENTS:\nCURRENT_INTENT', prompt)
+            self.assertNotIn('INITIAL_INTENT', prompt)
+            self.assertEqual(fixed['instruction_source'], 'explicit')
+
+    def test_revision_and_restore_require_current_intent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, session, result = self.fixture(root, values=(2, 3, 4))
+            checkpoint = root/'saved.json'
+            session.save_checkpoint(result['proposal_id'], root, checkpoint)
+            self.assertNotIn('original_instruction', json.loads(checkpoint.read_text()))
+            restored = W.ProposalSession(session.completion, session.test_runner)
+            loaded = restored.load_checkpoint(checkpoint, root)
+            restored.run_checks(loaded['proposal_id'])
+            with self.assertRaisesRegex(ValueError, 'no retained initial request'):
+                restored.repair_once(loaded['proposal_id'])
+            revision = session.propose(dict(revise=result['proposal_id'], instruction='Return three instead'))
+            session.run_checks(revision['proposal_id'])
+            with self.assertRaisesRegex(ValueError, 'no retained initial request'):
+                session.repair_once(revision['proposal_id'])
+            self.assertEqual(len(session.completion.messages), 2)
+            self.assertFalse(session.repair_attempted)
+            self.assertFalse(restored.repair_attempted)
+            self.assertEqual(session.repair_once(revision['proposal_id'], 'Return four instead')['instruction_source'], 'explicit')
+
+    def test_no_silent_truncation_or_budget_consumption(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, session, result = self.fixture(Path(directory), instruction='x'*4001)
+            pid = result['proposal_id']
+            session.run_checks(pid)
+            for instruction in (None, '', ' ', False):
+                with self.subTest(instruction=instruction), self.assertRaisesRegex(ValueError, '1..4000'):
+                    session.repair_once(pid, instruction)
+            self.assertEqual(len(session.completion.messages), 1)
+            self.assertFalse(session.repair_attempted)
+            self.assertEqual(session.repair_once(pid, 'Return four')['instruction_source'], 'explicit')
+
+    def test_stale_checks_still_block_default(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, session, result = self.fixture(Path(directory))
+            session.run_checks(result['proposal_id'])
+            session.test_runner.stale = True
+            with self.assertRaisesRegex(ValueError, 'locally executed'):
+                session.repair_once(result['proposal_id'])
+            self.assertEqual(len(session.completion.messages), 1)
+            self.assertFalse(session.repair_attempted)
+
+    def test_interactive_enter_uses_retained_initial_intent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, session, _ = self.fixture(root, values=(2, 2, 4))
+            answers = 'source.py\n1\n\nReturn four; preserve g.\n\nv\nc\n\nq\n'
+            with patch.object(W.sys, 'stdin', io.StringIO(answers)), patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.run_interactive(session, root)
+            self.assertIn('Correction intent: retained_initial_request', output.getvalue())
+            self.assertIn('Correction checks: executed_zero_exit', output.getvalue())
+            self.assertEqual(len(session.completion.messages), 3)
+
+    def test_json_client_can_omit_instruction(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, session, result = self.fixture(root)
+            session.run_checks(result['proposal_id'])
+            requests = json.dumps({'repair_once':result['proposal_id']})+'\n'
+            with patch.object(W.sys, 'argv', ['workbench','--backend','offline']), \
+                 patch.object(W, 'ProposalSession', return_value=session), \
+                 patch.object(W.sys, 'stdin', io.StringIO(requests)), patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.main()
+            rows = [json.loads(line) for line in output.getvalue().splitlines()]
+            self.assertEqual(rows[-1]['instruction_source'], 'retained_initial_request')
+            self.assertFalse(rows[-1]['handoff_required'])
+
+
+class ExecutedCheckWorkflowTests(unittest.TestCase):
+    def runner(self, root):
+        from test_proposal_checks import C
+        (root/'check.py').write_text('from source import f, g\nassert f() == 4\nassert g() == 3\n')
+        plan = root/'plan.json'
+        plan.write_text(json.dumps(dict(schema='anvil-python-check-plan-v1',
+            files=['source.py','check.py'], test_file='check.py', timeout_seconds=5)))
+        return C.TestRunner(root, plan)
+
+    def test_execution_requires_startup_opt_in(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, session, result, _ = WorkbenchTests().checkpoint_fixture(Path(directory))
+            with self.assertRaisesRegex(ValueError, 'checks disabled'):
+                session.run_checks(result['proposal_id'])
+
+    def test_correction_budget_and_fresh_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, session, result, _ = WorkbenchTests().checkpoint_fixture(root)
+            runner = self.runner(root)
+            if not runner.available(): self.skipTest('macOS execution only')
+            session.test_runner = runner
+            pid = result['proposal_id']
+            failed = session.run_checks(pid)
+            self.assertEqual(failed['tests'], 'executed_nonzero_exit', failed['output_tail'])
+            class Revision:
+                calls = 0
+                def complete(self, messages, *args, **kwargs):
+                    self.calls += 1
+                    assert 'UNTRUSTED CHECK OUTPUT' in messages[-1]['content']
+                    return dict(complete=True, text=json.dumps({'functions':[
+                        {'symbol':'f','edits':[{'old':'return 2','new':'return 4'}]},
+                        {'symbol':'g','edits':[]}]}))
+            session.completion = Revision()
+            fixed = session.repair_once(pid, 'f returns four; g must continue returning three')
+            self.assertFalse(fixed['handoff_required'])
+            self.assertEqual(fixed['check']['tests'], 'executed_zero_exit')
+            self.assertEqual(failed['test_suite_sha256'], fixed['check']['test_suite_sha256'])
+            self.assertNotEqual(failed['candidate_sha256'], fixed['check']['candidate_sha256'])
+            for exhausted in (pid, fixed['proposal']['proposal_id']):
+                with self.assertRaisesRegex(ValueError, 'budget used'):
+                    session.repair_once(exhausted, 'try again')
+            self.assertEqual(session.completion.calls, 1)
+            self.assertIn(b'return 1', source.read_bytes())
+            (root/'check.py').write_text('raise SystemExit(0)\n')
+            self.assertEqual(session.check_status(fixed['proposal']['proposal_id'])['tests'], 'stale')
+
+    def test_offline_cli_checks_restored_candidate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, _, _, checkpoint = WorkbenchTests().checkpoint_fixture(root)
+            runner = self.runner(root)
+            if not runner.available(): self.skipTest('macOS execution only')
+            requests = '\n'.join(json.dumps(r) for r in [dict(load=str(checkpoint),project_root=str(root)),
+                dict(run_checks='p1'), dict(repair_once='p1', instruction='return four')])+'\n'
+            with patch.object(W.sys, 'argv', ['workbench','--backend','offline','--test-root',str(root),
+                                             '--test-plan',str(root/'plan.json')]), \
+                 patch.object(W.sys, 'stdin', io.StringIO(requests)), patch.object(W.sys, 'stdout', io.StringIO()) as output:
+                W.main()
+            rows = [json.loads(line) for line in output.getvalue().splitlines()]
+            self.assertTrue(rows[0]['tests_opted_in'])
+            self.assertEqual(rows[2]['tests'], 'executed_nonzero_exit')
+            self.assertEqual(rows[2]['model_requests'], 0)
+            self.assertIn('offline', rows[3]['message'])
+
+    def test_failed_correction_hands_off_without_another_model_call(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, session, result, _ = WorkbenchTests().checkpoint_fixture(root)
+            runner = self.runner(root)
+            if not runner.available(): self.skipTest('macOS execution only')
+            session.test_runner = runner
+            session.run_checks(result['proposal_id'])
+            class BadRevision:
+                calls = 0
+                def complete(self, *args, **kwargs):
+                    self.calls += 1
+                    return dict(complete=True, text=json.dumps({'functions':[
+                        {'symbol':'f','edits':[{'old':'return 2','new':'return 5'}]},
+                        {'symbol':'g','edits':[]}]}))
+            session.completion = BadRevision()
+            result = session.repair_once(result['proposal_id'], 'f returns four; g returns three')
+            self.assertTrue(result['handoff_required'])
+            self.assertEqual(result['check']['tests'], 'executed_nonzero_exit')
+            self.assertEqual(session.completion.calls, 1)
+            self.assertEqual(result['automatic_retries'], 0)
+            checkpoint = root/'failed-correction.json'
+            session.save_checkpoint(result['proposal']['proposal_id'], root, checkpoint)
+            self.assertNotIn('executed_check', json.loads(checkpoint.read_text()))
+            restored = W.ProposalSession(W.OfflineCompletion(), runner)
+            retained = restored.load_checkpoint(checkpoint, root)
+            self.assertEqual(restored.check_status(retained['proposal_id'])['tests'], 'not_run')
 
 
 if __name__ == '__main__':

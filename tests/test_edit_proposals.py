@@ -1,10 +1,12 @@
 import importlib.util
 import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
-SPEC = importlib.util.spec_from_file_location('edit_workbench', Path(__file__).resolve().parents[1] / 'experiments/workbench.py')
+SPEC = importlib.util.spec_from_file_location('edit_workbench', Path(__file__).resolve().parents[1] / 'src/anvil_workbench/workbench.py')
 W = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(W)
 
@@ -22,6 +24,23 @@ class Completion:
 
 
 class EditTests(unittest.TestCase):
+    def test_deep_json_is_a_normal_refusal_without_changing_recursion_limit(self):
+        limit = sys.getrecursionlimit()
+        depth = limit * 2 + 50
+        nested = '[' * depth + '0' + ']' * depth
+        self.assertLess(len(nested.encode('utf-8')), 32768)
+        for text, multiple in ((nested, False), ('{"old":' + nested + ',"new":"x"}', False),
+                               ('{"edits":' + nested + '}', True)):
+            with self.subTest(multiple=multiple), self.assertRaises(ValueError) as caught:
+                W.reconstruct_edit('abc', text, multiple=multiple)
+            self.assertNotIsInstance(caught.exception, RecursionError)
+        # Decoder depth limits differ across Python versions. Parsing successfully
+        # and then rejecting the envelope is also a correct ordinary refusal.
+        with patch.object(W.json, 'loads', side_effect=RecursionError('decoder depth')):
+            with self.assertRaisesRegex(ValueError, 'nesting'):
+                W.reconstruct_edit('abc', '{"old":"a","new":"b"}')
+        self.assertEqual(sys.getrecursionlimit(), limit)
+
     def test_atomic_edits_use_original_snapshot_independent_of_order(self):
         edits = [{'old': 'abc', 'new': 'XYZ'}, {'old': 'XYZ', 'new': 'abc'}]
         for order in (edits, edits[::-1]):
