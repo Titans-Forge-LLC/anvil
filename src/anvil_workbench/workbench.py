@@ -983,9 +983,12 @@ def _job_packet(capsule_path, project_root):
     notes = packet['historical_notes']
     if notes is not None:
         if (not isinstance(notes, dict)
-                or set(notes) != {'untrusted', 'check_summary', 'test_plan_sha256'}
+                or set(notes) not in ({'untrusted', 'check_summary', 'test_plan_sha256'},
+                                      {'untrusted', 'check_summary', 'test_plan_sha256', 'reported_check'})
                 or notes['untrusted'] is not True):
             raise ValueError('invalid untrusted historical job notes')
+        if 'reported_check' in notes and notes['reported_check'] not in ('passed', 'failed', 'stale', 'unavailable'):
+            raise ValueError('invalid reported job check state')
         summary, digest = notes['check_summary'], notes['test_plan_sha256']
         if (not isinstance(summary, str) or len(summary) > 2000
                 or any((ord(char) < 32 and char not in '\n\r\t') or ord(char) == 127 for char in summary)
@@ -1001,6 +1004,11 @@ def _job_packet(capsule_path, project_root):
     if not source_path.is_file():
         raise ValueError('job source must be a regular file')
     return packet, source_path, raw
+
+
+def _job_quarantined(packet):
+    """Carry negative check history across a restart without granting approval."""
+    return (packet['historical_notes'] or {}).get('reported_check') in ('failed', 'stale', 'unavailable')
 
 
 def _job_replay(path, source, candidate, symbol, helpers, expected_sha256):
@@ -1102,6 +1110,8 @@ class ProposalSession:
                 'format': result['format'],
                 'symbols': result.get('symbols'),
                 'context_symbols': list(result['context_symbols']),
+                'quarantined': parent_id is not None and self._export_blocked(parent_id),
+                'historical_notes_untrusted': parent.get('historical_notes_untrusted') if parent_id else None,
                 # Only an initial request is unambiguous. Manual revisions may
                 # change intent; checkpoint imports deliberately carry no intent.
                 'original_instruction': request['instruction'] if parent_id is None else None,
@@ -1123,6 +1133,7 @@ class ProposalSession:
         proposal = self.proposals[proposal_id]
         receipt = self.test_runner.run(proposal)
         proposal['executed_check'] = receipt
+        proposal['quarantined'] = receipt['tests'] != 'executed_zero_exit'
         return dict(receipt, proposal_id=proposal_id)
 
     def check_status(self, proposal_id):
@@ -1139,6 +1150,11 @@ class ProposalSession:
         except (OSError, ValueError):
             receipt['tests'] = 'stale'
         return receipt
+
+    def _export_blocked(self, proposal_id):
+        proposal = self.proposals[proposal_id]
+        return bool(proposal.get('quarantined') or ('executed_check' in proposal
+                    and self.check_status(proposal_id)['tests'] != 'executed_zero_exit'))
 
     def repair_once(self, proposal_id, instruction=None, max_tokens=1024):
         """One explicit correction per in-memory lineage; no unattended retry loop."""
@@ -1254,6 +1270,8 @@ class ProposalSession:
                                                'format', 'source_sha256', 'text')}
         packet.update(schema='anvil-proposal-checkpoint-v1', file=relative,
                       replacement_sha256=hashlib.sha256(proposal['text'].encode('utf-8')).hexdigest())
+        if self._export_blocked(proposal_id):
+            packet.update(schema='anvil-proposal-checkpoint-v2', quarantined=True)
         data = json.dumps(packet, ensure_ascii=False, sort_keys=True, indent=2).encode('utf-8')
         if len(data) > 8388608:
             raise ValueError('checkpoint exceeds 8 MiB')
@@ -1287,8 +1305,14 @@ class ProposalSession:
         packet = json.loads(raw, object_pairs_hook=unique_keys)
         keys = {'schema', 'file', 'symbol', 'symbols', 'context_symbols', 'format',
                 'source_sha256', 'replacement_sha256', 'text'}
-        if (not isinstance(packet, dict) or set(packet) != keys
-                or packet['schema'] != 'anvil-proposal-checkpoint-v1'):
+        if not isinstance(packet, dict):
+            raise ValueError('unknown checkpoint schema or fields')
+        version = packet.get('schema')
+        quarantined = version == 'anvil-proposal-checkpoint-v2'
+        if quarantined:
+            keys.add('quarantined')
+        if (version not in ('anvil-proposal-checkpoint-v1', 'anvil-proposal-checkpoint-v2')
+                or set(packet) != keys or (quarantined and packet['quarantined'] is not True)):
             raise ValueError('unknown checkpoint schema or fields')
         relative = packet['file']
         if (not isinstance(relative, str) or not relative or relative.startswith('/')
@@ -1371,13 +1395,14 @@ class ProposalSession:
         proposal_id = 'p' + str(self.sequence)
         self.proposals[proposal_id] = {'file': str(path), 'symbol': symbol, 'symbols': names,
             'text': text, 'source_sha256': packet['source_sha256'], 'format': mode,
-            'context_symbols': list(helpers)}
+            'context_symbols': list(helpers), 'quarantined': quarantined}
         if len(self.proposals) > 8:
             self.proposals.popitem(last=False)
         return {'restored': True, 'proposal_id': proposal_id, 'reviewable': True,
             'source_changed': False, 'rejection': None, 'source_sha256': packet['source_sha256'],
             'checkpoint_sha256': hashlib.sha256(raw).hexdigest(), 'symbols': names, 'symbol': symbol,
-            'model_requests': 0, 'applied': False, 'total_request_seconds': time.perf_counter() - started,
+            'model_requests': 0, 'applied': False, 'quarantined': quarantined,
+            'total_request_seconds': time.perf_counter() - started,
             'diff_preview': ''.join(difflib.unified_diff(source.splitlines(keepends=True),
                 text.splitlines(keepends=True), fromfile='original', tofile='proposal'))}
 
@@ -1408,14 +1433,25 @@ class ProposalSession:
         source = original.decode('utf-8')
         _job_replay(path, source, proposal['text'], proposal['symbol'],
                     proposal['context_symbols'], proposal['source_sha256'])
-        notes = None
+        retained_notes = proposal.get('historical_notes_untrusted')
+        notes = dict(retained_notes) if retained_notes is not None else None
         historical = proposal.get('executed_check') or proposal.get('test_report')
-        if historical:
+        if historical and (notes is None or 'executed_check' in proposal):
             summary = str(historical.get('output_tail', historical.get('summary', '')))[-2000:]
             summary = ''.join(char for char in summary
                               if ord(char) >= 32 and ord(char) != 127 or char in '\n\r\t')
             notes = {'untrusted': True, 'check_summary': summary,
                      'test_plan_sha256': historical.get('plan_sha256')}
+        if 'tests' in proposal.get('executed_check', {}):
+            status = self.check_status(proposal_id)['tests']
+            notes['reported_check'] = {
+                'executed_zero_exit': 'passed', 'executed_nonzero_exit': 'failed', 'stale': 'stale',
+            }.get(status, 'unavailable')
+        elif proposal.get('quarantined'):
+            if notes is None:
+                notes = {'untrusted': True, 'check_summary': '', 'test_plan_sha256': None}
+            if notes.get('reported_check') not in ('failed', 'stale', 'unavailable'):
+                notes['reported_check'] = 'unavailable'
         packet = {'schema': 'anvil-job-capsule-v1', 'file': relative,
                   'symbol': proposal['symbol'], 'context_symbols': list(proposal['context_symbols']),
                   'format': proposal['format'], 'instruction': instruction,
@@ -1475,6 +1511,8 @@ class ProposalSession:
             'file': str(path), 'symbol': symbol, 'symbols': None, 'text': candidate,
             'source_sha256': current_hash, 'format': packet['format'],
             'context_symbols': list(helpers), 'original_instruction': None,
+            'quarantined': _job_quarantined(packet),
+            'historical_notes_untrusted': packet['historical_notes'],
         }
         if len(self.proposals) > 8:
             self.proposals.popitem(last=False)
@@ -1483,6 +1521,7 @@ class ProposalSession:
                     rebased=original != saved.encode('utf-8'), model_requests=0,
                     applied=False, approved=False, tests='not_run', semantic_certificate=False,
                     fresh_checks_required=True, fresh_review_required=True,
+                    quarantined=_job_quarantined(packet),
                     historical_notes_untrusted=packet['historical_notes'],
                     total_request_seconds=time.perf_counter() - started)
 
@@ -1491,11 +1530,26 @@ class ProposalSession:
         started = time.perf_counter()
         (packet, path, raw, _, _, current_hash, base, current, retained,
          reasons) = _job_handoff(capsule_path, project_root, instruction)
+        quarantined = _job_quarantined(packet)
+        present = current == retained
+        if quarantined:
+            status = 'quarantined'
+        elif any(reason != 'selected_function_changed' for reason in reasons):
+            status = 'dependencies_changed'
+        elif present:
+            status = 'retained_change_present'
+        elif reasons:
+            status = 'needs_reconciliation'
+        else:
+            status = 'resumable'
         return {'inspected': True, 'file': str(path), 'symbol': packet['symbol'],
                 'source_sha256': current_hash, 'capsule_sha256': hashlib.sha256(raw).hexdigest(),
                 'base_function': base, 'current_function': current, 'retained_function': retained,
                 'selected_changed': base != current, 'blocking_reasons': reasons,
                 'strict_resume_compatible': not reasons,
+                'retained_change_present': present, 'handoff_status': status,
+                'quarantined': quarantined,
+                'historical_check_reported': (packet['historical_notes'] or {}).get('reported_check'),
                 'model_requests': 0, 'applied': False, 'approved': False, 'tests': 'not_run',
                 'semantic_certificate': False, 'fresh_checks_required': True,
                 'fresh_review_required': True,
@@ -1551,6 +1605,8 @@ class ProposalSession:
             'file': str(path), 'symbol': symbol, 'symbols': None, 'text': candidate,
             'source_sha256': current_hash, 'format': 'replacement',
             'context_symbols': list(helpers), 'original_instruction': None,
+            'quarantined': _job_quarantined(packet),
+            'historical_notes_untrusted': packet['historical_notes'],
         }
         if len(self.proposals) > 8:
             self.proposals.popitem(last=False)
@@ -1559,6 +1615,7 @@ class ProposalSession:
                     resolution_sha256=hashlib.sha256(replacement_raw).hexdigest(),
                     operator_resolution=True, model_requests=0,
                     applied=False, approved=False, tests='not_run', semantic_certificate=False,
+                    quarantined=_job_quarantined(packet),
                     fresh_checks_required=True, fresh_review_required=True,
                     historical_notes_untrusted=packet['historical_notes'],
                     total_request_seconds=time.perf_counter() - started)
@@ -1674,10 +1731,13 @@ class ProposalSession:
             'file': str(path), 'symbol': packet['symbol'], 'symbols': None, 'text': candidate,
             'source_sha256': current_hash, 'format': 'replacement',
             'context_symbols': list(packet['context_symbols']), 'original_instruction': None,
+            'quarantined': _job_quarantined(packet),
+            'historical_notes_untrusted': packet['historical_notes'],
         }
         if len(self.proposals) > 8:
             self.proposals.popitem(last=False)
         return {**checked, **result, 'proposal_id': proposal_id, 'reviewable': True,
+                'quarantined': _job_quarantined(packet),
                 'rejection': None, 'total_request_seconds': time.perf_counter() - started}
 
     def export_patch(self, proposal_id, project_root, output):
@@ -1685,6 +1745,8 @@ class ProposalSession:
         if not isinstance(proposal_id, str) or proposal_id not in self.proposals:
             raise ValueError('unknown or expired proposal ID')
         proposal = self.proposals[proposal_id]
+        if self._export_blocked(proposal_id):
+            raise ValueError('quarantined draft requires a current passing check before export')
         root = Path(project_root).expanduser().resolve(strict=True)
         if not root.is_dir():
             raise ValueError('project_root must be a directory')

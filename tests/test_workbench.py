@@ -1624,6 +1624,9 @@ class ExecutedCheckWorkflowTests(unittest.TestCase):
             restored = W.ProposalSession(W.OfflineCompletion(), runner)
             retained = restored.load_checkpoint(checkpoint, root)
             self.assertEqual(restored.check_status(retained['proposal_id'])['tests'], 'not_run')
+            self.assertTrue(retained['quarantined'])
+            with self.assertRaisesRegex(ValueError, 'quarantined'):
+                restored.export_patch(retained['proposal_id'], root, root / 'failed.patch')
 
 
 if __name__ == '__main__':

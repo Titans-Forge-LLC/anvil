@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "anvil-reference"
-version = "0.2.0b1"
+version = "0.2.0b2"
 description = "Limited public beta of the synthetic-data-only ANVIL reference profile"
 requires-python = ">=3.9"
 license = "MIT"
@@ -21,6 +21,9 @@ Issues = "https://github.com/Titans-Forge-LLC/anvil/issues"
 anvil = "anvil_alpha.cli:main"
 anvil-alpha = "anvil_alpha.cli:main"
 anvil-workbench = "anvil_workbench.workbench:main"
+anvil-capture = "anvil_workbench.capture_candidate:main"
+anvil-job = "anvil_workbench.jobs:main"
+anvil-predraft = "anvil_workbench.pre_draft:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

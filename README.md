@@ -9,6 +9,9 @@ Status: `LIMITED PUBLIC BETA`
 **[Start with one small edit](experiments/START_HERE.md)**, or read the
 [workbench reference](experiments/WORKBENCH.md).
 
+[Resume an interrupted Python job](experiments/RESUME_INTERRUPTED_JOB.md) with
+the installed capture, compact handoff and Git patch export commands.
+
 ### Install this development preview
 
 From this checkout, install into a virtual environment outside the repository:

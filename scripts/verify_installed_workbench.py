@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -21,6 +22,8 @@ RUNTIME_FILES = {
     'anvil_alpha/__init__.py', 'anvil_alpha/cli.py', 'anvil_alpha/codec.py',
     'anvil_workbench/__init__.py', 'anvil_workbench/__main__.py',
     'anvil_workbench/workbench.py', 'anvil_workbench/proposal_checks.py',
+    'anvil_workbench/capture_candidate.py', 'anvil_workbench/jobs.py',
+    'anvil_workbench/pre_draft.py',
 }
 
 
@@ -55,16 +58,79 @@ def clean_environment(root):
     return env
 
 
-def run(command, cwd, env, *, text=''):
+def run(command, cwd, env, *, text='', expected_exit=0):
     result = subprocess.run(command, cwd=cwd, env=env, input=text,
                             text=True, capture_output=True, timeout=120)
-    if result.returncode:
-        raise RuntimeError('installed command failed: ' + result.stderr[-3000:])
+    if result.returncode != expected_exit:
+        raise RuntimeError(f'expected exit {expected_exit}, got {result.returncode}: '
+                           + (result.stdout + result.stderr)[-3000:])
     return result.stdout
 
 
 def rows(text):
     return [json.loads(line) for line in text.splitlines() if line.strip()]
+
+
+def verify_handoff(root, binaries, python, env):
+    project = root / 'handoff-project'
+    project.mkdir()
+    git = shutil.which('git')
+    if git is None:
+        raise RuntimeError('Git is required for the installed handoff fixture')
+    env = dict(env, PATH=str(Path(git).parent) + os.pathsep + env['PATH'])
+
+    def command(name, *args, expected_exit=0):
+        executable = binaries / (name + '.exe' if os.name == 'nt' else name)
+        return run([str(executable), *args], project, env, expected_exit=expected_exit)
+
+    def git_command(*args):
+        return run([git, *args], project, env)
+
+    original = b'def helper():\n    return 1\n\ndef value():\n    return helper()\n\ndef other():\n    return 7\n'
+    source = project / 'sample.py'
+    source.write_bytes(original)
+    (project / 'task.txt').write_text('Return helper plus one.', encoding='utf-8')
+    (project / 'check.py').write_text('from sample import value, other\n'
+                                     'assert value() == 2 and other() == 9\n', encoding='utf-8')
+    git_command('init', '-q')
+    git_command('config', 'core.autocrlf', 'false')
+    git_command('add', 'sample.py', 'task.txt', 'check.py')
+    git_command('-c', 'commit.gpgsign=false', '-c', 'user.name=Synthetic', '-c',
+                'user.email=test@example.invalid', 'commit', '-qm', 'Fixture')
+
+    (project / 'candidate.py').write_bytes(original.replace(b'return helper()', b'return helper() + 1'))
+    capture_args = ['--project-root', str(project), '--source', 'sample.py', '--candidate', 'candidate.py',
+                    '--symbol', 'value', '--context-symbol', 'helper', '--intent-file', 'task.txt',
+                    '--source-sha256', hashlib.sha256(original).hexdigest()]
+    assert json.loads(command('anvil-capture', *capture_args, '--output', 'pending.json'))['tests'] == 'not_run'
+    command('anvil-capture', *capture_args, '--output', 'failed.json', '--check-failed')
+    job_args = ['--project-root', str(project), '--intent-file', 'task.txt', '--json']
+    failed = json.loads(command('anvil-job', *job_args, '--export-patch', 'blocked.patch', 'failed.json',
+                                expected_exit=2))
+    assert failed['items'][0]['status'] == 'quarantined' and not (project / 'blocked.patch').exists()
+
+    changed = original.replace(b'return 7', b'return 9')
+    source.write_bytes(changed)
+    handoff = str(root / 'private-handoff.json')
+    command('anvil-predraft', 'capture', '--project-root', str(project), '--task-file', 'task.txt',
+            '--output', handoff, '--failed-check', 'python check.py', '--dead-end', 'Skip the previous draft')
+    compact = command('anvil-predraft', 'inspect', '--project-root', str(project), '--handoff', handoff,
+                      '--compact').splitlines()
+    assert len(compact) == 4 and 'sample.py:8' in compact[1] and 'python check.py' in compact[2]
+    assert 'Skip the previous draft' in compact[3] and 'Return helper plus one.' not in '\n'.join(compact)
+
+    source.write_bytes(changed.replace(b'return 1', b'return 3'))
+    dependency = json.loads(command('anvil-job', *job_args, '--export-patch', 'drift.patch', 'pending.json',
+                                    expected_exit=2))
+    assert dependency['items'][0]['status'] == 'reassess_dependencies'
+    assert not (project / 'drift.patch').exists()
+    source.write_bytes(changed)
+    result = json.loads(command('anvil-job', *job_args, '--export-patch', 'resume.patch', 'pending.json'))
+    assert result['exported'] and result['tests'] == 'not_run' and result['model_requests'] == 0
+    assert not result['approved'] and not result['applied'] and source.read_bytes() == changed
+    git_command('apply', '--check', 'resume.patch')
+    git_command('apply', 'resume.patch')  # Operator step in the disposable fixture.
+    run([str(python), 'check.py'], project, env)
 
 
 def main():
@@ -165,11 +231,14 @@ print(json.dumps({'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest
         if (len(stale) != 2 or stale[1].get('error') != 'ValueError'
                 or stale[1].get('applied') is not False):
             raise AssertionError('stale source was not refused')
+        verify_handoff(root, binaries, python, env)
     print(json.dumps({'status': 'PASS', 'runtime_files': len(RUNTIME_FILES),
                       'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
                       'clean_install': True, 'checkout_imports': False,
                       'offline_restore_export': True, 'stale_restore_refused': True,
                       'oversized_input_recovery_prompts': 3,
+                      'compact_handoff_and_fresh_git_check': True,
+                      'refused_failed_draft_and_changed_helper': True,
                       'restored_approval': False, 'model_requests': 0,
                       'scope': 'fixed-fixture packaging smoke, not useful-job economics'}, indent=2))
 
