@@ -140,8 +140,10 @@ class PreDraftTests(unittest.TestCase):
         home = self.base / 'home'
         home.mkdir()
         included = home / 'included.gitconfig'
-        included.write_text('[filter "included"]\n\tprocess = touch "' + str(marker) + '"; cat\n')
-        (home / '.gitconfig').write_text('[include]\n\tpath = ' + included.as_posix() + '\n')
+        subprocess.run(['git', 'config', '--file', str(included), 'filter.included.process',
+                        'touch "' + marker.as_posix() + '"; cat'], check=True)
+        subprocess.run(['git', 'config', '--file', str(home / '.gitconfig'), 'include.path',
+                        included.as_posix()], check=True)
         (self.root / '.gitattributes').write_text('*.py filter=included\n')
         (self.root / 'code.py').write_text('changed\n')
         with patch.dict(os.environ, {'HOME': str(home), 'XDG_CONFIG_HOME': str(home)}):

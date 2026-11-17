@@ -8,11 +8,12 @@ class CompactTests(unittest.TestCase):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.dir=Path(self.tmp.name);self.root=self.dir/'repo';self.root.mkdir()
         self.git('init','-q');self.git('config','user.name','Synthetic');self.git('config','user.email','synthetic@example.invalid')
-        (self.root/'a.py').write_text('a = 1\nb = 2\nc = 3\n')
+        self.git('config', 'core.autocrlf', 'false')
+        (self.root/'a.py').write_bytes(b'a = 1\nb = 2\nc = 3\n')
         (self.root/'task.txt').write_text('long task text should not be emitted')
         (self.root/'notes.txt').write_text('long historical content should not be emitted')
         self.git('add','.');self.git('commit','-qm','synthetic base')
-        (self.root/'a.py').write_text('a = 1\nb = 9\nc = 3\n')
+        (self.root/'a.py').write_bytes(b'a = 1\nb = 9\nc = 3\n')
         self.handoff=self.dir/'handoff.json'
     def git(self,*args):
         return subprocess.run(['git',*args],cwd=self.root,check=True,capture_output=True)
@@ -32,16 +33,16 @@ class CompactTests(unittest.TestCase):
         self.assertNotIn('historical_continuation',pre_draft.inspect(self.root,self.handoff))
     def test_stale_shows_new_dirty_location(self):
         self.capture(failed_check='python3 -m unittest')
-        (self.root/'a.py').write_text('a = 1\nb = 2\nc = 4\n')
+        (self.root/'a.py').write_bytes(b'a = 1\nb = 2\nc = 4\n')
         text=self.compact();self.assertIn('state: stale',text);self.assertIn('"a.py:3"',text);self.assertNotIn('"a.py:2"',text)
     def test_staged_untracked_and_deleted(self):
         self.capture();self.git('add','a.py');(self.root/'notes.txt').unlink();(self.root/'new.py').write_text('x=1\n')
         text=self.compact();self.assertIn('"a.py:2"',text);self.assertIn('"notes.txt:?"',text);self.assertIn('"new.py:1"',text)
     def test_binary_location_unknown_and_literal_pathspec(self):
         name='[glob].py' if os.name == 'nt' else ':(glob)*.py'
-        (self.root/name).write_text('x=1\n');(self.root/'image.bin').write_bytes(b'\x00a')
+        (self.root/name).write_bytes(b'x=1\n');(self.root/'image.bin').write_bytes(b'\x00a')
         self.git('add','.');self.git('commit','-qm','add fixtures')
-        (self.root/name).write_text('x=2\n');(self.root/'image.bin').write_bytes(b'\x00b')
+        (self.root/name).write_bytes(b'x=2\n');(self.root/'image.bin').write_bytes(b'\x00b')
         self.capture();text=self.compact();self.assertIn(json.dumps(name+':1'),text);self.assertIn('"image.bin:?"',text)
     def test_only_first_sixteen_dirty_files_are_diffed(self):
         self.capture();result=pre_draft.inspect(self.root,self.handoff,show_content=True)

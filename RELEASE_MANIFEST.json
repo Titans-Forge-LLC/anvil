@@ -44,7 +44,7 @@
     },
     {
       "path": ".github/workflows/conformance.yml",
-      "sha256": "dcd44ab37aac180633026f7d474a8f9ecc6b97f613a32166508c00c0c3a77538"
+      "sha256": "fe243feed5c010a5106c7c3aac1658d2341a55e1c36620bfca20a2e474d6ab31"
     },
     {
       "path": ".gitignore",
@@ -376,11 +376,11 @@
     },
     {
       "path": "tests/test_pre_draft.py",
-      "sha256": "568f6df22ddd5626822099e972b642f9587e7d1fb30f718663907e52a15fd92d"
+      "sha256": "60f1a00af71365792b520755bf9e4f05a16f7ebb9ba3d0a059270997a466855e"
     },
     {
       "path": "tests/test_pre_draft_compact.py",
-      "sha256": "71da0ec4bf421d59a381a684d45b718815d376e0e3191792a18fdea962314c04"
+      "sha256": "8e83b390e7814e11dcdc3ac001c9be43cf1b52733706656025820f675515d0d3"
     },
     {
       "path": "tests/test_proposal_checks.py",
